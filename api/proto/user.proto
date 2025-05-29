@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package bocchi.user.v1;
+
+option go_package = "github.com/necofuryai/bocchi-the-map/api/gen/user/v1;userv1";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+// User represents an authenticated user
+message User {
+  string id = 1;
+  string anonymous_id = 2; // For anonymous reviews
+  string email = 3;
+  string display_name = 4;
+  string avatar_url = 5;
+  AuthProvider auth_provider = 6;
+  string auth_provider_id = 7;
+  UserPreferences preferences = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// Authentication provider enum
+enum AuthProvider {
+  AUTH_PROVIDER_UNSPECIFIED = 0;
+  AUTH_PROVIDER_GOOGLE = 1;
+  AUTH_PROVIDER_X = 2;
+}
+
+// User preferences
+message UserPreferences {
+  bocchi.common.v1.Language language = 1;
+  bool dark_mode = 2;
+  string timezone = 3;
+}
+
+// Request to get current user
+message GetCurrentUserRequest {}
+
+// Response for getting current user
+message GetCurrentUserResponse {
+  User user = 1;
+}
+
+// Request to update user preferences
+message UpdateUserPreferencesRequest {
+  UserPreferences preferences = 1;
+}
+
+// Response for updating user preferences
+message UpdateUserPreferencesResponse {
+  User user = 1;
+}

@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+vendor/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.cover
+*.log
+
+# Production
+build/
+dist/
+out/
+*.out
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Next.js
+.next/
+.vercel
+
+# Go
+*.exe
+*.dll
+*.so
+*.dylib
+go.sum
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.cache/
+tmp/
+temp/
+
+# Claude Code
+.claude/sessions/

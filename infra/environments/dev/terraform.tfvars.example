@@ -1,0 +1,5 @@
+gcp_project_id        = "bocchi-map-dev"
+gcp_region            = "asia-northeast1"
+cloudflare_api_token  = "your-cloudflare-api-token"
+cloudflare_account_id = "your-cloudflare-account-id"
+environment           = "dev"

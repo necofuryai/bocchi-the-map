@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package bocchi.review.v1;
+
+option go_package = "github.com/necofuryai/bocchi-the-map/api/gen/review/v1;reviewv1";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+// Review represents a user's rating of a spot
+message Review {
+  string id = 1;
+  string spot_id = 2;
+  string user_id = 3; // Anonymous ID
+  int32 rating = 4; // 1-5 stars
+  string comment = 5; // For future text review feature
+  map<string, int32> rating_aspects = 6; // For future multi-aspect ratings
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// Request to create a review
+message CreateReviewRequest {
+  string spot_id = 1;
+  int32 rating = 2; // 1-5 stars
+  string comment = 3; // Optional for future use
+  map<string, int32> rating_aspects = 4; // Optional for future use
+}
+
+// Response for review creation
+message CreateReviewResponse {
+  Review review = 1;
+}
+
+// Request to get reviews for a spot
+message GetSpotReviewsRequest {
+  string spot_id = 1;
+  bocchi.common.v1.PaginationRequest pagination = 2;
+}
+
+// Response for getting spot reviews
+message GetSpotReviewsResponse {
+  repeated Review reviews = 1;
+  bocchi.common.v1.PaginationResponse pagination = 2;
+  ReviewStatistics statistics = 3;
+}
+
+// Review statistics for a spot
+message ReviewStatistics {
+  double average_rating = 1;
+  int32 total_count = 2;
+  map<int32, int32> rating_distribution = 3; // key: rating (1-5), value: count
+}
+
+// Request to get user's reviews
+message GetUserReviewsRequest {
+  string user_id = 1;
+  bocchi.common.v1.PaginationRequest pagination = 2;
+}
+
+// Response for getting user reviews
+message GetUserReviewsResponse {
+  repeated Review reviews = 1;
+  bocchi.common.v1.PaginationResponse pagination = 2;
+}
