@@ -42,6 +42,13 @@ func NewSpot(name string, lat, lng float64, category, address, countryCode strin
 
 // UpdateRating updates the average rating and review count
 func (s *Spot) UpdateRating(newRating float64, totalReviews int) {
+	// Validate rating range
+	if newRating < 0 || newRating > 5 {
+		return // または適切なエラーを返す
+	}
+	if totalReviews < 0 {
+		return
+	}
 	s.AverageRating = newRating
 	s.ReviewCount = totalReviews
 	s.UpdatedAt = time.Now()

@@ -1,7 +1,9 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 )
@@ -65,13 +67,26 @@ func Load() (*Config, error) {
 		},
 	}
 
+	// Validate configuration
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
+}
+
+// Validate validates the configuration
+func (c *Config) Validate() error {
+	if c.Database.Password == "" {
+		return errors.New("TIDB_PASSWORD is required")
+	}
+	return nil
 }
 
 // GetDSN returns the database connection string
 func (c *DatabaseConfig) GetDSN() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Local",
-		c.User, c.Password, c.Host, c.Port, c.Database)
+		url.QueryEscape(c.User), url.QueryEscape(c.Password), c.Host, c.Port, c.Database)
 }
 
 // getEnvWithDefault gets an environment variable with a default value
@@ -87,6 +102,9 @@ func getIntEnvWithDefault(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
+		} else {
+			// Log warning about invalid integer value
+			fmt.Fprintf(os.Stderr, "Warning: Invalid integer value for %s: %s, using default %d\n", key, value, defaultValue)
 		}
 	}
 	return defaultValue

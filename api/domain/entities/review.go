@@ -1,6 +1,8 @@
 package entities
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"time"
 )
@@ -23,8 +25,15 @@ func NewReview(spotID, userID string, rating int) (*Review, error) {
 		return nil, err
 	}
 
+	// Generate a simple ID
+	id, err := generateID()
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now()
 	return &Review{
+		ID:            id,
 		SpotID:        spotID,
 		UserID:        userID,
 		Rating:        rating,
@@ -56,4 +65,13 @@ func validateRating(rating int) error {
 		return errors.New("rating must be between 1 and 5")
 	}
 	return nil
+}
+
+// generateID generates a random ID using crypto/rand
+func generateID() (string, error) {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return "review_" + hex.EncodeToString(bytes), nil
 }

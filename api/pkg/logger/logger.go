@@ -84,3 +84,21 @@ func Error(msg string, err error) {
 func Fatal(msg string, err error) {
 	log.Fatal().Err(err).Msg(msg)
 }
+
+// InfoWithFields logs an info message with structured fields
+func InfoWithFields(msg string, fields map[string]interface{}) {
+	event := log.Info()
+	for k, v := range fields {
+		event = event.Interface(k, v)
+	}
+	event.Msg(msg)
+}
+
+// ErrorWithFields logs an error message with structured fields
+func ErrorWithFields(msg string, err error, fields map[string]interface{}) {
+	event := log.Error().Err(err)
+	for k, v := range fields {
+		event = event.Interface(k, v)
+	}
+	event.Msg(msg)
+}

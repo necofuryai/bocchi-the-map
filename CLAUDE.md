@@ -28,7 +28,7 @@ This is a monorepo with three main modules:
 - Language: Golang
 - Framework: Huma (OpenAPI auto-generation)
 - Architecture: Onion Architecture
-- API Design: Protocol Buffers driven
+- API Design: Protocol Buffers-driven
 - Database: TiDB Serverless
 - Hosting: Google Cloud Run
 

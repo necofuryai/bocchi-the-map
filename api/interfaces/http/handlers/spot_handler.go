@@ -27,7 +27,7 @@ type CreateSpotInput struct {
 		Category    string            `json:"category" minLength:"1" maxLength:"50" doc:"Category"`
 		Address     string            `json:"address" minLength:"1" maxLength:"500" doc:"Address"`
 		AddressI18n map[string]string `json:"address_i18n,omitempty" doc:"Localized addresses"`
-		CountryCode string            `json:"country_code" minLength:"2" maxLength:"2" doc:"ISO country code"`
+		CountryCode string            `json:"country_code" minLength:"2" maxLength:"2" pattern:"^[A-Z]{2}$" doc:"ISO 3166-1 alpha-2 country code"`
 	}
 }
 

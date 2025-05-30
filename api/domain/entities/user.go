@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"errors"
 	"time"
 )
 
@@ -25,6 +26,16 @@ const (
 	AuthProviderGoogle AuthProvider = "google"
 	AuthProviderX      AuthProvider = "x"
 )
+
+// IsValidAuthProvider checks if the given provider is valid
+func IsValidAuthProvider(provider AuthProvider) bool {
+	switch provider {
+	case AuthProviderGoogle, AuthProviderX:
+		return true
+	default:
+		return false
+	}
+}
 
 // UserPreferences represents user preferences
 type UserPreferences struct {
@@ -52,9 +63,16 @@ func NewUser(email, displayName string, provider AuthProvider, providerID string
 }
 
 // UpdatePreferences updates user preferences
-func (u *User) UpdatePreferences(prefs UserPreferences) {
+func (u *User) UpdatePreferences(prefs UserPreferences) error {
+	// Validate language
+	if prefs.Language != "ja" && prefs.Language != "en" {
+		return errors.New("language must be 'ja' or 'en'")
+	}
+	// TODO: Add timezone validation if needed
+	
 	u.Preferences = prefs
 	u.UpdatedAt = time.Now()
+	return nil
 }
 
 // SetAnonymousID sets the anonymous ID for the user

@@ -1,12 +1,17 @@
-.PHONY: proto clean test build run
+.PHONY: proto clean test build run deps dev migrate-up migrate-down docs
 
 # Generate protobuf files
 proto:
 	@echo "Generating protobuf files..."
 	@mkdir -p gen
-	@protoc --go_out=gen --go_opt=paths=source_relative \
-		--go-grpc_out=gen --go-grpc_opt=paths=source_relative \
-		proto/*.proto
+	@if command -v protoc >/dev/null 2>&1; then \
+		protoc --go_out=gen --go_opt=paths=source_relative \
+			--go-grpc_out=gen --go-grpc_opt=paths=source_relative \
+			proto/*.proto; \
+	else \
+		echo "Error: protoc is not installed"; \
+		exit 1; \
+	fi
 
 # Clean generated files
 clean:
@@ -36,7 +41,12 @@ deps:
 
 # Run with hot reload (requires air)
 dev:
-	@air
+	@if command -v air >/dev/null 2>&1; then \
+		air; \
+	else \
+		echo "Error: air is not installed. Install with: go install github.com/cosmtrek/air@latest"; \
+		exit 1; \
+	fi
 
 # Database migration
 migrate-up:
