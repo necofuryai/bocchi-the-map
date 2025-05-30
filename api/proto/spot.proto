@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package bocchi.spot.v1;
+
+option go_package = "github.com/necofuryai/bocchi-the-map/api/gen/spot/v1;spotv1";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+// Spot represents a reviewable location
+message Spot {
+  string id = 1;
+  string name = 2;
+  map<string, string> name_i18n = 3; // Localized names
+  bocchi.common.v1.Coordinates coordinates = 4;
+  string category = 5;
+  string address = 6;
+  map<string, string> address_i18n = 7; // Localized addresses
+  string country_code = 8;
+  double average_rating = 9;
+  int32 review_count = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// Request to create a new spot
+message CreateSpotRequest {
+  string name = 1;
+  map<string, string> name_i18n = 2;
+  bocchi.common.v1.Coordinates coordinates = 3;
+  string category = 4;
+  string address = 5;
+  map<string, string> address_i18n = 6;
+  string country_code = 7;
+}
+
+// Response for spot creation
+message CreateSpotResponse {
+  Spot spot = 1;
+}
+
+// Request to get a spot by ID
+message GetSpotRequest {
+  string id = 1;
+}
+
+// Response for getting a spot
+message GetSpotResponse {
+  Spot spot = 1;
+}
+
+// Request to list spots
+message ListSpotsRequest {
+  bocchi.common.v1.PaginationRequest pagination = 1;
+  bocchi.common.v1.Coordinates center = 2;
+  double radius_km = 3; // Search radius in kilometers
+  string category = 4;
+  string country_code = 5;
+}
+
+// Response for listing spots
+message ListSpotsResponse {
+  repeated Spot spots = 1;
+  bocchi.common.v1.PaginationResponse pagination = 2;
+}
+
+// Request to search spots
+message SearchSpotsRequest {
+  string query = 1;
+  bocchi.common.v1.Language language = 2;
+  bocchi.common.v1.Coordinates center = 3;
+  double radius_km = 4;
+  bocchi.common.v1.PaginationRequest pagination = 5;
+}
+
+// Response for searching spots
+message SearchSpotsResponse {
+  repeated Spot spots = 1;
+  bocchi.common.v1.PaginationResponse pagination = 2;
+}

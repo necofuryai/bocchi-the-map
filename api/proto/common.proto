@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package bocchi.common.v1;
+
+option go_package = "github.com/necofuryai/bocchi-the-map/api/gen/common/v1;commonv1";
+
+// Pagination request parameters
+message PaginationRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+// Pagination response metadata
+message PaginationResponse {
+  int32 total_count = 1;
+  int32 page = 2;
+  int32 page_size = 3;
+  int32 total_pages = 4;
+}
+
+// Geographic coordinates
+message Coordinates {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+// Language enum
+enum Language {
+  LANGUAGE_UNSPECIFIED = 0;
+  LANGUAGE_JA = 1;
+  LANGUAGE_EN = 2;
+}
