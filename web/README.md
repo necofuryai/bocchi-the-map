@@ -23,6 +23,7 @@ npm run dev                     # Start with Turbopack 🚀
 ## 🚀 Modern React Patterns
 
 ### Next.js 15 App Router
+
 ```tsx
 // app/layout.tsx - Root layout with providers
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ```
 
 ### React Server Components
+
 ```tsx
 // app/spots/page.tsx - Zero-JS by default
 async function SpotsPage() {
@@ -56,6 +58,7 @@ async function SpotsPage() {
 ```
 
 ### Streaming & Suspense
+
 ```tsx
 // Progressive loading with granular suspense
 <Suspense fallback={<MapSkeleton />}>
@@ -69,6 +72,7 @@ async function SpotsPage() {
 ## 🏗️ Architecture Features
 
 ### Performance-First Design
+
 - **Turbopack** - 700x faster than Webpack for dev builds
 - **React Server Components** - Zero-JS server-rendered components
 - **Streaming SSR** - Progressive page hydration
@@ -76,13 +80,15 @@ async function SpotsPage() {
 - **Automatic Code Splitting** - Ship only what users need
 
 ### Developer Experience
+
 - **TypeScript** - End-to-end type safety with API contracts  
 - **Tailwind CSS 4.0** - Modern CSS with design tokens
 - **shadcn/ui** - Copy-paste component system
 - **ESLint + Prettier** - Consistent code formatting
 - **Hot Module Replacement** - Instant feedback loop
 
-### Production Ready
+### Production-Ready
+
 - **Progressive Web App** - Native-like mobile experience
 - **Dark Mode** - System preference aware theming
 - **Internationalization** - Japanese/English support
@@ -91,7 +97,7 @@ async function SpotsPage() {
 
 ## 📁 Project Structure
 
-```
+```text
 web/
 ├── 🎯 src/app/                  # 📱 APP ROUTER (Next.js 15)
 │   ├── layout.tsx               # Root layout + providers
@@ -122,6 +128,7 @@ web/
 ## ⚡ Performance Optimizations
 
 ### Bundle Analysis
+
 ```bash
 # Analyze bundle size
 npm run build && npm run analyze
@@ -132,6 +139,7 @@ lighthouse https://localhost:3000
 ```
 
 ### Core Web Vitals
+
 | Metric | Target | Strategy |
 |--------|--------|----------|
 | **LCP** | < 1.2s | Image optimization, edge caching |
@@ -139,15 +147,17 @@ lighthouse https://localhost:3000
 | **CLS** | < 0.1 | Reserved space, font loading |
 
 ### Optimization Techniques
+
 - **Image Optimization** - Next.js Image component with WebP/AVIF
 - **Font Loading** - `next/font` with display swap
-- **Lazy Loading** - Components and routes on demand
+- **Lazy Loading** - Components and routes on-demand
 - **Service Worker** - Offline support and caching
 - **CDN Caching** - Static assets via Cloudflare
 
 ## 🎨 Design System
 
 ### Tailwind CSS 4.0 Features
+
 ```css
 /* Design tokens with CSS variables */
 @theme {
@@ -163,6 +173,7 @@ lighthouse https://localhost:3000
 ```
 
 ### Component System
+
 ```tsx
 // Type-safe component variants
 const Button = cva("px-4 py-2 rounded-md", {
@@ -180,6 +191,7 @@ const Button = cva("px-4 py-2 rounded-md", {
 ```
 
 ### Dark Mode Implementation
+
 ```tsx
 // System-aware dark mode
 function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -199,6 +211,7 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 ## 🗺️ Map Integration
 
 ### MapLibre GL JS
+
 ```tsx
 // High-performance vector maps
 import maplibregl from 'maplibre-gl'
@@ -220,6 +233,7 @@ function MapView() {
 ```
 
 ### Custom Map Features
+
 - **Vector Tiles** - Smooth zooming and styling
 - **Clustering** - Efficient rendering of thousands of spots
 - **Custom Markers** - React components as map overlays
@@ -229,6 +243,7 @@ function MapView() {
 ## 🔐 Authentication & Security
 
 ### NextAuth.js v4
+
 ```tsx
 // Multi-provider OAuth setup
 export const authOptions: NextAuthOptions = {
@@ -253,6 +268,7 @@ export const authOptions: NextAuthOptions = {
 ```
 
 ### Security Features
+
 - **CSRF Protection** - Built-in token validation
 - **Content Security Policy** - XSS attack prevention
 - **Secure Headers** - HSTS, frame options, etc.
@@ -262,6 +278,7 @@ export const authOptions: NextAuthOptions = {
 ## 🧪 Testing Strategy
 
 ### Testing Pyramid
+
 ```bash
 # Unit tests with Vitest
 npm run test:unit
@@ -277,6 +294,7 @@ npm run test:visual
 ```
 
 ### Test Examples
+
 ```tsx
 // Component testing with Testing Library
 import { render, screen } from '@testing-library/react'
@@ -303,6 +321,7 @@ test('user can search for spots', async ({ page }) => {
 ## 🚀 Development Workflow
 
 ### Local Development
+
 ```bash
 # Development server with Turbopack
 npm run dev
@@ -319,6 +338,7 @@ npm run format
 ```
 
 ### Environment Configuration
+
 ```bash
 # .env.local
 NEXT_PUBLIC_API_URL=http://localhost:8080
@@ -337,6 +357,7 @@ NEXT_PUBLIC_GA_ID=your-google-analytics-id
 ## 📱 Progressive Web App
 
 ### PWA Features
+
 - **Installable** - Add to home screen on mobile/desktop
 - **Offline Support** - Service worker caching
 - **Push Notifications** - New spot alerts (future)
@@ -344,6 +365,7 @@ NEXT_PUBLIC_GA_ID=your-google-analytics-id
 - **Share Target** - Receive shared locations
 
 ### Manifest Configuration
+
 ```json
 {
   "name": "Bocchi The Map",
@@ -365,6 +387,7 @@ NEXT_PUBLIC_GA_ID=your-google-analytics-id
 ## 🌐 Internationalization
 
 ### Multi-language Support
+
 ```tsx
 // Using next-intl for i18n
 import { useTranslations } from 'next-intl'
@@ -382,6 +405,7 @@ function SpotCard({ spot }: { spot: Spot }) {
 ```
 
 ### Supported Locales
+
 - 🇯🇵 **Japanese** - Primary market
 - 🇺🇸 **English** - International users
 - 🔄 **Future**: Korean, Chinese (Traditional/Simplified)
@@ -389,6 +413,7 @@ function SpotCard({ spot }: { spot: Spot }) {
 ## 📊 Analytics & Monitoring
 
 ### Performance Monitoring
+
 ```tsx
 // Core Web Vitals tracking
 import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals'
@@ -409,6 +434,7 @@ getTTFB(sendToAnalytics)
 ```
 
 ### Error Tracking
+
 - **Sentry** - Production error monitoring
 - **Vercel Analytics** - Performance insights
 - **Console Logs** - Development debugging
@@ -417,6 +443,7 @@ getTTFB(sendToAnalytics)
 ## 🚢 Deployment
 
 ### Cloudflare Pages
+
 ```bash
 # Build and deploy
 npm run build
@@ -428,6 +455,7 @@ NEXTAUTH_URL=https://bocchi-map.com
 ```
 
 ### Performance Optimization
+
 - **Edge Functions** - API routes at the edge
 - **Static Generation** - Pre-built pages for performance
 - **Image Optimization** - Automatic WebP/AVIF conversion
@@ -436,6 +464,7 @@ NEXTAUTH_URL=https://bocchi-map.com
 ## 🤝 Contributing
 
 ### Code Standards
+
 - **TypeScript** - Strict mode enabled
 - **ESLint** - Airbnb + Next.js rules
 - **Prettier** - Consistent formatting
@@ -443,6 +472,7 @@ NEXTAUTH_URL=https://bocchi-map.com
 - **Conventional Commits** - Semantic versioning
 
 ### Component Guidelines
+
 ```tsx
 // Component structure example
 interface SpotCardProps {
@@ -470,10 +500,6 @@ export function SpotCard({ spot, onClick, className }: SpotCardProps) {
 
 ---
 
-<div align="center">
-
 **🎨 Crafted with modern React patterns for exceptional UX**
 
 [🌟 Live Demo](https://bocchi-map.com) • [📖 Storybook](https://storybook.bocchi-map.com) • [🎨 Design System](https://design.bocchi-map.com)
-
-</div>

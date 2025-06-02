@@ -69,7 +69,7 @@ service SpotService {
 
 ## 📁 Project Structure
 
-```
+```text
 api/
 ├── 🎯 cmd/api/              # Application entrypoint & DI
 ├── 💎 domain/               # 🏛️ CORE BUSINESS LOGIC
@@ -111,7 +111,7 @@ api/
 - **API Versioning** - Backward-compatible evolution
 - **Rate Limiting** - Built-in protection against abuse
 
-### Production Ready
+### Production-Ready
 - **Observability** - Metrics, tracing, structured logs
 - **Security** - JWT auth, input sanitization, CORS
 - **Performance** - Connection pooling, query optimization
@@ -335,10 +335,6 @@ gh pr create --title "feat: implement geospatial search"
 
 ---
 
-<div align="center">
-
 **🚀 Built for scale, optimized for developer happiness**
 
 [📖 Full Documentation](../README.md) • [🐛 Report Issue](https://github.com/necofuryai/bocchi-the-map/issues) • [💬 Discussions](https://github.com/necofuryai/bocchi-the-map/discussions)
-
-</div>

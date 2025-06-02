@@ -26,7 +26,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 
 **Modern, scalable monorepo** designed for microservice evolution:
 
-```
+```text
 📦 bocchi-the-map/
 ├── 🚀 api/          # Go + Huma (Onion Architecture)
 ├── 🎨 web/          # Next.js 15 + TypeScript
@@ -215,10 +215,6 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ---
 
-<div align="center">
-
 **Built with ❤️ for the solo explorers**
 
 [🌟 Star this repo](https://github.com/necofuryai/bocchi-the-map) • [🐛 Report Bug](https://github.com/necofuryai/bocchi-the-map/issues) • [💡 Request Feature](https://github.com/necofuryai/bocchi-the-map/issues)
-
-</div>

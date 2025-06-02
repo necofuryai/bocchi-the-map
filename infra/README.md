@@ -25,7 +25,8 @@ terraform apply                # Deploy infrastructure 🚀
 ## 🏗️ Architecture Overview
 
 ### Multi-Cloud Strategy
-```
+
+```text
 🌐 Global Edge Network (Cloudflare)
 ├── 📱 Frontend (Pages) - 300+ edge locations
 ├── 🗄️ Static Assets (R2) - PMTiles map storage
@@ -51,6 +52,7 @@ terraform apply                # Deploy infrastructure 🚀
 ## 🛠️ Infrastructure Components
 
 ### Terraform Modules
+
 ```hcl
 # Clean, reusable infrastructure modules
 module "gcp_cloud_run" {
@@ -85,7 +87,8 @@ module "cloudflare_pages" {
 ```
 
 ### Environment Management
-```
+
+```text
 environments/
 ├── 🧪 dev/                    # Development environment
 │   ├── terraform.tfvars       # Environment-specific variables
@@ -101,6 +104,7 @@ environments/
 ## 🚀 Cloud Run Configuration
 
 ### Auto-Scaling API
+
 ```hcl
 resource "google_cloud_run_service" "api" {
   name     = "bocchi-api"
@@ -150,6 +154,7 @@ resource "google_cloud_run_service" "api" {
 ```
 
 **Cloud Run Benefits:**
+
 - **Scale to Zero** - No idle costs during low traffic
 - **Fast Cold Starts** - < 500ms container startup
 - **Request-based Billing** - Pay per million requests
@@ -158,6 +163,7 @@ resource "google_cloud_run_service" "api" {
 ## 🌐 Cloudflare Edge Network
 
 ### Pages Deployment
+
 ```hcl
 resource "cloudflare_pages_project" "frontend" {
   account_id        = var.cloudflare_account_id
@@ -201,6 +207,7 @@ resource "cloudflare_worker" "map_worker" {
 ```
 
 **Edge Advantages:**
+
 - **Global CDN** - 300+ locations worldwide
 - **Smart Routing** - Traffic optimization via Argo
 - **DDoS Protection** - Built-in security layer
@@ -209,6 +216,7 @@ resource "cloudflare_worker" "map_worker" {
 ## 💾 Database Architecture
 
 ### TiDB Serverless Configuration
+
 ```hcl
 # TiDB Cloud configuration via API
 resource "tidbcloud_cluster" "main" {
@@ -233,6 +241,7 @@ resource "tidbcloud_cluster" "main" {
 ```
 
 **TiDB Benefits:**
+
 - **MySQL Compatible** - Drop-in replacement with better scaling
 - **Serverless Scaling** - Automatically handle traffic spikes
 - **HTAP Workloads** - Handle both OLTP and OLAP queries
@@ -241,6 +250,7 @@ resource "tidbcloud_cluster" "main" {
 ## 📊 Monitoring & Observability
 
 ### Google Cloud Monitoring
+
 ```hcl
 resource "google_monitoring_dashboard" "api_dashboard" {
   dashboard_json = jsonencode({
@@ -575,7 +585,7 @@ gh pr create --title "Infrastructure: Enhanced monitoring"
 - **Terraform Style** - Use `terraform fmt` and follow naming conventions
 - **Module Design** - Reusable, well-documented modules
 - **State Management** - Remote state with locking
-- **Security** - No hardcoded secrets, least privilege IAM
+- **Security** - No hardcoded secrets, with least privilege IAM
 
 ## 🎯 Roadmap
 
@@ -587,10 +597,6 @@ gh pr create --title "Infrastructure: Enhanced monitoring"
 
 ---
 
-<div align="center">
-
 **☁️ Infrastructure designed for hypergrowth and operational excellence**
 
 [📊 Cost Dashboard](https://console.cloud.google.com/billing) • [🔍 Monitoring](https://console.cloud.google.com/monitoring) • [📋 Status Page](https://status.bocchi-map.com)
-
-</div>

@@ -40,6 +40,7 @@ This is a monorepo with three main modules:
 ### Common Development Commands
 
 **API Development**
+
 ```bash
 cd api
 make deps              # Install Go dependencies
@@ -52,6 +53,7 @@ make clean             # Clean generated files
 ```
 
 **Web Development**
+
 ```bash
 cd web
 npm install            # Install dependencies
@@ -62,6 +64,7 @@ npm run lint           # ESLint checking
 ```
 
 **Infrastructure**
+
 ```bash
 cd infra
 terraform init         # Initialize Terraform
@@ -69,7 +72,8 @@ terraform plan         # Preview changes
 terraform apply        # Apply infrastructure changes
 ```
 
-**Protocol Buffers**
+### Protocol Buffers
+
 ```bash
 # From api/ directory
 make proto             # Generate Go files from .proto definitions
@@ -80,22 +84,27 @@ make proto             # Generate Go files from .proto definitions
 The Go API follows strict onion architecture principles with clear layer separation:
 
 **Domain Layer** (`/domain/`)
+
 - `entities/` - Core business entities (Spot, User, Review) with validation logic
 - `repositories/` - Repository interfaces (implemented in infrastructure layer)
 - `services/` - Domain services for complex business logic
 
 **Application Layer** (`/application/`)
+
 - `usecases/` - Application services orchestrating domain entities
 
 **Infrastructure Layer** (`/infrastructure/`)
+
 - `database/` - Repository implementations (TiDB/MySQL)
 - `external/` - Third-party service integrations
 
 **Interface Layer** (`/interfaces/`)
+
 - `http/handlers/` - HTTP request/response handling with Huma framework
 - `http/middleware/` - Cross-cutting concerns (auth, logging)
 
 **Protocol Buffers** (`/proto/`)
+
 - API contracts with auto-generated OpenAPI documentation
 - Type-safe communication between layers
 
