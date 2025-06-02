@@ -39,38 +39,71 @@ This is a monorepo with three main modules:
 
 ### Common Development Commands
 
-Since the project is in initial stage, here are the expected commands once set up:
-
 **API Development**
 ```bash
 cd api
-go mod init github.com/necofuryai/bocchi-the-map/api
-go test ./...           # Run tests
-go run cmd/api/main.go  # Run server
+make deps              # Install Go dependencies
+make proto             # Generate protobuf files
+make test              # Run tests
+make run               # Run server
+make dev               # Run with hot reload (requires air)
+make build             # Build binary to bin/api
+make clean             # Clean generated files
 ```
 
 **Web Development**
 ```bash
 cd web
-npm install
-npm run dev      # Development server
-npm run build    # Production build
-npm run lint     # Linting
-npm run test     # Run tests
+npm install            # Install dependencies
+npm run dev            # Development server (with Turbopack)
+npm run build          # Production build
+npm run start          # Start production server
+npm run lint           # ESLint checking
 ```
 
 **Infrastructure**
 ```bash
 cd infra
-terraform init
-terraform plan
-terraform apply
+terraform init         # Initialize Terraform
+terraform plan         # Preview changes
+terraform apply        # Apply infrastructure changes
 ```
+
+**Protocol Buffers**
+```bash
+# From api/ directory
+make proto             # Generate Go files from .proto definitions
+```
+
+### API Architecture (Onion Architecture)
+
+The Go API follows strict onion architecture principles with clear layer separation:
+
+**Domain Layer** (`/domain/`)
+- `entities/` - Core business entities (Spot, User, Review) with validation logic
+- `repositories/` - Repository interfaces (implemented in infrastructure layer)
+- `services/` - Domain services for complex business logic
+
+**Application Layer** (`/application/`)
+- `usecases/` - Application services orchestrating domain entities
+
+**Infrastructure Layer** (`/infrastructure/`)
+- `database/` - Repository implementations (TiDB/MySQL)
+- `external/` - Third-party service integrations
+
+**Interface Layer** (`/interfaces/`)
+- `http/handlers/` - HTTP request/response handling with Huma framework
+- `http/middleware/` - Cross-cutting concerns (auth, logging)
+
+**Protocol Buffers** (`/proto/`)
+- API contracts with auto-generated OpenAPI documentation
+- Type-safe communication between layers
 
 ### Key Design Principles
 
-1. **Microservice-Ready**: API is designed with loose coupling for future microservice migration
-2. **Type Safety**: Protocol Buffers for API contracts, TypeScript for frontend
-3. **Scalability**: Support for multiple countries (currently Japan only)
-4. **Extensibility**: Architecture supports future features like text reviews and multiple rating criteria
-5. **Structured Logging**: JSON format with ERROR, WARN, INFO, DEBUG levels
+1. **Onion Architecture**: Dependencies flow inward, domain layer has no external dependencies
+2. **Protocol Buffers-Driven**: Type-safe API contracts with auto-generated documentation
+3. **Microservice-Ready**: Loose coupling for future service extraction
+4. **Type Safety**: Protocol Buffers for API, TypeScript for frontend
+5. **Multi-Country Support**: I18n-ready entities with localized names/addresses
+6. **Structured Logging**: JSON format with zerolog (ERROR, WARN, INFO, DEBUG)
