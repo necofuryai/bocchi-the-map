@@ -174,7 +174,7 @@ We welcome contributions! This project follows modern open-source practices:
 2. **Feature Branches** - `feat/your-feature-name`
 3. **Conventional Commits** - Semantic commit messages
 4. **PR Template** - Guided review process
-5. **Automated Testing** - CI runs full test suite -->
+5. **Automated Testing** - CI runs full test suite
 
 ```bash
 # Setup development environment
@@ -185,7 +185,7 @@ make test-all
 
 # Submit PR
 gh pr create --title "feat: your amazing feature"
-```
+``` -->
 
 ## 📝 Documentation
 
