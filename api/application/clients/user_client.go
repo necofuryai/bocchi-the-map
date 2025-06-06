@@ -35,7 +35,9 @@ func NewUserClient(serviceAddr string) (*UserClient, error) {
 	if os.Getenv("GRPC_INSECURE") == "true" {
 		creds = insecure.NewCredentials()
 	} else {
-		creds = credentials.NewTLS(&tls.Config{})
+		creds = credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS13,
+		})
 	}
 	conn, err := grpc.NewClient(serviceAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
