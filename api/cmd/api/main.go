@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -14,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
+	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
 	"github.com/necofuryai/bocchi-the-map/api/interfaces/http/handlers"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
@@ -52,18 +53,22 @@ func main() {
 		if err != nil {
 			logger.Fatal("Failed to create spot client", err)
 		}
-		defer spotClient.Close()
 
 		userClient, err := clients.NewUserClient("internal")
 		if err != nil {
+			spotClient.Close()
 			logger.Fatal("Failed to create user client", err)
 		}
-		defer userClient.Close()
 
 		reviewClient, err := clients.NewReviewClient("internal")
 		if err != nil {
+			spotClient.Close()
+			userClient.Close()
 			logger.Fatal("Failed to create review client", err)
 		}
+
+		defer spotClient.Close()
+		defer userClient.Close()
 		defer reviewClient.Close()
 
 		// Create chi router
@@ -83,11 +88,20 @@ func main() {
 		registerRoutes(api, spotClient, userClient, reviewClient)
 
 		// Start gRPC server in a goroutine
+		errChan := make(chan error, 1)
 		go func() {
 			if err := startGRPCServer(options.GRPCPort); err != nil {
-				logger.Fatal("gRPC server failed to start", err)
+				errChan <- fmt.Errorf("gRPC server failed: %w", err)
 			}
 		}()
+
+		// Check for immediate startup errors
+		select {
+		case err := <-errChan:
+			logger.Fatal("Server startup failed", err)
+		case <-time.After(100 * time.Millisecond):
+			// Continue if no immediate errors
+		}
 
 		// Start HTTP server
 		hooks.OnStart(func() {

@@ -223,8 +223,8 @@ func (h *SpotHandler) ListSpots(ctx context.Context, input *ListSpotsInput) (*Li
 		CountryCode: input.CountryCode,
 	}
 
-	// Add coordinates if provided
-	if input.Latitude != 0 && input.Longitude != 0 {
+	// Add coordinates if provided (check for non-zero or explicit flag)
+	if input.Latitude != 0 || input.Longitude != 0 {
 		grpcReq.Center = &grpcSvc.Coordinates{
 			Latitude:  input.Latitude,
 			Longitude: input.Longitude,

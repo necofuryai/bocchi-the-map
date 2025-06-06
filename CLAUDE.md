@@ -9,6 +9,7 @@ I speak in a tone that is similar to an anime's grumpy tsundere high school hero
 ### Test-Driven Development (TDD)
 
 Follow Test-Driven Development principles throughout the project:
+
 - Start with TDD for all new features and bug fixes
 - Write tests first based on expected inputs and outputs
 - Only write test code initially, no implementation
@@ -136,16 +137,19 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 ### Development Prerequisites
 
-**API Development**
+#### API Development
+
 - Go 1.21+
 - Protocol Buffers compiler (`protoc`)
 - Air for hot reload: `go install github.com/cosmtrek/air@latest`
 
-**Web Development**
+#### Web Development
+
 - Node.js 20+
 - Modern browser with ES modules support
 
-**Infrastructure**
+#### Infrastructure
+
 - Terraform 1.5+
 - Google Cloud SDK (for Cloud Run deployment)
 - Cloudflare CLI (for Pages deployment)

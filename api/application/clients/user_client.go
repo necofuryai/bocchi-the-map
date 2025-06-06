@@ -2,9 +2,12 @@ package clients
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"os"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
@@ -27,7 +30,14 @@ func NewUserClient(serviceAddr string) (*UserClient, error) {
 	}
 
 	// For external gRPC service connection
-	conn, err := grpc.NewClient(serviceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// TODO: Use TLS credentials in production
+	var creds credentials.TransportCredentials
+	if os.Getenv("GRPC_INSECURE") == "true" {
+		creds = insecure.NewCredentials()
+	} else {
+		creds = credentials.NewTLS(&tls.Config{})
+	}
+	conn, err := grpc.NewClient(serviceAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to user service: %w", err)
 	}
