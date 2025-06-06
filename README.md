@@ -3,6 +3,7 @@
 > **Solo-friendly location discovery platform** - Find the perfect spots for your alone time
 
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![gRPC](https://img.shields.io/badge/gRPC-1.60+-244c5a?style=flat&logo=grpc)](https://grpc.io/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.2-000000?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
