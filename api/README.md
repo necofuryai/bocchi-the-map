@@ -5,6 +5,7 @@
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![Huma](https://img.shields.io/badge/Huma-v2.19.0-FF6B6B?style=flat)](https://huma.rocks/)
 [![Protocol Buffers](https://img.shields.io/badge/Protocol_Buffers-Latest-4285F4?style=flat&logo=google)](https://protobuf.dev/)
+[![gRPC](https://img.shields.io/badge/gRPC-Latest-40BC86?style=flat&logo=grpc)](https://grpc.io/)
 [![Test Coverage](https://img.shields.io/badge/Coverage-85%25-brightgreen?style=flat)](./coverage.html)
 
 A **type-safe, auto-documented REST API** that powers solo-friendly location discovery. Built with modern Go practices, clean architecture principles, and cloud-native patterns for effortless scaling.
