@@ -3,18 +3,23 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/necofuryai/bocchi-the-map/api/application/clients"
+	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
 )
 
 // SpotHandler handles spot-related HTTP requests
 type SpotHandler struct {
-	// TODO: Add spot service dependency
+	spotClient *clients.SpotClient
 }
 
 // NewSpotHandler creates a new spot handler
-func NewSpotHandler() *SpotHandler {
-	return &SpotHandler{}
+func NewSpotHandler(spotClient *clients.SpotClient) *SpotHandler {
+	return &SpotHandler{
+		spotClient: spotClient,
+	}
 }
 
 // CreateSpotInput represents the request to create a spot
@@ -138,70 +143,131 @@ func (h *SpotHandler) RegisterRoutes(api huma.API) {
 
 // CreateSpot creates a new spot
 func (h *SpotHandler) CreateSpot(ctx context.Context, input *CreateSpotInput) (*CreateSpotOutput, error) {
-	// TODO: Implement spot creation logic
+	// Convert HTTP request to gRPC request
+	grpcReq := &grpcSvc.CreateSpotRequest{
+		Name:        input.Body.Name,
+		NameI18n:    input.Body.NameI18n,
+		Coordinates: &grpcSvc.Coordinates{
+			Latitude:  input.Body.Latitude,
+			Longitude: input.Body.Longitude,
+		},
+		Category:    input.Body.Category,
+		Address:     input.Body.Address,
+		AddressI18n: input.Body.AddressI18n,
+		CountryCode: input.Body.CountryCode,
+	}
+
+	// Call gRPC service
+	grpcResp, err := h.spotClient.CreateSpot(ctx, grpcReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to HTTP response
 	resp := &CreateSpotOutput{}
-	resp.Body.ID = "spot_dummy_id"
-	resp.Body.Name = input.Body.Name
-	resp.Body.NameI18n = input.Body.NameI18n
-	resp.Body.Latitude = input.Body.Latitude
-	resp.Body.Longitude = input.Body.Longitude
-	resp.Body.Category = input.Body.Category
-	resp.Body.Address = input.Body.Address
-	resp.Body.AddressI18n = input.Body.AddressI18n
-	resp.Body.CountryCode = input.Body.CountryCode
-	resp.Body.CreatedAt = "2024-01-01T00:00:00Z"
+	resp.Body.ID = grpcResp.Spot.ID
+	resp.Body.Name = grpcResp.Spot.Name
+	resp.Body.NameI18n = grpcResp.Spot.NameI18n
+	resp.Body.Latitude = grpcResp.Spot.Coordinates.Latitude
+	resp.Body.Longitude = grpcResp.Spot.Coordinates.Longitude
+	resp.Body.Category = grpcResp.Spot.Category
+	resp.Body.Address = grpcResp.Spot.Address
+	resp.Body.AddressI18n = grpcResp.Spot.AddressI18n
+	resp.Body.CountryCode = grpcResp.Spot.CountryCode
+	resp.Body.CreatedAt = grpcResp.Spot.CreatedAt.Format(time.RFC3339)
 	
 	return resp, nil
 }
 
 // GetSpot gets a specific spot
 func (h *SpotHandler) GetSpot(ctx context.Context, input *GetSpotInput) (*GetSpotOutput, error) {
-	// TODO: Implement get spot logic
+	// Convert HTTP request to gRPC request
+	grpcReq := &grpcSvc.GetSpotRequest{
+		ID: input.ID,
+	}
+
+	// Call gRPC service
+	grpcResp, err := h.spotClient.GetSpot(ctx, grpcReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to HTTP response
 	resp := &GetSpotOutput{}
-	resp.Body.ID = input.ID
-	resp.Body.Name = "Sample Spot"
-	resp.Body.Latitude = 35.6762
-	resp.Body.Longitude = 139.6503
-	resp.Body.Category = "cafe"
-	resp.Body.Address = "Tokyo, Japan"
-	resp.Body.CountryCode = "JP"
-	resp.Body.AverageRating = 4.5
-	resp.Body.ReviewCount = 10
-	resp.Body.CreatedAt = "2024-01-01T00:00:00Z"
-	resp.Body.UpdatedAt = "2024-01-01T00:00:00Z"
+	resp.Body.ID = grpcResp.Spot.ID
+	resp.Body.Name = grpcResp.Spot.Name
+	resp.Body.NameI18n = grpcResp.Spot.NameI18n
+	resp.Body.Latitude = grpcResp.Spot.Coordinates.Latitude
+	resp.Body.Longitude = grpcResp.Spot.Coordinates.Longitude
+	resp.Body.Category = grpcResp.Spot.Category
+	resp.Body.Address = grpcResp.Spot.Address
+	resp.Body.AddressI18n = grpcResp.Spot.AddressI18n
+	resp.Body.CountryCode = grpcResp.Spot.CountryCode
+	resp.Body.AverageRating = grpcResp.Spot.AverageRating
+	resp.Body.ReviewCount = int(grpcResp.Spot.ReviewCount)
+	resp.Body.CreatedAt = grpcResp.Spot.CreatedAt.Format(time.RFC3339)
+	resp.Body.UpdatedAt = grpcResp.Spot.UpdatedAt.Format(time.RFC3339)
 	
 	return resp, nil
 }
 
 // ListSpots lists spots
 func (h *SpotHandler) ListSpots(ctx context.Context, input *ListSpotsInput) (*ListSpotsOutput, error) {
-	// TODO: Implement list spots logic
+	// Convert HTTP request to gRPC request
+	grpcReq := &grpcSvc.ListSpotsRequest{
+		Pagination: &grpcSvc.PaginationRequest{
+			Page:     int32(input.Page),
+			PageSize: int32(input.PageSize),
+		},
+		Category:    input.Category,
+		CountryCode: input.CountryCode,
+	}
+
+	// Add coordinates if provided
+	if input.Latitude != 0 && input.Longitude != 0 {
+		grpcReq.Center = &grpcSvc.Coordinates{
+			Latitude:  input.Latitude,
+			Longitude: input.Longitude,
+		}
+		grpcReq.RadiusKm = input.RadiusKm
+	}
+
+	// Call gRPC service
+	grpcResp, err := h.spotClient.ListSpots(ctx, grpcReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to HTTP response
 	resp := &ListSpotsOutput{}
 	
-	// Dummy data
-	spot := struct {
-		ID            string  `json:"id" doc:"Spot ID"`
-		Name          string  `json:"name" doc:"Spot name"`
-		Latitude      float64 `json:"latitude" doc:"Latitude"`
-		Longitude     float64 `json:"longitude" doc:"Longitude"`
-		Category      string  `json:"category" doc:"Category"`
-		AverageRating float64 `json:"average_rating" doc:"Average rating"`
-		ReviewCount   int     `json:"review_count" doc:"Number of reviews"`
-	}{
-		ID:            "spot_1",
-		Name:          "Sample Cafe",
-		Latitude:      35.6762,
-		Longitude:     139.6503,
-		Category:      "cafe",
-		AverageRating: 4.5,
-		ReviewCount:   10,
+	// Convert spots
+	for _, grpcSpot := range grpcResp.Spots {
+		spot := struct {
+			ID            string  `json:"id" doc:"Spot ID"`
+			Name          string  `json:"name" doc:"Spot name"`
+			Latitude      float64 `json:"latitude" doc:"Latitude"`
+			Longitude     float64 `json:"longitude" doc:"Longitude"`
+			Category      string  `json:"category" doc:"Category"`
+			AverageRating float64 `json:"average_rating" doc:"Average rating"`
+			ReviewCount   int     `json:"review_count" doc:"Number of reviews"`
+		}{
+			ID:            grpcSpot.ID,
+			Name:          grpcSpot.Name,
+			Latitude:      grpcSpot.Coordinates.Latitude,
+			Longitude:     grpcSpot.Coordinates.Longitude,
+			Category:      grpcSpot.Category,
+			AverageRating: grpcSpot.AverageRating,
+			ReviewCount:   int(grpcSpot.ReviewCount),
+		}
+		resp.Body.Spots = append(resp.Body.Spots, spot)
 	}
 	
-	resp.Body.Spots = append(resp.Body.Spots, spot)
-	resp.Body.Pagination.TotalCount = 1
-	resp.Body.Pagination.Page = input.Page
-	resp.Body.Pagination.PageSize = input.PageSize
-	resp.Body.Pagination.TotalPages = 1
+	// Convert pagination
+	resp.Body.Pagination.TotalCount = int(grpcResp.Pagination.TotalCount)
+	resp.Body.Pagination.Page = int(grpcResp.Pagination.Page)
+	resp.Body.Pagination.PageSize = int(grpcResp.Pagination.PageSize)
+	resp.Body.Pagination.TotalPages = int(grpcResp.Pagination.TotalPages)
 	
 	return resp, nil
 }

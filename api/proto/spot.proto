@@ -78,3 +78,18 @@ message SearchSpotsResponse {
   repeated Spot spots = 1;
   bocchi.common.v1.PaginationResponse pagination = 2;
 }
+
+// SpotService provides gRPC methods for spot operations
+service SpotService {
+  // Create a new spot
+  rpc CreateSpot(CreateSpotRequest) returns (CreateSpotResponse);
+  
+  // Get a spot by ID
+  rpc GetSpot(GetSpotRequest) returns (GetSpotResponse);
+  
+  // List spots with optional filters
+  rpc ListSpots(ListSpotsRequest) returns (ListSpotsResponse);
+  
+  // Search spots by query
+  rpc SearchSpots(SearchSpotsRequest) returns (SearchSpotsResponse);
+}

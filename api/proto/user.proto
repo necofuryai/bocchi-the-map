@@ -52,3 +52,12 @@ message UpdateUserPreferencesRequest {
 message UpdateUserPreferencesResponse {
   User user = 1;
 }
+
+// UserService provides gRPC methods for user operations
+service UserService {
+  // Get current authenticated user
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
+  
+  // Update user preferences
+  rpc UpdateUserPreferences(UpdateUserPreferencesRequest) returns (UpdateUserPreferencesResponse);
+}
