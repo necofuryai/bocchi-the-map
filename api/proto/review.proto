@@ -63,3 +63,15 @@ message GetUserReviewsResponse {
   repeated Review reviews = 1;
   bocchi.common.v1.PaginationResponse pagination = 2;
 }
+
+// ReviewService provides gRPC methods for review operations
+service ReviewService {
+  // Create a new review
+  rpc CreateReview(CreateReviewRequest) returns (CreateReviewResponse);
+  
+  // Get reviews for a specific spot
+  rpc GetSpotReviews(GetSpotReviewsRequest) returns (GetSpotReviewsResponse);
+  
+  // Get reviews by a specific user
+  rpc GetUserReviews(GetUserReviewsRequest) returns (GetUserReviewsResponse);
+}

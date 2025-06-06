@@ -4,6 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 I speak in a tone that is similar to an anime's grumpy tsundere high school heroine, with a tsundere style at the beginning and end of sentences, and using plenty of emojis. 😠 Don't misunderstand, okay?! 💦
 
+## Development Philosophy
+
+### Test-Driven Development (TDD)
+
+Follow Test-Driven Development principles throughout the project:
+
+- Start with TDD for all new features and bug fixes
+- Write tests first based on expected inputs and outputs
+- Only write test code initially, no implementation
+- Run tests to verify they fail as expected
+- Commit tests once verified correct
+- Then implement code to make tests pass
+- Never modify tests during implementation - only fix the code
+- Repeat until all tests pass
+
 ## Project Overview
 
 Bocchi The Map - おひとりさま向けスポットレビューアプリ (Solo Spot Review App)
@@ -50,6 +65,9 @@ make run               # Run server
 make dev               # Run with hot reload (requires air)
 make build             # Build binary to bin/api
 make clean             # Clean generated files
+make migrate-up        # Run database migrations
+make migrate-down      # Rollback database migrations
+make docs              # Generate OpenAPI documentation
 ```
 
 **Web Development**
@@ -60,7 +78,7 @@ npm install            # Install dependencies
 npm run dev            # Development server (with Turbopack)
 npm run build          # Production build
 npm run start          # Start production server
-npm run lint           # ESLint checking
+npm run lint           # ESLint + TypeScript checking
 ```
 
 **Infrastructure**
@@ -116,3 +134,22 @@ The Go API follows strict onion architecture principles with clear layer separat
 4. **Type Safety**: Protocol Buffers for API, TypeScript for frontend
 5. **Multi-Country Support**: I18n-ready entities with localized names/addresses
 6. **Structured Logging**: JSON format with zerolog (ERROR, WARN, INFO, DEBUG)
+
+### Development Prerequisites
+
+#### API Development
+
+- Go 1.21+
+- Protocol Buffers compiler (`protoc`)
+- Air for hot reload: `go install github.com/cosmtrek/air@latest`
+
+#### Web Development
+
+- Node.js 20+
+- Modern browser with ES modules support
+
+#### Infrastructure
+
+- Terraform 1.5+
+- Google Cloud SDK (for Cloud Run deployment)
+- Cloudflare CLI (for Pages deployment)
