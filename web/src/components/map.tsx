@@ -29,7 +29,7 @@ export default function MapComponent({ className = "", height = "480px" }: MapCo
         sources: {
           protomaps: {
             type: "vector" as const,
-            url: `pmtiles://${process.env.NEXT_PUBLIC_MAP_STYLE_URL}`,
+            url: `pmtiles://${process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'fallback-url'}`,
             attribution: "<a href=\"https://github.com/protomaps/basemaps\">Protomaps</a> © <a href=\"https://openstreetmap.org\">OpenStreetMap</a>"
           }
         },
