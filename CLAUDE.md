@@ -79,6 +79,7 @@ npm run dev            # Development server (with Turbopack)
 npm run build          # Production build
 npm run start          # Start production server
 npm run lint           # ESLint + TypeScript checking
+# Note: Use --legacy-peer-deps if encountering dependency conflicts with React 19
 ```
 
 **Infrastructure**
@@ -147,9 +148,16 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - Node.js 20+
 - Modern browser with ES modules support
+- Note: React 19 dependency conflicts may require `--legacy-peer-deps` flag
 
 #### Infrastructure
 
 - Terraform 1.5+
 - Google Cloud SDK (for Cloud Run deployment)
 - Cloudflare CLI (for Pages deployment)
+
+### Important Development Notes
+
+- **Map Data**: Uses PMTiles format stored in Cloudflare R2 for efficient vector tile delivery
+- **Database**: TiDB Serverless provides MySQL-compatible interface with auto-scaling
+- **Microservice Ready**: Current monolith designed for easy service extraction as traffic grows
