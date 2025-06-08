@@ -6,7 +6,12 @@ import { Protocol } from "pmtiles";
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-export default function MapComponent() {
+interface MapComponentProps {
+  className?: string;
+  height?: string;
+}
+
+export default function MapComponent({ className = "", height = "480px" }: MapComponentProps) {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -71,5 +76,5 @@ export default function MapComponent() {
     };
   }, []);
 
-  return <div ref={containerRef} className="w-full h-[480px]" />;
+  return <div ref={containerRef} className={`w-full ${className}`} style={{ height }} />;
 }
