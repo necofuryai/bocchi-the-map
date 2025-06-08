@@ -2,11 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { CoffeeIcon, RestaurantIcon, ShoppingBagIcon, BookOpenIcon, MoreHorizontalIcon } from "lucide-react"
+import { CoffeeIcon, UtensilsIcon, ShoppingBagIcon, BookOpenIcon, MoreHorizontalIcon } from "lucide-react"
 
 const categories = [
   { icon: CoffeeIcon, name: "カフェ", count: 156 },
-  { icon: RestaurantIcon, name: "レストラン", count: 234 },
+  { icon: UtensilsIcon, name: "レストラン", count: 234 },
   { icon: ShoppingBagIcon, name: "ショッピング", count: 89 },
   { icon: BookOpenIcon, name: "書店・図書館", count: 67 },
   { icon: MoreHorizontalIcon, name: "その他", count: 123 },
