@@ -135,6 +135,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 4. **Type Safety**: Protocol Buffers for API, TypeScript for frontend
 5. **Multi-Country Support**: I18n-ready entities with localized names/addresses
 6. **Structured Logging**: JSON format with zerolog (ERROR, WARN, INFO, DEBUG)
+7. **Responsive Design**: Mobile-first approach with Tailwind CSS breakpoints (sm, md, lg, xl, 2xl) for all screen sizes
 
 ### Development Prerequisites
 
