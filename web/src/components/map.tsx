@@ -18,6 +18,11 @@ export default function MapComponent({ className = "", height = "480px" }: MapCo
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return; // 二重 init 防止 & DOM チェック
     
+    // NEXT_PUBLIC_MAP_STYLE_URLが未定義の場合は早期に検知
+    if (!process.env.NEXT_PUBLIC_MAP_STYLE_URL) {
+      throw new Error("NEXT_PUBLIC_MAP_STYLE_URL が設定されていません");
+    }
+    
     try {
       const protocol = new Protocol();
       maplibregl.addProtocol("pmtiles", protocol.tile); // PMTiles 登録
@@ -29,7 +34,7 @@ export default function MapComponent({ className = "", height = "480px" }: MapCo
         sources: {
           protomaps: {
             type: "vector" as const,
-            url: `pmtiles://${process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'fallback-url'}`,
+            url: `pmtiles://${process.env.NEXT_PUBLIC_MAP_STYLE_URL}`,
             attribution: "<a href=\"https://github.com/protomaps/basemaps\">Protomaps</a> © <a href=\"https://openstreetmap.org\">OpenStreetMap</a>"
           }
         },

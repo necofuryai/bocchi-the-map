@@ -33,7 +33,7 @@ export function Header() {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="ユーザーメニューを開く">
                 <UserIcon className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
@@ -57,8 +57,8 @@ export function Header() {
           </DropdownMenu>
           
           <DropdownMenu>
-            <DropdownMenuTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon">
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label="モバイルメニューを開く">
                 <MenuIcon className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
