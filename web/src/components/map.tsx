@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
 import { createMapStyle } from "./mapStyle";
-import "maplibre-gl/dist/maplibre-gl.css";
 
 interface MapComponentProps {
   className?: string;
