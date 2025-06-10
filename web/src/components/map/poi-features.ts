@@ -38,9 +38,8 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
     layout: {
       // cafe => cafe-15.png (Maki 規約) + フォールバック
       "icon-image": [
-        "case",
-        ["has", ["concat", ["get", "kind"], "-15"]], // アイコンが存在するかチェック
-        ["concat", ["get", "kind"], "-15"], // 存在する場合は使用
+        "coalesce",
+        ["image", ["concat", ["get", "kind"], "-15"]],
         "circle-15" // デフォルトのフォールバックアイコン
       ],
       "icon-size": 1,
@@ -58,7 +57,7 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
     // 表示用デフォルト値
     const name = p.name ?? "名称不明";
     const kind = p.kind ?? "unknown";
-    const zoom = p.min_zoom ?? "-";
+    const zoom = p.min_zoom?.toString() ?? "-";
 
     // HTMLエスケープを適用
     const escapedName = escapeHtml(name);

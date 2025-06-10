@@ -13,7 +13,7 @@ export function MapErrorDisplay({ error, className = "", height }: MapErrorDispl
       style={{ height }}
     >
       <div className="text-center text-gray-600">
-        <p className="text-sm">❌ {error.message}</p>
+        <p className="text-sm"><span role="img" aria-label="エラー">❌</span> {error.message}</p>
         <p className="text-xs mt-1">
           {error.type === '設定' ? '設定を確認してください' : '地図を表示できませんでした'}
         </p>

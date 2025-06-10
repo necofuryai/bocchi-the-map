@@ -15,6 +15,7 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<MapError | null>(null);
   const [mapState, setMapState] = useState<MapState>('loading');
+  const currentOnClickRef = useRef<((event: maplibregl.MapMouseEvent) => void) | undefined>(onClick);
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -66,8 +67,12 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
       });
 
       // クリックイベント
+      const handleClick = (event: maplibregl.MapMouseEvent) => {
+        currentOnClickRef.current?.(event);
+      };
+      
       if (onClick) {
-        mapRef.current.on('click', onClick);
+        mapRef.current.on('click', handleClick);
       }
 
     } catch (error) {
@@ -88,7 +93,13 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
         mapRef.current = null;
       }
     };
-  }, [onClick, onLoad, onError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onLoad, onError]);
+
+  // onClickハンドラーが変更されたときにrefを更新
+  useEffect(() => {
+    currentOnClickRef.current = onClick;
+  }, [onClick]);
 
   return {
     containerRef,
