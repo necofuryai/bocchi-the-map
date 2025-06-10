@@ -50,13 +50,11 @@ export function DrawerDialog({
           role="dialog"
           aria-modal="true"
           aria-labelledby="dialog-title"
-          tabIndex={0}
         >
           <div 
             className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full mx-4"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
-            tabIndex={0}
           >
             <h2 id="dialog-title" className="text-lg font-semibold mb-2">
               {title}
