@@ -1,19 +1,14 @@
 import MapComponent from '@/components/map';
 import { Header } from '@/components/header';
-import { Sidebar } from '@/components/sidebar';
 import { Card } from '@/components/ui/card';
+import { DrawerDialog } from '@/components/drawer-diag';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="flex">
-        <aside className="hidden lg:block w-80 p-6 border-r bg-muted/10">
-          <Sidebar />
-        </aside>
-        
-        <main className="flex-1 p-6">
+      <main className="p-6">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="text-center space-y-2 mb-8">
               <h2 className="text-3xl font-bold tracking-tight">
@@ -30,6 +25,8 @@ export default function Home() {
                 height="600px"
               />
             </Card>
+            
+            <DrawerDialog />
             
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="p-6">
@@ -53,7 +50,6 @@ export default function Home() {
             </div>
           </div>
         </main>
-      </div>
     </div>
   );
 }

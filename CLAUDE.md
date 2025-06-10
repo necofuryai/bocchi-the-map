@@ -79,7 +79,7 @@ npm run dev            # Development server (with Turbopack)
 npm run build          # Production build
 npm run start          # Start production server
 npm run lint           # ESLint + TypeScript checking
-# Note: Use --legacy-peer-deps if encountering dependency conflicts with React 19
+# Note: React 19 dependency conflicts may require --legacy-peer-deps if needed
 ```
 
 **Infrastructure**
@@ -110,11 +110,11 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 **Application Layer** (`/application/`)
 
-- `usecases/` - Application services orchestrating domain entities
+- `clients/` - Application services orchestrating domain entities
 
 **Infrastructure Layer** (`/infrastructure/`)
 
-- `database/` - Repository implementations (TiDB/MySQL)
+- `grpc/` - gRPC service implementations (TiDB/MySQL)
 - `external/` - Third-party service integrations
 
 **Interface Layer** (`/interfaces/`)
@@ -135,6 +135,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 4. **Type Safety**: Protocol Buffers for API, TypeScript for frontend
 5. **Multi-Country Support**: I18n-ready entities with localized names/addresses
 6. **Structured Logging**: JSON format with zerolog (ERROR, WARN, INFO, DEBUG)
+7. **Responsive Design**: Mobile-first approach with Tailwind CSS breakpoints (sm, md, lg, xl, 2xl) for all screen sizes
 
 ### Development Prerequisites
 
