@@ -7,9 +7,9 @@ import { usePmtiles } from "../hooks/usePmtiles";
 
 // エラーの種類を定義
 type MapError = 
-  | { type: 'config'; message: string }
-  | { type: 'initialization'; message: string; originalError?: unknown }
-  | { type: 'load'; message: string; originalError?: maplibregl.ErrorEvent };
+  | { type: '設定'; message: string }
+  | { type: '初期化'; message: string; originalError?: unknown }
+  | { type: '読み込み'; message: string; originalError?: maplibregl.ErrorEvent };
 
 // マップの状態を定義
 type MapState = 'loading' | 'loaded' | 'error';
@@ -43,7 +43,7 @@ export default function MapComponent({
     // NEXT_PUBLIC_MAP_STYLE_URLが未定義の場合は早期に検知
     if (!process.env.NEXT_PUBLIC_MAP_STYLE_URL) {
       const configError: MapError = {
-        type: 'config',
+        type: '設定',
         message: 'NEXT_PUBLIC_MAP_STYLE_URL が設定されていません'
       };
       setError(configError);
@@ -73,7 +73,7 @@ export default function MapComponent({
       mapRef.current.on('error', (e: maplibregl.ErrorEvent) => {
         console.error("Map error:", e);
         const loadError: MapError = {
-          type: 'load',
+          type: '読み込み',
           message: '地図の読み込みに失敗しました',
           originalError: e
         };
@@ -92,7 +92,7 @@ export default function MapComponent({
     } catch (error) {
       console.error("地図の初期化に失敗しました:", error);
       const initError: MapError = {
-        type: 'initialization',
+        type: '初期化',
         message: '地図の初期化に失敗しました',
         originalError: error
       };
@@ -118,7 +118,7 @@ export default function MapComponent({
         <div className="text-center text-gray-600">
           <p className="text-sm">❌ {error.message}</p>
           <p className="text-xs mt-1">
-            {error.type === 'config' ? '設定を確認してください' : '地図を表示できませんでした'}
+            {error.type === '設定' ? '設定を確認してください' : '地図を表示できませんでした'}
           </p>
         </div>
       </div>

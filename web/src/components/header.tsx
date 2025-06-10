@@ -20,7 +20,7 @@ export function Header() {
           <h1 className="text-xl font-bold">Bocchi The Map</h1>
         </div>
         
-        <div className="flex items-center space-x-2">
+        <div className="hidden md:flex items-center space-x-2">
           <Button variant="ghost" size="sm">
             <SearchIcon className="h-4 w-4 mr-2" />
             スポットを探す
