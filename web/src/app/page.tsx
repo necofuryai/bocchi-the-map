@@ -1,7 +1,6 @@
 import MapComponent from '@/components/map';
 import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
-import { DrawerDialog } from '@/components/drawer-diag';
 
 export default function Home() {
   return (
@@ -25,8 +24,6 @@ export default function Home() {
                 height="600px"
               />
             </Card>
-            
-            <DrawerDialog />
             
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="p-6">
