@@ -13,40 +13,9 @@ export const POI_COLORS = {
  * @param map MapLibre GL マップインスタンス
  */
 export const setupPOIFeatures = (map: maplibregl.Map): void => {
-  // フォールバックの丸ポチ
-  map.addLayer({
-    id: "poi-dots",
-    type: "circle",
-    source: "protomaps",
-    "source-layer": "pois",
-    minzoom: 13,
-    paint: {
-      "circle-radius": 5,
-      "circle-color": POI_COLORS.PRIMARY,
-      "circle-stroke-width": 1,
-      "circle-stroke-color": POI_COLORS.STROKE,
-    },
-  });
+  // 現在のポップアップを追跡する変数
+  let currentPopup: maplibregl.Popup | null = null;
   
-  // POIアイコンレイヤー
-  map.addLayer({
-    id: "poi-icons",
-    type: "symbol",
-    source: "protomaps",
-    "source-layer": "pois",
-    minzoom: 13,
-    layout: {
-      // cafe => cafe-15.png (Maki 規約) + フォールバック
-      "icon-image": [
-        "coalesce",
-        ["image", ["concat", ["get", "kind"], "-15"]],
-        "circle-15" // デフォルトのフォールバックアイコン
-      ],
-      "icon-size": 1,
-      "icon-allow-overlap": true,
-    },
-  });
-
   // POIクリック時のポップアップハンドラ
   const popupHandler = (e: maplibregl.MapLayerMouseEvent) => {
     if (!e.features?.length) return;
@@ -64,7 +33,13 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
     const escapedKind = escapeHtml(kind);
     const escapedZoom = escapeHtml(zoom);
 
-    new maplibregl.Popup({ offset: 8 })
+    // 既存のポップアップを削除
+    if (currentPopup) {
+      currentPopup.remove();
+    }
+
+    // 新しいポップアップを作成して追跡
+    currentPopup = new maplibregl.Popup({ offset: 8 })
       .setLngLat(
         f.geometry.type === "Point"
           ? (f.geometry.coordinates as [number, number])
@@ -79,11 +54,60 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
       `)
       .addTo(map);
   };
+  
+  // スプライトが読み込まれるまで待つ
+  const setupLayersWithValidatedIcons = () => {
+    // フォールバックの丸ポチ - 既存レイヤーをチェック
+    if (!map.getLayer("poi-dots")) {
+      map.addLayer({
+        id: "poi-dots",
+        type: "circle",
+        source: "protomaps",
+        "source-layer": "pois",
+        minzoom: 13,
+        paint: {
+          "circle-radius": 5,
+          "circle-color": POI_COLORS.PRIMARY,
+          "circle-stroke-width": 1,
+          "circle-stroke-color": POI_COLORS.STROKE,
+        },
+      });
+    }
+    
+    // POIアイコンレイヤー - 実際にアイコンが存在するかチェック
+    if (!map.getLayer("poi-icons")) {
+      map.addLayer({
+        id: "poi-icons",
+        type: "symbol",
+        source: "protomaps",
+        "source-layer": "pois",
+        minzoom: 13,
+        layout: {
+          // アイコンの存在チェック付きフォールバック
+          "icon-image": [
+            "case",
+            ["has", ["concat", ["get", "kind"], "-15"]], // アイコンが存在するかチェック
+            ["concat", ["get", "kind"], "-15"], // 存在する場合は使用
+            "circle-15" // 存在しない場合はフォールバック
+          ],
+          "icon-size": 1,
+          "icon-allow-overlap": true,
+        },
+      });
+    }
+    
+    // POIレイヤーにイベントハンドラを追加
+    ["poi-icons", "poi-dots"].forEach((layer) => {
+      map.on("click", layer, popupHandler);
+      map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
+      map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
+    });
+  };
 
-  // POIレイヤーにイベントハンドラを追加
-  ["poi-icons", "poi-dots"].forEach((layer) => {
-    map.on("click", layer, popupHandler);
-    map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
-  });
+  // スプライトが読み込まれているかチェック
+  if (map.isStyleLoaded()) {
+    setupLayersWithValidatedIcons();
+  } else {
+    map.on("styledata", setupLayersWithValidatedIcons);
+  }
 };

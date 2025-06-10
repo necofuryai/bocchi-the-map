@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import { createMapStyle } from "@/components/mapStyle";
 import { setupPOIFeatures } from "@/components/map/poi-features";
@@ -15,7 +15,19 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<MapError | null>(null);
   const [mapState, setMapState] = useState<MapState>('loading');
+  // onClickコールバックをrefで管理してuseEffectの再実行を避ける最適化パターン
+  // onClickが変更されるたびにメインのuseEffectが再実行されることを防ぐため、
+  // 最新のコールバックをrefに保存してエフェクト内でアクセスする
   const currentOnClickRef = useRef<((event: maplibregl.MapMouseEvent) => void) | undefined>(onClick);
+
+  // onLoadとonErrorをuseCallbackでメモ化
+  const memoizedOnLoad = useCallback((map: maplibregl.Map) => {
+    onLoad?.(map);
+  }, [onLoad]);
+
+  const memoizedOnError = useCallback((error: MapError) => {
+    onError?.(error);
+  }, [onError]);
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -23,14 +35,19 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
     // 環境変数チェック
     if (!process.env.NEXT_PUBLIC_MAP_STYLE_URL) {
       const configError: MapError = {
-        type: '設定',
+        type: 'configuration',
         message: 'NEXT_PUBLIC_MAP_STYLE_URL が設定されていません'
       };
       setError(configError);
       setMapState('error');
-      onError?.(configError);
+      memoizedOnError(configError);
       return;
     }
+    
+    // クリックイベント処理関数をここで定義
+    const handleClick = (event: maplibregl.MapMouseEvent) => {
+      currentOnClickRef.current?.(event);
+    };
     
     try {
       const style = createMapStyle(process.env.NEXT_PUBLIC_MAP_STYLE_URL);
@@ -49,7 +66,7 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
         
         if (mapRef.current) {
           setupPOIFeatures(mapRef.current);
-          onLoad?.(mapRef.current);
+          memoizedOnLoad(mapRef.current);
         }
       });
 
@@ -57,20 +74,16 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
       mapRef.current.on('error', (e: maplibregl.ErrorEvent) => {
         console.error("Map error:", e);
         const loadError: MapError = {
-          type: '読み込み',
+          type: 'loading',
           message: '地図の読み込みに失敗しました',
           originalError: e
         };
         setError(loadError);
         setMapState('error');
-        onError?.(loadError);
+        memoizedOnError(loadError);
       });
 
       // クリックイベント
-      const handleClick = (event: maplibregl.MapMouseEvent) => {
-        currentOnClickRef.current?.(event);
-      };
-      
       if (onClick) {
         mapRef.current.on('click', handleClick);
       }
@@ -78,23 +91,28 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
     } catch (error) {
       console.error("地図の初期化に失敗しました:", error);
       const initError: MapError = {
-        type: '初期化',
+        type: 'initialization',
         message: '地図の初期化に失敗しました',
-        originalError: error
+        originalError: error as maplibregl.ErrorEvent
       };
       setError(initError);
       setMapState('error');
-      onError?.(initError);
+      memoizedOnError(initError);
     }
 
     return () => {
       if (mapRef.current) {
+        if (onClick) {
+          // クリーンアップ時にイベントリスナーを削除
+          // handleClick関数はrefを通じて最新のonClickコールバックにアクセスするため、
+          // onClickが変更されてもイベントリスナーの再登録は不要
+          mapRef.current.off('click', handleClick);
+        }
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onLoad, onError]);
+  }, [memoizedOnLoad, memoizedOnError, onClick]);
 
   // onClickハンドラーが変更されたときにrefを更新
   useEffect(() => {
