@@ -1,3 +1,4 @@
+// ドメインエンティティ
 export interface Spot {
   id: string
   name: string
@@ -39,9 +40,24 @@ export interface UserPreferences {
   timezone: string
 }
 
+// 共通レスポンス型
 export interface PaginationResponse {
   totalCount: number
   page: number
   pageSize: number
   totalPages: number
+}
+
+// 地図関連の型
+export interface MapPosition {
+  latitude: number
+  longitude: number
+  zoom?: number
+}
+
+export interface POIProperties {
+  name?: string
+  kind?: string
+  script?: string
+  min_zoom?: number
 }
