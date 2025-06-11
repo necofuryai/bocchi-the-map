@@ -2,14 +2,14 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 /**
- * クラス名を結合し、Tailwindのユーティリティクラスの衝突を解消するユーティリティ関数
+ * Utility function to combine class names and resolve Tailwind utility class conflicts
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
 /**
- * HTMLエスケープ用マップ（パフォーマンス向上のため関数外で定義）
+ * HTML escape map (defined outside function for performance improvement)
  */
 const escapeMap: { [key: string]: string } = {
   '&': '&amp;',
@@ -20,8 +20,8 @@ const escapeMap: { [key: string]: string } = {
 };
 
 /**
- * HTMLエスケープを行うユーティリティ関数
- * XSS攻撃を防ぐために特殊文字をエスケープします
+ * Utility function to perform HTML escaping
+ * Escapes special characters to prevent XSS attacks
  */
 export function escapeHtml(text: string | number): string {
   return String(text).replace(/[&<>"']/g, (match) => escapeMap[match]);

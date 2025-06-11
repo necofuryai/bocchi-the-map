@@ -2,43 +2,43 @@ import * as maplibregl from "maplibre-gl";
 import { escapeHtml } from "@/lib/utils";
 import type { POIProperties } from "@/types";
 
-// POI関連の色定数
+// POI-related color constants
 export const POI_COLORS = {
   PRIMARY: "#FF4081",
   STROKE: "#FFFFFF",
 } as const;
 
 /**
- * POI機能をセットアップする関数
- * @param map MapLibre GL マップインスタンス
+ * Function to set up POI features
+ * @param map MapLibre GL map instance
  */
 export const setupPOIFeatures = (map: maplibregl.Map): void => {
-  // 現在のポップアップを追跡する変数
+  // Variable to track the current popup
   let currentPopup: maplibregl.Popup | null = null;
   
-  // POIクリック時のポップアップハンドラ
+  // Popup handler for POI clicks
   const popupHandler = (e: maplibregl.MapLayerMouseEvent) => {
     if (!e.features?.length) return;
 
     const f = e.features[0];
     const p = f.properties as POIProperties;
 
-    // 表示用デフォルト値
+    // Default values for display
     const name = p.name ?? "Unknown name";
     const kind = p.kind ?? "unknown";
     const zoom = p.min_zoom?.toString() ?? "-";
 
-    // HTMLエスケープを適用
+    // Apply HTML escaping
     const escapedName = escapeHtml(name);
     const escapedKind = escapeHtml(kind);
     const escapedZoom = escapeHtml(zoom);
 
-    // 既存のポップアップを削除
+    // Remove existing popup
     if (currentPopup) {
       currentPopup.remove();
     }
 
-    // 新しいポップアップを作成して追跡
+    // Create and track new popup
     currentPopup = new maplibregl.Popup({ offset: 8 })
       .setLngLat(
         f.geometry.type === "Point"
@@ -55,9 +55,9 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
       .addTo(map);
   };
   
-  // スプライトが読み込まれるまで待つ
+  // Wait for sprites to load
   const setupLayersWithValidatedIcons = () => {
-    // フォールバックの丸ポチ - 既存レイヤーをチェック
+    // Fallback circle dots - check existing layers
     if (!map.getLayer("poi-dots")) {
       map.addLayer({
         id: "poi-dots",
@@ -74,7 +74,7 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
       });
     }
     
-    // POIアイコンレイヤー - 実際にアイコンが存在するかチェック
+    // POI icon layer - check if icons actually exist
     if (!map.getLayer("poi-icons")) {
       map.addLayer({
         id: "poi-icons",
@@ -83,12 +83,12 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
         "source-layer": "pois",
         minzoom: 13,
         layout: {
-          // アイコンの存在チェック付きフォールバック
+          // Fallback with icon existence check
           "icon-image": [
             "case",
-            ["has", ["concat", ["get", "kind"], "-15"]], // アイコンが存在するかチェック
-            ["concat", ["get", "kind"], "-15"], // 存在する場合は使用
-            "circle-15" // 存在しない場合はフォールバック
+            ["has", ["concat", ["get", "kind"], "-15"]], // Check if icon exists
+            ["concat", ["get", "kind"], "-15"], // Use if exists
+            "circle-15" // Fallback if not exists
           ],
           "icon-size": 1,
           "icon-allow-overlap": true,
@@ -96,7 +96,7 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
       });
     }
     
-    // POIレイヤーにイベントハンドラを追加
+    // Add event handlers to POI layers
     ["poi-icons", "poi-dots"].forEach((layer) => {
       map.on("click", layer, popupHandler);
       map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
@@ -104,7 +104,7 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
     });
   };
 
-  // スプライトが読み込まれているかチェック
+  // Check if sprites are loaded
   if (map.isStyleLoaded()) {
     setupLayersWithValidatedIcons();
   } else {

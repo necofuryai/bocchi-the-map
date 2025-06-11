@@ -23,16 +23,16 @@ export const useMaplibre = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<MapError | null>(null);
   const [mapState, setMapState] = useState<MapState>('loading');
-  // onClickコールバックをrefで管理してuseEffectの再実行を避ける最適化パターン
-  // onClickが変更されるたびにメインのuseEffectが再実行されることを防ぐため、
-  // 最新のコールバックをrefに保存してエフェクト内でアクセスする
+  // Optimization pattern to manage onClick callback with ref to avoid useEffect re-execution
+  // To prevent main useEffect from re-executing every time onClick changes,
+  // store the latest callback in ref and access it within the effect
   const currentOnClickRef = useRef<((event: maplibregl.MapMouseEvent) => void) | undefined>(onClick);
 
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
     
-    // 環境変数チェック
+    // Environment variable check
     if (!process.env.NEXT_PUBLIC_MAP_STYLE_URL) {
       const configError: MapError = {
         type: 'configuration',
@@ -44,7 +44,7 @@ export const useMaplibre = ({
       return;
     }
     
-    // クリックイベント処理関数をここで定義
+    // Define click event handler function here
     const handleClick = (event: maplibregl.MapMouseEvent) => {
       currentOnClickRef.current?.(event);
     };
@@ -59,7 +59,7 @@ export const useMaplibre = ({
         zoom: defaultZoom
       });
 
-      // 地図読み込み完了時
+      // On map load completion
       mapRef.current.on('load', () => {
         setMapState('loaded');
         setError(null);
@@ -70,7 +70,7 @@ export const useMaplibre = ({
         }
       });
 
-      // エラーハンドリング
+      // Error handling
       mapRef.current.on('error', (e: maplibregl.ErrorEvent) => {
         console.error("Map error:", e);
         const loadError: MapError = {
@@ -83,7 +83,7 @@ export const useMaplibre = ({
         onError?.(loadError);
       });
 
-      // クリックイベント
+      // Click event
       if (onClick) {
         mapRef.current.on('click', handleClick);
       }
@@ -103,9 +103,9 @@ export const useMaplibre = ({
     return () => {
       if (mapRef.current) {
         if (onClick) {
-          // クリーンアップ時にイベントリスナーを削除
-          // handleClick関数はrefを通じて最新のonClickコールバックにアクセスするため、
-          // onClickが変更されてもイベントリスナーの再登録は不要
+          // Remove event listener during cleanup
+          // Since handleClick function accesses the latest onClick callback through ref,
+          // event listener re-registration is unnecessary even when onClick changes
           mapRef.current.off('click', handleClick);
         }
         mapRef.current.remove();
@@ -114,7 +114,7 @@ export const useMaplibre = ({
     };
   }, [onLoad, onError, onClick, defaultCenter, defaultZoom]);
 
-  // onClickハンドラーが変更されたときにrefを更新
+  // Update ref when onClick handler changes
   useEffect(() => {
     currentOnClickRef.current = onClick;
   }, [onClick]);
