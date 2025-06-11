@@ -2,8 +2,8 @@ import * as maplibregl from "maplibre-gl";
 import { layers, namedFlavor } from "@protomaps/basemaps";
 
 /**
- * MapLibre GL用のスタイル設定を生成する関数
- * @param mapStyleUrl PMTiles用のマップスタイルURL
+ * Function to generate style configuration for MapLibre GL
+ * @param mapStyleUrl Map style URL for PMTiles
  * @returns MapLibre GL StyleSpecification
  */
 export function createMapStyle(mapStyleUrl: string): maplibregl.StyleSpecification {

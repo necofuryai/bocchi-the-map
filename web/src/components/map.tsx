@@ -12,17 +12,17 @@ export default function MapComponent({
   onLoad,
   onError 
 }: MapComponentProps) {
-  // PMTiles プロトコルを初期化
+  // Initialize PMTiles protocol
   usePmtiles();
 
-  // マップの初期化とステート管理
+  // Initialize map and manage state
   const { containerRef, mapState, error } = useMaplibre({ 
     onClick, 
     onLoad, 
     onError 
   });
 
-  // エラー状態の表示
+  // Display error state
   if (mapState === 'error' && error) {
     return <MapErrorDisplay error={error} className={className} height={height} />;
   }

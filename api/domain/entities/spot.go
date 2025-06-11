@@ -44,7 +44,7 @@ func NewSpot(name string, lat, lng float64, category, address, countryCode strin
 func (s *Spot) UpdateRating(newRating float64, totalReviews int) {
 	// Validate rating range
 	if newRating < 0 || newRating > 5 {
-		return // または適切なエラーを返す
+		return // or return appropriate error
 	}
 	if totalReviews < 0 {
 		return

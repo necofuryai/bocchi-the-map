@@ -1,4 +1,4 @@
-// ドメインエンティティ
+// Domain entities
 export interface Spot {
   id: string
   name: string
@@ -40,7 +40,7 @@ export interface UserPreferences {
   timezone: string
 }
 
-// 共通レスポンス型
+// Common response types
 export interface PaginationResponse<T = unknown> {
   items: T[]
   totalCount: number
@@ -49,7 +49,7 @@ export interface PaginationResponse<T = unknown> {
   totalPages: number
 }
 
-// 地図関連の型
+// Map-related types
 export interface MapPosition {
   latitude: number
   longitude: number
@@ -62,10 +62,10 @@ export interface POIProperties {
   name?: string
   kind?: string
   script?: string
-  min_zoom?: number // TileJSON仕様準拠のためsnake_case
+  min_zoom?: number // snake_case for TileJSON specification compliance
 }
 
-// NextAuth.js型拡張
+// NextAuth.js type extension
 declare module "next-auth" {
   interface User {
     id: string

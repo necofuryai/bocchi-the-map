@@ -1,15 +1,15 @@
 import * as maplibregl from "maplibre-gl";
 
-// エラーの種類を定義
+// Define error types
 export type MapError = 
   | { type: 'configuration'; message: string }
   | { type: 'initialization'; message: string; originalError?: maplibregl.ErrorEvent }
   | { type: 'loading'; message: string; originalError?: maplibregl.ErrorEvent };
 
-// マップの状態を定義
+// Define map state
 export type MapState = 'loading' | 'loaded' | 'error';
 
-// MapComponentのProps定義
+// MapComponent props definition
 export interface MapComponentProps {
   className?: string;
   height?: number | string;
