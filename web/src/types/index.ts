@@ -1,3 +1,4 @@
+// ドメインエンティティ
 export interface Spot {
   id: string
   name: string
@@ -39,9 +40,43 @@ export interface UserPreferences {
   timezone: string
 }
 
-export interface PaginationResponse {
+// 共通レスポンス型
+export interface PaginationResponse<T = unknown> {
+  items: T[]
   totalCount: number
   page: number
   pageSize: number
   totalPages: number
+}
+
+// 地図関連の型
+export interface MapPosition {
+  latitude: number
+  longitude: number
+  zoom?: number
+  bearing?: number
+  pitch?: number
+}
+
+export interface POIProperties {
+  name?: string
+  kind?: string
+  script?: string
+  min_zoom?: number // TileJSON仕様準拠のためsnake_case
+}
+
+// NextAuth.js型拡張
+declare module "next-auth" {
+  interface User {
+    id: string
+  }
+  
+  interface Session {
+    user: {
+      id: string
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
+  }
 }
