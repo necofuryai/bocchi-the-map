@@ -14,9 +14,9 @@ export function MapErrorDisplay({ error, className = "", height }: MapErrorDispl
       role="alert"
     >
       <div className="text-center text-gray-600">
-        <p className="text-sm"><span role="img" aria-label="エラー">❌</span> {error.message}</p>
+        <p className="text-sm"><span role="img" aria-label="Error">❌</span> {error.message}</p>
         <p className="text-xs mt-1">
-          {error.type === 'configuration' ? '設定を確認してください' : '地図を表示できませんでした'}
+          {error.type === 'configuration' ? 'Please check your configuration' : 'Failed to display map'}
         </p>
       </div>
     </div>
@@ -34,8 +34,8 @@ export function MapLoadingDisplay({ className = "" }: MapLoadingDisplayProps) {
       aria-live="polite"
     >
       <div className="text-center text-gray-600">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-sm">地図を読み込み中...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
+        <p className="text-sm">Loading map...</p>
       </div>
     </div>
   );

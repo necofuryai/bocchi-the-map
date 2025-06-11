@@ -8,9 +8,17 @@ interface UseMaplibreOptions {
   onClick?: (event: maplibregl.MapMouseEvent) => void;
   onLoad?: (map: maplibregl.Map) => void;
   onError?: (error: MapError) => void;
+  defaultCenter?: [number, number];
+  defaultZoom?: number;
 }
 
-export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {}) => {
+export const useMaplibre = ({ 
+  onClick, 
+  onLoad, 
+  onError,
+  defaultCenter = [139.767, 35.681],
+  defaultZoom = 15
+}: UseMaplibreOptions = {}) => {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<MapError | null>(null);
@@ -20,14 +28,6 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
   // 最新のコールバックをrefに保存してエフェクト内でアクセスする
   const currentOnClickRef = useRef<((event: maplibregl.MapMouseEvent) => void) | undefined>(onClick);
 
-  // onLoadとonErrorをuseCallbackでメモ化
-  const memoizedOnLoad = useCallback((map: maplibregl.Map) => {
-    onLoad?.(map);
-  }, [onLoad]);
-
-  const memoizedOnError = useCallback((error: MapError) => {
-    onError?.(error);
-  }, [onError]);
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -36,11 +36,11 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
     if (!process.env.NEXT_PUBLIC_MAP_STYLE_URL) {
       const configError: MapError = {
         type: 'configuration',
-        message: 'NEXT_PUBLIC_MAP_STYLE_URL が設定されていません'
+        message: 'NEXT_PUBLIC_MAP_STYLE_URL is not configured'
       };
       setError(configError);
       setMapState('error');
-      memoizedOnError(configError);
+      onError?.(configError);
       return;
     }
     
@@ -55,8 +55,8 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
       mapRef.current = new maplibregl.Map({
         container: containerRef.current,
         style,
-        center: [139.767, 35.681],
-        zoom: 15
+        center: defaultCenter,
+        zoom: defaultZoom
       });
 
       // 地図読み込み完了時
@@ -66,7 +66,7 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
         
         if (mapRef.current) {
           setupPOIFeatures(mapRef.current);
-          memoizedOnLoad(mapRef.current);
+          onLoad?.(mapRef.current);
         }
       });
 
@@ -75,12 +75,12 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
         console.error("Map error:", e);
         const loadError: MapError = {
           type: 'loading',
-          message: '地図の読み込みに失敗しました',
+          message: 'Failed to load map',
           originalError: e
         };
         setError(loadError);
         setMapState('error');
-        memoizedOnError(loadError);
+        onError?.(loadError);
       });
 
       // クリックイベント
@@ -89,15 +89,15 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
       }
 
     } catch (error) {
-      console.error("地図の初期化に失敗しました:", error);
+      console.error("Map initialization failed:", error);
       const initError: MapError = {
         type: 'initialization',
-        message: '地図の初期化に失敗しました',
-        originalError: error as maplibregl.ErrorEvent
+        message: 'Failed to initialize map',
+        ...(error instanceof Error && { originalError: error })
       };
       setError(initError);
       setMapState('error');
-      memoizedOnError(initError);
+      onError?.(initError);
     }
 
     return () => {
@@ -112,7 +112,7 @@ export const useMaplibre = ({ onClick, onLoad, onError }: UseMaplibreOptions = {
         mapRef.current = null;
       }
     };
-  }, [memoizedOnLoad, memoizedOnError, onClick]);
+  }, [onLoad, onError, onClick, defaultCenter, defaultZoom]);
 
   // onClickハンドラーが変更されたときにrefを更新
   useEffect(() => {

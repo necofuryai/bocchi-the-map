@@ -24,7 +24,7 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
     const p = f.properties as POIProperties;
 
     // 表示用デフォルト値
-    const name = p.name ?? "名称不明";
+    const name = p.name ?? "Unknown name";
     const kind = p.kind ?? "unknown";
     const zoom = p.min_zoom?.toString() ?? "-";
 
@@ -48,8 +48,8 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
       .setHTML(`
         <div style="font-family: system-ui; font-size: 14px; line-height: 1.4; color: black;">
           <strong>${escapedName}</strong><br>
-          種類: ${escapedKind}<br>
-          最小ズーム: ${escapedZoom}
+          Type: ${escapedKind}<br>
+          Min Zoom: ${escapedZoom}
         </div>
       `)
       .addTo(map);
