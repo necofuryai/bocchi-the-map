@@ -1,8 +1,13 @@
+"use client";
+
 import MapComponent from '@/components/map';
 import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
+import { useMapFilter } from '@/hooks/useMapFilter';
 
 export default function Home() {
+  const { getFilterExpression } = useMapFilter();
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -22,6 +27,7 @@ export default function Home() {
               <MapComponent 
                 className="w-full"
                 height="600px"
+                poiFilter={getFilterExpression}
               />
             </Card>
             

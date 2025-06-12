@@ -83,6 +83,22 @@ npm run lint           # ESLint + TypeScript checking
 # Note: React 19 dependency conflicts may require --legacy-peer-deps if needed
 ```
 
+### Frontend Architecture (web/)
+
+**Component Structure:**
+- `src/app/` - Next.js 15 App Router pages and layouts
+- `src/components/ui/` - Reusable Shadcn/ui components
+- `src/components/map/` - MapLibre GL JS integration components
+- `src/hooks/` - Custom React hooks for map interactions and state
+- `src/lib/` - Utilities and shared configurations
+- `src/types/` - TypeScript type definitions
+
+**Key Components:**
+- `Map component` - Main MapLibre GL JS wrapper with PMTiles support
+- `POI Features` - Point of interest rendering and interaction logic
+- `Auth Provider` - NextAuth.js session management
+- `Theme Provider` - Dark/light mode using next-themes
+
 **Infrastructure**
 
 ```bash
