@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import { createMapStyle } from "@/components/mapStyle";
-import { setupPOIFeatures } from "@/components/map/poi-features";
+import { setupPOIFeatures, updatePOIFilter } from "@/components/map/poi-features";
 import type { MapError, MapState } from "@/components/map/types";
 
 interface UseMaplibreOptions {
@@ -10,6 +10,7 @@ interface UseMaplibreOptions {
   onError?: (error: MapError) => void;
   defaultCenter?: [number, number];
   defaultZoom?: number;
+  poiFilter?: maplibregl.FilterSpecification | null;
 }
 
 export const useMaplibre = ({ 
@@ -17,7 +18,8 @@ export const useMaplibre = ({
   onLoad, 
   onError,
   defaultCenter = [139.767, 35.681],
-  defaultZoom = 15
+  defaultZoom = 15,
+  poiFilter
 }: UseMaplibreOptions = {}) => {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -65,7 +67,7 @@ export const useMaplibre = ({
         setError(null);
         
         if (mapRef.current) {
-          setupPOIFeatures(mapRef.current);
+          setupPOIFeatures(mapRef.current, poiFilter || null);
           onLoad?.(mapRef.current);
         }
       });
@@ -93,7 +95,7 @@ export const useMaplibre = ({
       const initError: MapError = {
         type: 'initialization',
         message: 'Failed to initialize map',
-        ...(error instanceof Error && { originalError: error })
+        originalError: error as Error
       };
       setError(initError);
       setMapState('error');
@@ -112,12 +114,22 @@ export const useMaplibre = ({
         mapRef.current = null;
       }
     };
+    // Note: poiFilter is intentionally excluded from dependencies to prevent map recreation
+    // POI filter updates are handled by a separate useEffect below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onLoad, onError, onClick, defaultCenter, defaultZoom]);
 
   // Update ref when onClick handler changes
   useEffect(() => {
     currentOnClickRef.current = onClick;
   }, [onClick]);
+
+  // Update POI filter when poiFilter prop changes
+  useEffect(() => {
+    if (mapRef.current && mapState === 'loaded') {
+      updatePOIFilter(mapRef.current, poiFilter || null);
+    }
+  }, [poiFilter, mapState]);
 
   return {
     containerRef,

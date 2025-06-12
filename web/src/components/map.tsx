@@ -10,7 +10,8 @@ export default function MapComponent({
   height = "480px", 
   onClick, 
   onLoad,
-  onError 
+  onError,
+  poiFilter
 }: MapComponentProps) {
   // Initialize PMTiles protocol
   usePmtiles();
@@ -19,7 +20,8 @@ export default function MapComponent({
   const { containerRef, mapState, error } = useMaplibre({ 
     onClick, 
     onLoad, 
-    onError 
+    onError,
+    poiFilter
   });
 
   // Display error state

@@ -1,8 +1,26 @@
+"use client";
+
 import MapComponent from '@/components/map';
 import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
+import { useMapFilter } from '@/hooks/useMapFilter';
+
+// Default POI kinds to avoid array recreation on every render
+const DEFAULT_KINDS = [
+  'cafe',
+  'park', 
+  'library',
+  'viewpoint',
+  'bench',
+  'toilets',
+  'charging_station',
+  'bicycle_parking',
+  'drinking_water'
+] as const;
 
 export default function Home() {
+  const { filterExpression } = useMapFilter(DEFAULT_KINDS);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -22,6 +40,7 @@ export default function Home() {
               <MapComponent 
                 className="w-full"
                 height="600px"
+                poiFilter={filterExpression}
               />
             </Card>
             

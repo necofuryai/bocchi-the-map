@@ -11,8 +11,9 @@ export const POI_COLORS = {
 /**
  * Function to set up POI features
  * @param map MapLibre GL map instance
+ * @param filter Optional filter expression for POI layers
  */
-export const setupPOIFeatures = (map: maplibregl.Map): void => {
+export const setupPOIFeatures = (map: maplibregl.Map, filter?: maplibregl.FilterSpecification | null): void => {
   // Variable to track the current popup
   let currentPopup: maplibregl.Popup | null = null;
   
@@ -59,7 +60,7 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
   const setupLayersWithValidatedIcons = () => {
     // Fallback circle dots - check existing layers
     if (!map.getLayer("poi-dots")) {
-      map.addLayer({
+      const layerConfig: maplibregl.CircleLayerSpecification = {
         id: "poi-dots",
         type: "circle",
         source: "protomaps",
@@ -71,12 +72,19 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
           "circle-stroke-width": 1,
           "circle-stroke-color": POI_COLORS.STROKE,
         },
-      });
+      };
+      
+      // Apply filter if provided
+      if (filter) {
+        layerConfig.filter = filter;
+      }
+      
+      map.addLayer(layerConfig);
     }
     
     // POI icon layer - check if icons actually exist
     if (!map.getLayer("poi-icons")) {
-      map.addLayer({
+      const iconLayerConfig: maplibregl.SymbolLayerSpecification = {
         id: "poi-icons",
         type: "symbol",
         source: "protomaps",
@@ -93,7 +101,14 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
           "icon-size": 1,
           "icon-allow-overlap": true,
         },
-      });
+      };
+      
+      // Apply filter if provided
+      if (filter) {
+        iconLayerConfig.filter = filter;
+      }
+      
+      map.addLayer(iconLayerConfig);
     }
     
     // Add event handlers to POI layers
@@ -109,5 +124,31 @@ export const setupPOIFeatures = (map: maplibregl.Map): void => {
     setupLayersWithValidatedIcons();
   } else {
     map.on("styledata", setupLayersWithValidatedIcons);
+  }
+};
+
+/**
+ * Function to update POI filter on existing layers
+ * @param map MapLibre GL map instance
+ * @param filter Filter expression to apply (null to remove filter)
+ */
+export const updatePOIFilter = (
+  map: maplibregl.Map,
+  filter: maplibregl.FilterSpecification | null
+): void => {
+  const layerIds = ["poi-dots", "poi-icons"];
+  
+  const applyFilter = () => {
+    layerIds.forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.setFilter(layerId, filter);
+      }
+    });
+  };
+
+  if (map.isStyleLoaded()) {
+    applyFilter();
+  } else {
+    map.once("styledata", applyFilter);
   }
 };
