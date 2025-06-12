@@ -27,24 +27,26 @@ export interface MapFilter {
 export const useMapFilter = (initialKinds: POIKind[] = []) => {
   const [filter, setFilter] = useState<MapFilter>({
     kinds: initialKinds,
-    enabled: true,
+    enabled: initialKinds.length > 0,
   });
 
   // Update filter kinds
   const updateKinds = useCallback((kinds: POIKind[]) => {
-    const uniqueKinds = Array.from(new Set(kinds));
-    if (
-      uniqueKinds.length === filter.kinds.length &&
-      uniqueKinds.every(k => filter.kinds.includes(k))
-    ) {
-      return; // No change, avoid unnecessary state update
-    }
-    setFilter(prev => ({
-      ...prev,
-      kinds: uniqueKinds,
-      enabled: uniqueKinds.length > 0,
-    }));
-  }, [filter.kinds]);
+    setFilter(prev => {
+      const uniqueKinds = Array.from(new Set(kinds));
+      if (
+        uniqueKinds.length === prev.kinds.length &&
+        uniqueKinds.every(k => prev.kinds.includes(k))
+      ) {
+        return prev; // No change, avoid unnecessary state update
+      }
+      return {
+        ...prev,
+        kinds: uniqueKinds,
+        enabled: uniqueKinds.length > 0,
+      };
+    });
+  }, []);
 
   // Toggle filter enabled state
   const toggleEnabled = useCallback(() => {

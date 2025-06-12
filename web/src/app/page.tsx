@@ -22,7 +22,7 @@ export default function Home() {
   // Memoize the filter expression to avoid unnecessary recalculations
   const filterExpression = useMemo(
     () => getFilterExpression(),
-    [getFilterExpression]
+    []
   );
 
   return (
