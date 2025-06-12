@@ -90,7 +90,7 @@ export const useMapFilter = (initialKinds: POIKind[] = []) => {
   }, []);
 
   // Generate MapLibre GL filter expression - show only specified POI types with valid names
-  const getFilterExpression = useMemo((): FilterExpression => {
+  const filterExpression = useMemo((): FilterExpression => {
     if (!filter.enabled || filter.kinds.length === 0) {
       return null;
     }
@@ -116,6 +116,6 @@ export const useMapFilter = (initialKinds: POIKind[] = []) => {
     addKind,
     removeKind,
     clearFilter,
-    getFilterExpression,
+    filterExpression,
   };
 };

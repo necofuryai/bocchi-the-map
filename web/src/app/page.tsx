@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo } from 'react';
 import MapComponent from '@/components/map';
 import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
 import { useMapFilter } from '@/hooks/useMapFilter';
 
 export default function Home() {
-  const { getFilterExpression } = useMapFilter([
+  const { filterExpression } = useMapFilter([
     'cafe',
     'park', 
     'library',
@@ -18,12 +17,6 @@ export default function Home() {
     'bicycle_parking',
     'drinking_water'
   ]);
-
-  // Memoize the filter expression to avoid unnecessary recalculations
-  const filterExpression = useMemo(
-    () => getFilterExpression(),
-    []
-  );
 
   return (
     <div className="min-h-screen bg-background">
