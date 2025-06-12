@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 
 // POI kind types
-export type POIKind = 'cafe' | 'atm' | 'restaurant' | 'shop' | 'park' | 'station' | string;
+export type POIKind = 'cafe' | 'park' | 'library' | 'viewpoint' | 'bench' | 'toilets' | 'charging_station' | 'bicycle_parking' | 'drinking_water' | string;
 
 import * as maplibregl from "maplibre-gl";
 
@@ -23,10 +23,11 @@ export const useMapFilter = (initialKinds: POIKind[] = []) => {
 
   // Update filter kinds
   const updateKinds = useCallback((kinds: POIKind[]) => {
+    const uniqueKinds = Array.from(new Set(kinds));
     setFilter(prev => ({
       ...prev,
-      kinds,
-      enabled: kinds.length > 0,
+      kinds: uniqueKinds,
+      enabled: uniqueKinds.length > 0,
     }));
   }, []);
 
@@ -40,11 +41,16 @@ export const useMapFilter = (initialKinds: POIKind[] = []) => {
 
   // Add kind to filter
   const addKind = useCallback((kind: POIKind) => {
-    setFilter(prev => ({
-      ...prev,
-      kinds: [...prev.kinds, kind],
-      enabled: true,
-    }));
+    setFilter(prev => {
+      if (prev.kinds.includes(kind)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        kinds: [...prev.kinds, kind],
+        enabled: true,
+      };
+    });
   }, []);
 
   // Remove kind from filter
@@ -67,32 +73,24 @@ export const useMapFilter = (initialKinds: POIKind[] = []) => {
   }, []);
 
   // Generate MapLibre GL filter expression - show only specified POI types with valid names
-  const getFilterExpression = useMemo((): FilterExpression => {
-    const allowedPOITypes = [
-      'cafe',
-      'park',
-      'library',
-      'viewpoint',
-      'bench',
-      'toilets',
-      'charging_station',
-      'bicycle_parking',
-      'drinking_water'
-    ];
+  const getFilterExpression = useCallback((): FilterExpression => {
+    if (!filter.enabled || filter.kinds.length === 0) {
+      return null;
+    }
 
     return [
       "all",
       [
         "match",
         ["get", "kind"],
-        allowedPOITypes,
+        filter.kinds,
         true,
         false,
       ],
       ["has", "name"],
       ["!=", ["get", "name"], ""]
     ];
-  }, []);
+  }, [filter.enabled, filter.kinds]);
 
   return {
     filter,

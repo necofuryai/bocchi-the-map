@@ -6,7 +6,17 @@ import { Card } from '@/components/ui/card';
 import { useMapFilter } from '@/hooks/useMapFilter';
 
 export default function Home() {
-  const { getFilterExpression } = useMapFilter();
+  const { getFilterExpression } = useMapFilter([
+    'cafe',
+    'park', 
+    'library',
+    'viewpoint',
+    'bench',
+    'toilets',
+    'charging_station',
+    'bicycle_parking',
+    'drinking_water'
+  ]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -27,7 +37,7 @@ export default function Home() {
               <MapComponent 
                 className="w-full"
                 height="600px"
-                poiFilter={getFilterExpression}
+                poiFilter={getFilterExpression()}
               />
             </Card>
             
