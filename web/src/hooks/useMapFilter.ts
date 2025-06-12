@@ -1,7 +1,16 @@
 import { useState, useCallback, useMemo } from 'react';
 
 // POI kind types
-export type POIKind = 'cafe' | 'park' | 'library' | 'viewpoint' | 'bench' | 'toilets' | 'charging_station' | 'bicycle_parking' | 'drinking_water' | string;
+export type POIKind =
+  | 'cafe'
+  | 'park'
+  | 'library'
+  | 'viewpoint'
+  | 'bench'
+  | 'toilets'
+  | 'charging_station'
+  | 'bicycle_parking'
+  | 'drinking_water';
 
 import * as maplibregl from "maplibre-gl";
 
@@ -24,12 +33,18 @@ export const useMapFilter = (initialKinds: POIKind[] = []) => {
   // Update filter kinds
   const updateKinds = useCallback((kinds: POIKind[]) => {
     const uniqueKinds = Array.from(new Set(kinds));
+    if (
+      uniqueKinds.length === filter.kinds.length &&
+      uniqueKinds.every(k => filter.kinds.includes(k))
+    ) {
+      return; // No change, avoid unnecessary state update
+    }
     setFilter(prev => ({
       ...prev,
       kinds: uniqueKinds,
       enabled: uniqueKinds.length > 0,
     }));
-  }, []);
+  }, [filter.kinds]);
 
   // Toggle filter enabled state
   const toggleEnabled = useCallback(() => {
@@ -73,7 +88,7 @@ export const useMapFilter = (initialKinds: POIKind[] = []) => {
   }, []);
 
   // Generate MapLibre GL filter expression - show only specified POI types with valid names
-  const getFilterExpression = useCallback((): FilterExpression => {
+  const getFilterExpression = useMemo((): FilterExpression => {
     if (!filter.enabled || filter.kinds.length === 0) {
       return null;
     }

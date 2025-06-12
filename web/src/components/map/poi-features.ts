@@ -132,16 +132,23 @@ export const setupPOIFeatures = (map: maplibregl.Map, filter?: maplibregl.Filter
  * @param map MapLibre GL map instance
  * @param filter Filter expression to apply (null to remove filter)
  */
-export const updatePOIFilter = (map: maplibregl.Map, filter: maplibregl.FilterSpecification | null): void => {
+export const updatePOIFilter = (
+  map: maplibregl.Map,
+  filter: maplibregl.FilterSpecification | null
+): void => {
   const layerIds = ["poi-dots", "poi-icons"];
   
-  layerIds.forEach((layerId) => {
-    if (map.getLayer(layerId)) {
-      if (filter) {
+  const applyFilter = () => {
+    layerIds.forEach((layerId) => {
+      if (map.getLayer(layerId)) {
         map.setFilter(layerId, filter);
-      } else {
-        map.setFilter(layerId, null);
       }
-    }
-  });
+    });
+  };
+
+  if (map.isStyleLoaded()) {
+    applyFilter();
+  } else {
+    map.once("styledata", applyFilter);
+  }
 };

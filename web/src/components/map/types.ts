@@ -16,5 +16,6 @@ export interface MapComponentProps {
   onClick?: (event: maplibregl.MapMouseEvent) => void;
   onLoad?: (map: maplibregl.Map) => void;
   onError?: (error: MapError) => void;
+  /** MapLibre filter expression applied to POI layers */
   poiFilter?: maplibregl.FilterSpecification | null;
 }

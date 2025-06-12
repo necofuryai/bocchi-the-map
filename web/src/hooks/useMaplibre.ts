@@ -93,8 +93,9 @@ export const useMaplibre = ({
     } catch (error) {
       console.error("Map initialization failed:", error);
       const initError: MapError = {
-        type: 'initialization', 
-        message: 'Failed to initialize map'
+        type: 'initialization',
+        message: 'Failed to initialize map',
+        originalError: error as Error
       };
       setError(initError);
       setMapState('error');
@@ -126,25 +127,7 @@ export const useMaplibre = ({
   // Update POI filter when poiFilter prop changes
   useEffect(() => {
     if (mapRef.current && mapState === 'loaded') {
-      // Save current viewport before updating filter
-      const currentCenter = mapRef.current.getCenter();
-      const currentZoom = mapRef.current.getZoom();
-      const currentBearing = mapRef.current.getBearing();
-      const currentPitch = mapRef.current.getPitch();
-      
       updatePOIFilter(mapRef.current, poiFilter || null);
-      
-      // Use requestAnimationFrame to ensure the position is restored after render
-      requestAnimationFrame(() => {
-        if (mapRef.current) {
-          mapRef.current.jumpTo({
-            center: currentCenter,
-            zoom: currentZoom,
-            bearing: currentBearing,
-            pitch: currentPitch
-          });
-        }
-      });
     }
   }, [poiFilter, mapState]);
 

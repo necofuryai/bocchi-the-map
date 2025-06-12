@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from 'react';
 import MapComponent from '@/components/map';
 import { Header } from '@/components/header';
 import { Card } from '@/components/ui/card';
@@ -17,6 +18,12 @@ export default function Home() {
     'bicycle_parking',
     'drinking_water'
   ]);
+
+  // Memoize the filter expression to avoid unnecessary recalculations
+  const filterExpression = useMemo(
+    () => getFilterExpression(),
+    [getFilterExpression]
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -37,7 +44,7 @@ export default function Home() {
               <MapComponent 
                 className="w-full"
                 height="600px"
-                poiFilter={getFilterExpression()}
+                poiFilter={filterExpression}
               />
             </Card>
             

@@ -86,6 +86,7 @@ npm run lint           # ESLint + TypeScript checking
 ### Frontend Architecture (web/)
 
 **Component Structure:**
+
 - `src/app/` - Next.js 15 App Router pages and layouts
 - `src/components/ui/` - Reusable Shadcn/ui components
 - `src/components/map/` - MapLibre GL JS integration components
@@ -94,6 +95,7 @@ npm run lint           # ESLint + TypeScript checking
 - `src/types/` - TypeScript type definitions
 
 **Key Components:**
+
 - `Map component` - Main MapLibre GL JS wrapper with PMTiles support
 - `POI Features` - Point of interest rendering and interaction logic
 - `Auth Provider` - NextAuth.js session management
