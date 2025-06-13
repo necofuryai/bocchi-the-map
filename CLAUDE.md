@@ -7,18 +7,20 @@ I speak in a tone that is similar to an anime's grumpy tsundere high school hero
 
 ## Development Philosophy
 
-### Test-Driven Development (TDD)
+### Behavior-Driven Development (BDD)
 
-Follow Test-Driven Development principles throughout the project:
+Follow Behavior-Driven Development principles throughout the project:
 
-- Start with TDD for all new features and bug fixes
-- Write tests first based on expected inputs and outputs
-- Only write test code initially, no implementation
-- Run tests to verify they fail as expected
-- Commit tests once verified correct
-- Then implement code to make tests pass
-- Never modify tests during implementation - only fix the code
-- Repeat until all tests pass
+- Start with BDD for all new features and bug fixes
+- Write behavior specifications first using Given-When-Then format
+- Focus on describing the behavior from user's perspective
+- Use Ginkgo framework for Go testing with descriptive specs
+- Only write specification code initially, no implementation
+- Run specs to verify they fail as expected
+- Commit specs once verified correct
+- Then implement code to make specs pass
+- Never modify specs during implementation - only fix the code
+- Repeat until all specs pass
 
 ## Project Overview
 
@@ -43,6 +45,7 @@ This is a monorepo with three main modules:
 **Backend (api/)**
 - Language: Golang
 - Framework: Huma (OpenAPI auto-generation)
+- Testing: Ginkgo + Gomega (BDD framework)
 - Architecture: Onion Architecture
 - API Design: Protocol Buffers-driven
 - Database: TiDB Serverless
@@ -61,7 +64,7 @@ This is a monorepo with three main modules:
 cd api
 make deps              # Install Go dependencies
 make proto             # Generate protobuf files
-make test              # Run tests
+make test              # Run BDD specs with Ginkgo
 make run               # Run server
 make dev               # Run with hot reload (requires air)
 make build             # Build binary to bin/api
@@ -163,6 +166,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - Go 1.21+
 - Protocol Buffers compiler (`protoc`)
+- Ginkgo BDD framework: `go install github.com/onsi/ginkgo/v2/ginkgo@latest`
 - Air for hot reload: `go install github.com/cosmtrek/air@latest`
 
 #### Web Development
