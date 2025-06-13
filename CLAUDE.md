@@ -46,6 +46,7 @@ This is a monorepo with three main modules:
 - Language: Golang
 - Framework: Huma (OpenAPI auto-generation)
 - Testing: Ginkgo + Gomega (BDD framework)
+- ORM: sqlc (type-safe SQL code generation)
 - Architecture: Onion Architecture
 - API Design: Protocol Buffers-driven
 - Database: TiDB Serverless
@@ -64,6 +65,7 @@ This is a monorepo with three main modules:
 cd api
 make deps              # Install Go dependencies
 make proto             # Generate protobuf files
+make sqlc              # Generate sqlc code from SQL queries
 make test              # Run BDD specs with Ginkgo
 make run               # Run server
 make dev               # Run with hot reload (requires air)
@@ -166,6 +168,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - Go 1.21+
 - Protocol Buffers compiler (`protoc`)
+- sqlc: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
 - Ginkgo BDD framework: `go install github.com/onsi/ginkgo/v2/ginkgo@latest`
 - Air for hot reload: `go install github.com/cosmtrek/air@latest`
 
