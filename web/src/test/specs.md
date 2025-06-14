@@ -34,6 +34,44 @@
 **Then** POI markers should be displayed on the map  
 **And** clicking a POI marker should show details  
 
+### Scenario: POI API returns 4xx client error
+**Given** the map is loaded  
+**When** the POI API returns a 4xx client error (e.g., 404, 400)  
+**Then** an error message should be displayed to the user  
+**And** the error UI should explain the issue clearly  
+**And** a retry button should be available  
+
+### Scenario: POI API returns 5xx server error
+**Given** the map is loaded  
+**When** the POI API returns a 5xx server error (e.g., 500, 503)  
+**Then** a server error message should be displayed to the user  
+**And** the error UI should indicate it's a temporary issue  
+**And** a retry button should be available  
+**And** an automatic retry should be attempted after a short delay  
+
+### Scenario: Network failure during POI data fetch
+**Given** the map is loaded  
+**When** a network failure occurs during POI data fetching  
+**Then** a network error message should be displayed to the user  
+**And** the error UI should indicate connectivity issues  
+**And** a retry button should be available  
+**And** the app should retry automatically when connectivity is restored  
+
+### Scenario: User can retry after POI API failure
+**Given** the POI API has failed with any error type  
+**When** the user clicks the retry button  
+**Then** the error UI should show a loading state  
+**And** a new API request should be made  
+**And** on success, POI markers should be displayed normally  
+**And** on failure, the appropriate error message should be shown again  
+
+### Scenario: POI data takes too long to load (timeout)
+**Given** the map is loaded  
+**When** the POI API request times out  
+**Then** a timeout error message should be displayed  
+**And** the error UI should suggest checking connectivity  
+**And** a retry button should be available  
+
 ## Feature: Theme Switching
 ### Scenario: User can switch to dark mode
 **Given** the user is on the homepage  
@@ -72,6 +110,13 @@
 **And** all components should be properly positioned  
 **And** desktop-specific features should be available  
 
+### Scenario: Application maintains layout stability in landscape mode
+**Given** the user accesses the site in landscape orientation on mobile or tablet  
+**When** the page loads  
+**Then** the layout should not break in landscape orientation  
+**And** the map should adapt properly to the wider viewport  
+**And** navigation elements should remain accessible and properly positioned  
+
 ## Feature: Component Behavior
 ### Scenario: Header component displays correctly
 **Given** the user visits any page  
@@ -98,4 +143,25 @@
 **Given** the user attempts to sign in  
 **When** the authentication process fails  
 **Then** an error message should be displayed  
-**And** the user should remain on the sign-in flow  
+**And** the user should remain on the sign-in flow
+
+### Scenario: Retry button functions correctly after map loading error
+**Given** the map fails to load and displays an error message  
+**When** the user clicks the retry button  
+**Then** the map should attempt to reload  
+**And** the error message should be cleared  
+**And** a loading indicator should be shown during retry  
+
+### Scenario: Retry button handles multiple rapid clicks gracefully
+**Given** the map fails to load and displays a retry button  
+**When** the user rapidly clicks the retry button multiple times  
+**Then** only one retry attempt should be initiated  
+**And** subsequent clicks should be ignored until the current retry completes  
+**And** the button should be disabled during the retry process  
+
+### Scenario: Retry button recovers from failed retry attempts
+**Given** the user clicks retry and the retry attempt also fails  
+**When** the retry failure occurs  
+**Then** the error message should be updated to reflect the retry failure  
+**And** the retry button should remain available for another attempt  
+**And** the system should not enter an infinite retry loop  

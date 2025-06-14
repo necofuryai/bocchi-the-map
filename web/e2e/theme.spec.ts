@@ -94,8 +94,7 @@ test.describe('Theme Switching E2E Tests', () => {
       // Verify theme is applied
       const html = page.locator('html')
       const initialDarkMode = await html.evaluate(el => {
-        return el.classList.contains('dark') || 
-               el.getAttribute('data-theme') === 'dark'
+        return el.classList.contains('dark')
       })
       
       // Reload page
@@ -103,8 +102,7 @@ test.describe('Theme Switching E2E Tests', () => {
       
       // Verify theme persists
       const persistedDarkMode = await html.evaluate(el => {
-        return el.classList.contains('dark') || 
-               el.getAttribute('data-theme') === 'dark'
+        return el.classList.contains('dark')
       })
       
       expect(persistedDarkMode).toBe(initialDarkMode)

@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimized Playwright Report</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .stat-value.passed { background: #dcfce7; color: #16a34a; }
+        .stat-value.failed { background: #fecaca; color: #dc2626; }
+        .stat-value.skipped { background: #fef3c7; color: #d97706; }
+        
+        .controls {
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px 24px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .filter-btn {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .filter-btn:hover {
+            background: #f8f9fa;
+        }
+        
+        .filter-btn.active:hover {
+            background: #0056b3;
+        }
+        
+        .view-toggle {
+            display: flex;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .view-btn {
+            padding: 6px 12px;
+            border: none;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            border-right: 1px solid #d1d5db;
+        }
+        
+        .view-btn:last-child {
+            border-right: none;
+        }
+        
+        .view-btn.active {
+            background: #007bff;
+            color: white;
+        }
+        
+        .main-content {
+            display: flex;
+            height: calc(100vh - 140px);
+        }
+        
+        .test-list {
+            flex: 1;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #666;
+        }
+        
+        .loading::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e0e0e0;
+            border-top: 2px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .test-item {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+        
+        .test-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .test-item.failed {
+            border-left: 4px solid #dc2626;
+        }
+        
+        .test-item.passed {
+            border-left: 4px solid #16a34a;
+        }
+        
+        .test-item.skipped {
+            border-left: 4px solid #d97706;
+        }
+        
+        .detail-panel {
+            width: 400px;
+            background: white;
+            padding: 24px;
+            overflow-y: auto;
+            border-left: 1px solid #e0e0e0;
+        }
+        
+        .detail-panel.hidden {
+            display: none;
+        }
+        
+        .performance-indicator {
+            position: fixed;
+            top: 80px;
+            right: 24px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 50;
+        }
+        
+        .performance-indicator.good {
+            border-color: #16a34a;
+            background: #f0fdf4;
+        }
+        
+        .performance-indicator.warning {
+            border-color: #d97706;
+            background: #fffbeb;
+        }
+        
+        .performance-indicator.poor {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+        
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .detail-panel {
+                width: 100%;
+                height: 300px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                min-width: auto;
+            }
+            
+            .performance-indicator {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎭 Playwright Test Report (Optimized)</h1>
+        <div class="stats">
+            <div class="stat">
+                <span>Total:</span>
+                <span class="stat-value" id="totalTests">0</span>
+            </div>
+            <div class="stat">
+                <span>Passed:</span>
+                <span class="stat-value passed" id="passedTests">0</span>
+            </div>
+            <div class="stat">
+                <span>Failed:</span>
+                <span class="stat-value failed" id="failedTests">0</span>
+            </div>
+            <div class="stat">
+                <span>Skipped:</span>
+                <span class="stat-value skipped" id="skippedTests">0</span>
+            </div>
+            <div class="stat">
+                <span>Duration:</span>
+                <span class="stat-value" id="totalDuration">-</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <input type="text" class="search-box" placeholder="Search tests..." id="searchBox">
+        
+        <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="failed">Failed</button>
+            <button class="filter-btn" data-filter="passed">Passed</button>
+            <button class="filter-btn" data-filter="skipped">Skipped</button>
+        </div>
+        
+        <div class="view-toggle">
+            <button class="view-btn active" data-view="virtualized">Virtual</button>
+            <button class="view-btn" data-view="paginated">Paginated</button>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="test-list" id="testList">
+            <div class="loading">Loading tests...</div>
+        </div>
+        <div class="detail-panel hidden" id="detailPanel">
+            <p>Select a test to view details</p>
+        </div>
+    </div>
+    
+    <div class="performance-indicator" id="performanceIndicator">
+        <div>Performance: <strong id="performanceStatus">Measuring...</strong></div>
+        <div>Rendered: <span id="renderedCount">0</span> / <span id="totalCount">0</span></div>
+    </div>
+
+    <script src="./optimized-report-renderer.js"></script>
+    <script>
+        class OptimizedPlaywrightReport {
+            constructor() {
+                this.testData = [];
+                this.filteredData = [];
+                this.currentFilter = 'all';
+                this.currentView = 'virtualized';
+                this.searchTerm = '';
+                
+                this.renderer = null;
+                this.performanceMetrics = {
+                    startTime: performance.now(),
+                    renderTime: 0,
+                    memoryUsage: 0
+                };
+                
+                this.initializeUI();
+                this.loadTestData();
+            }
+            
+            initializeUI() {
+                // Search box
+                document.getElementById('searchBox').addEventListener('input', (e) => {
+                    this.searchTerm = e.target.value.toLowerCase();
+                    this.applyFilters();
+                });
+                
+                // Filter buttons
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentFilter = e.target.dataset.filter;
+                        this.applyFilters();
+                    });
+                });
+                
+                // View toggle
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentView = e.target.dataset.view;
+                        this.switchView();
+                    });
+                });
+            }
+            
+            async loadTestData() {
+                // Simulate loading test data (in real implementation, this would parse the actual report data)
+                const testData = this.generateMockTestData(1000); // Generate 1000 test cases for stress testing
+                
+                this.testData = testData;
+                this.updateStats();
+                this.applyFilters();
+                this.switchView();
+                
+                this.measurePerformance();
+            }
+            
+            generateMockTestData(count) {
+                const browsers = ['chromium', 'firefox', 'webkit', 'Mobile Chrome', 'Mobile Safari'];
+                const statuses = ['passed', 'failed', 'skipped'];
+                const testFiles = [
+                    'auth.spec.ts',
+                    'homepage.spec.ts', 
+                    'map-interaction.spec.ts',
+                    'theme.spec.ts',
+                    'api.spec.ts',
+                    'responsive.spec.ts'
+                ];
+                
+                const testNames = [
+                    'should load page correctly',
+                    'should handle user authentication',
+                    'should display navigation elements',
+                    'should switch themes properly',
+                    'should handle form submission',
+                    'should be mobile responsive',
+                    'should handle API errors gracefully',
+                    'should validate input fields',
+                    'should navigate between pages',
+                    'should maintain user session'
+                ];
+                
+                const data = [];
+                
+                for (let i = 0; i < count; i++) {
+                    const status = statuses[Math.floor(Math.random() * statuses.length)];
+                    const browser = browsers[Math.floor(Math.random() * browsers.length)];
+                    const file = testFiles[Math.floor(Math.random() * testFiles.length)];
+                    const testName = testNames[Math.floor(Math.random() * testNames.length)];
+                    
+                    data.push({
+                        id: i,
+                        title: `${testName} #${i + 1}`,
+                        file: `e2e/${file}`,
+                        browser: browser,
+                        status: status,
+                        duration: Math.floor(Math.random() * 5000) + 100,
+                        error: status === 'failed' ? `Test failed at line ${Math.floor(Math.random() * 100) + 1}: Element not found` : null
+                    });
+                }
+                
+                return data;
+            }
+            
+            updateStats() {
+                const stats = this.testData.reduce((acc, test) => {
+                    acc.total++;
+                    acc[test.status]++;
+                    acc.duration += test.duration;
+                    return acc;
+                }, { total: 0, passed: 0, failed: 0, skipped: 0, duration: 0 });
+                
+                document.getElementById('totalTests').textContent = stats.total;
+                document.getElementById('passedTests').textContent = stats.passed;
+                document.getElementById('failedTests').textContent = stats.failed;
+                document.getElementById('skippedTests').textContent = stats.skipped;
+                document.getElementById('totalDuration').textContent = `${(stats.duration / 1000).toFixed(1)}s`;
+            }
+            
+            applyFilters() {
+                this.filteredData = this.testData.filter(test => {
+                    // Filter by status
+                    if (this.currentFilter !== 'all' && test.status !== this.currentFilter) {
+                        return false;
+                    }
+                    
+                    // Filter by search term
+                    if (this.searchTerm && !test.title.toLowerCase().includes(this.searchTerm) && 
+                        !test.file.toLowerCase().includes(this.searchTerm)) {
+                        return false;
+                    }
+                    
+                    return true;
+                });
+                
+                if (this.renderer) {
+                    this.renderer.filter ? this.renderer.filter(() => true) : this.renderer.setData(this.filteredData);
+                    this.updateRenderedCount();
+                }
+            }
+            
+            switchView() {
+                const container = document.getElementById('testList');
+                
+                if (this.currentView === 'virtualized') {
+                    this.renderer = new VirtualizedTestRenderer(container, {
+                        itemHeight: 70,
+                        bufferSize: 10
+                    });
+                } else {
+                    this.renderer = new PaginatedReportManager(container, {
+                        pageSize: 25
+                    });
+                    
+                    // Set up page render callback
+                    this.renderer.onPageRender = (pageData) => {
+                        this.renderPageData(pageData);
+                    };
+                    
+                    // Expose to global scope for pagination buttons
+                    window.reportManager = this.renderer;
+                }
+                
+                this.renderer.setData(this.filteredData);
+                this.updateRenderedCount();
+                this.measurePerformance();
+            }
+            
+            renderPageData(pageData) {
+                const container = document.getElementById('testList');
+                const listContainer = container.querySelector('.visible-items') || container;
+                
+                // Clear existing content (except pagination)
+                const paginationContainer = container.querySelector('.pagination-container');
+                container.innerHTML = '';
+                if (paginationContainer) {
+                    container.appendChild(paginationContainer);
+                }
+                
+                // Create list container
+                const visibleContainer = document.createElement('div');
+                visibleContainer.className = 'visible-items';
+                visibleContainer.style.padding = '0';
+                container.insertBefore(visibleContainer, paginationContainer);
+                
+                if (pageData.length === 0) {
+                    visibleContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🔍</div>
+                            <h3>No tests found</h3>
+                            <p>Try adjusting your search or filter criteria</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                pageData.forEach((test, index) => {
+                    const element = this.createTestElement(test, index);
+                    visibleContainer.appendChild(element);
+                });
+            }
+            
+            createTestElement(test, index) {
+                const div = document.createElement('div');
+                div.className = `test-item ${test.status}`;
+                div.style.cssText = `
+                    height: 70px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+                    display: flex; align-items: center; cursor: pointer;
+                    transition: background-color 0.2s;
+                `;
+                
+                div.innerHTML = `
+                    <div style="flex: 0 0 24px; margin-right: 12px;">
+                        ${this.getStatusIcon(test.status)}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 500; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;">
+                            ${this.escapeHtml(test.title)}
+                        </div>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                            ${test.file} • ${test.duration}ms
+                        </div>
+                    </div>
+                    <div style="flex: 0 0 auto; font-size: 12px; color: #666; text-align: right;">
+                        <div>${test.browser}</div>
+                        <div style="margin-top: 2px; font-size: 10px; text-transform: uppercase; color: #999;">
+                            ${test.status}
+                        </div>
+                    </div>
+                `;
+                
+                div.addEventListener('click', () => this.showTestDetails(test));
+                
+                return div;
+            }
+            
+            getStatusIcon(status) {
+                const icons = {
+                    passed: '<span style="color: #22c55e; font-size: 16px;">✓</span>',
+                    failed: '<span style="color: #ef4444; font-size: 16px;">✗</span>',
+                    skipped: '<span style="color: #f59e0b; font-size: 16px;">○</span>'
+                };
+                return icons[status] || icons.passed;
+            }
+            
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            showTestDetails(test) {
+                const panel = document.getElementById('detailPanel');
+                panel.classList.remove('hidden');
+                
+                panel.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 600; line-height: 1.3;">
+                            ${this.escapeHtml(test.title)}
+                        </h3>
+                        <button onclick="document.getElementById('detailPanel').classList.add('hidden')" 
+                                style="border: none; background: none; font-size: 20px; cursor: pointer; padding: 4px; color: #666;">
+                            ×
+                        </button>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            ${this.getStatusIcon(test.status)}
+                            <span style="text-transform: capitalize; font-weight: 500; color: ${this.getStatusColor(test.status)};">
+                                ${test.status}
+                            </span>
+                        </div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 4px;">
+                            <strong>File:</strong> ${test.file}
+                        </div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 4px;">
+                            <strong>Browser:</strong> ${test.browser}
+                        </div>
+                        <div style="font-size: 14px; color: #666;">
+                            <strong>Duration:</strong> ${test.duration}ms
+                        </div>
+                    </div>
+                    
+                    ${test.error ? `
+                        <div style="margin-bottom: 16px;">
+                            <h4 style="color: #dc2626; margin-bottom: 8px;">Error Details</h4>
+                            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 12px; font-family: monospace; font-size: 13px; color: #dc2626; white-space: pre-wrap;">
+                                ${this.escapeHtml(test.error)}
+                            </div>
+                        </div>
+                    ` : `
+                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 12px; color: #16a34a;">
+                            ✓ Test passed successfully
+                        </div>
+                    `}
+                    
+                    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+                        <h4 style="margin-bottom: 8px; font-size: 14px; color: #666;">Test Actions</h4>
+                        <button style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 8px;">
+                            Re-run Test
+                        </button>
+                        <button style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            View in IDE
+                        </button>
+                    </div>
+                `;
+            }
+            
+            getStatusColor(status) {
+                const colors = {
+                    passed: '#16a34a',
+                    failed: '#dc2626',
+                    skipped: '#d97706'
+                };
+                return colors[status] || '#666';
+            }
+            
+            updateRenderedCount() {
+                document.getElementById('renderedCount').textContent = this.filteredData.length;
+                document.getElementById('totalCount').textContent = this.testData.length;
+            }
+            
+            measurePerformance() {
+                const now = performance.now();
+                this.performanceMetrics.renderTime = now - this.performanceMetrics.startTime;
+                
+                if (performance.memory) {
+                    this.performanceMetrics.memoryUsage = performance.memory.usedJSHeapSize / 1024 / 1024;
+                }
+                
+                this.updatePerformanceIndicator();
+            }
+            
+            updatePerformanceIndicator() {
+                const indicator = document.getElementById('performanceIndicator');
+                const statusElement = document.getElementById('performanceStatus');
+                
+                const renderTime = this.performanceMetrics.renderTime;
+                const memoryUsage = this.performanceMetrics.memoryUsage;
+                
+                let status = 'Good';
+                let className = 'good';
+                
+                if (renderTime > 2000 || memoryUsage > 100) {
+                    status = 'Poor';
+                    className = 'poor';
+                } else if (renderTime > 1000 || memoryUsage > 50) {
+                    status = 'Warning';
+                    className = 'warning';
+                }
+                
+                statusElement.textContent = status;
+                indicator.className = `performance-indicator ${className}`;
+                
+                // Update tooltip
+                indicator.title = `Render Time: ${renderTime.toFixed(2)}ms\nMemory Usage: ${memoryUsage.toFixed(2)}MB`;
+            }
+        }
+        
+        // Initialize the optimized report
+        document.addEventListener('DOMContentLoaded', () => {
+            new OptimizedPlaywrightReport();
+        });
+    </script>
+</body>
+</html>

@@ -90,13 +90,13 @@ export const useMaplibre = ({
         mapRef.current.on('click', handleClick);
       }
 
-    } catch (error) {
-      console.error("Map initialization failed:", error);
-      const initError: MapError = {
-        type: 'initialization',
-        message: 'Failed to initialize map',
-        originalError: error as maplibregl.ErrorEvent
-      };
+    } catch (error: unknown) {
+       console.error("Map initialization failed:", error);
+       const initError: MapError = {
+         type: 'initialization',
+         message: 'Failed to initialize map',
+        originalError: undefined
+       };
       setError(initError);
       setMapState('error');
       onError?.(initError);

@@ -65,10 +65,12 @@ describe('MapComponent', () => {
       expect(mapContainer).toHaveClass('custom-map-class')
     })
 
-    it('When component mounts, Then it should initialize PMTiles protocol', () => {
+    it('When component mounts, Then it should initialize PMTiles protocol', async () => {
       render(<MapComponent />)
       
-      expect(mockUsePmtiles).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockUsePmtiles).toHaveBeenCalled()
+      })
     })
 
     it('When component mounts, Then it should initialize MapLibre with correct props', () => {

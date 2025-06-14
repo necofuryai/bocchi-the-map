@@ -25,62 +25,62 @@ describe('Button Component', () => {
   })
 
   describe('Given the Button component with different variants', () => {
-    it('When variant is "default", Then it should have default variant classes', () => {
+    it('When variant is "default", Then it should have default variant data attribute', () => {
       render(<Button variant="default">Default Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('bg-primary', 'text-primary-foreground')
+      expect(button).toHaveAttribute('data-variant', 'default')
     })
 
-    it('When variant is "destructive", Then it should have destructive variant classes', () => {
+    it('When variant is "destructive", Then it should have destructive variant data attribute', () => {
       render(<Button variant="destructive">Delete Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('bg-destructive', 'text-destructive-foreground')
+      expect(button).toHaveAttribute('data-variant', 'destructive')
     })
 
-    it('When variant is "outline", Then it should have outline variant classes', () => {
+    it('When variant is "outline", Then it should have outline variant data attribute', () => {
       render(<Button variant="outline">Outline Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('border', 'border-input', 'bg-background')
+      expect(button).toHaveAttribute('data-variant', 'outline')
     })
 
-    it('When variant is "ghost", Then it should have ghost variant classes', () => {
+    it('When variant is "ghost", Then it should have ghost variant data attribute', () => {
       render(<Button variant="ghost">Ghost Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('hover:bg-accent', 'hover:text-accent-foreground')
+      expect(button).toHaveAttribute('data-variant', 'ghost')
     })
   })
 
   describe('Given the Button component with different sizes', () => {
-    it('When size is "default", Then it should have default size classes', () => {
+    it('When size is "default", Then it should have default size data attribute', () => {
       render(<Button size="default">Default Size</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('h-9', 'px-4', 'py-2')
+      expect(button).toHaveAttribute('data-size', 'default')
     })
 
-    it('When size is "sm", Then it should have small size classes', () => {
+    it('When size is "sm", Then it should have small size data attribute', () => {
       render(<Button size="sm">Small Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('h-8', 'px-3', 'text-xs')
+      expect(button).toHaveAttribute('data-size', 'sm')
     })
 
-    it('When size is "lg", Then it should have large size classes', () => {
+    it('When size is "lg", Then it should have large size data attribute', () => {
       render(<Button size="lg">Large Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('h-10', 'px-8')
+      expect(button).toHaveAttribute('data-size', 'lg')
     })
 
-    it('When size is "icon", Then it should have icon size classes', () => {
+    it('When size is "icon", Then it should have icon size data attribute', () => {
       render(<Button size="icon">Icon</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('h-9', 'w-9')
+      expect(button).toHaveAttribute('data-size', 'icon')
     })
   })
 

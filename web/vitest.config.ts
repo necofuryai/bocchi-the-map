@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
+import { fileURLToPath } from 'url'
 
 export default defineConfig({
   test: {
@@ -7,6 +8,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    exclude: ['e2e/**/*', 'node_modules/**/*'],
+    typecheck: {
+      tsconfig: './tsconfig.test.json',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
@@ -16,12 +21,13 @@ export default defineConfig({
         '**/*.d.ts',
         '**/*.config.*',
         '**/coverage/**',
+        'e2e/**/*',
       ],
     },
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      '@': resolve(fileURLToPath(new URL('.', import.meta.url)), './src'),
     },
   },
 })

@@ -24,7 +24,7 @@ test.describe('Homepage E2E Tests', () => {
       await expect(userMenuButton).toBeVisible()
       
       // And desktop navigation should be visible on larger screens
-      if (await page.viewportSize()?.width! >= 768) {
+      if (page.viewportSize()?.width! >= 768) {
         await expect(page.getByText('スポットを探す').first()).toBeVisible()
         await expect(page.getByText('レビューを書く').first()).toBeVisible()
       }
@@ -94,9 +94,9 @@ test.describe('Homepage E2E Tests', () => {
       const errorMessage = page.getByRole('alert')
       await expect(errorMessage).not.toBeVisible()
       
-      // Check that loading indicator disappears eventually
+      // Wait for loading indicator to be detached from DOM
       const loadingIndicator = page.getByText('Loading map...')
-      await expect(loadingIndicator).not.toBeVisible({ timeout: 10000 })
+      await loadingIndicator.waitFor({ state: 'detached', timeout: 10000 })
     })
 
     test('When the map fails to load, Then error handling should work gracefully', async ({ page }) => {
@@ -106,8 +106,11 @@ test.describe('Homepage E2E Tests', () => {
       
       await page.goto('/')
       
-      // Then an error state should be handled gracefully
-      // (Either showing error message or continuing to show loading)
+      // Then an error message should be displayed to inform the user
+      const errorAlert = page.getByRole('alert')
+      await expect(errorAlert).toBeVisible({ timeout: 10000 })
+      
+      // And the map container should still be present
       const mapContainer = page.locator('[style*="height"]').first()
       await expect(mapContainer).toBeVisible()
     })

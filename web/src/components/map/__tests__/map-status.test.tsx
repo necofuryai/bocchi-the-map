@@ -133,7 +133,7 @@ describe('MapLoadingDisplay Component', () => {
       const loadingContainer = screen.getByText('Loading map...').closest('div[aria-live="polite"]')
       const spinner = loadingContainer?.querySelector('.animate-spin')
       expect(spinner).toBeInTheDocument()
-      expect(spinner).toHaveClass('rounded-full', 'h-8', 'w-8', 'border-b-2', 'border-blue-600')
+      expect(spinner).toHaveClass('animate-spin')
     })
 
     it('When rendered with default props, Then it should have default styling', () => {

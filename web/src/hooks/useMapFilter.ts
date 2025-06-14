@@ -31,7 +31,7 @@ export const useMapFilter = (initialKinds: readonly POIKind[] = []) => {
   });
 
   // Update filter kinds
-  const updateKinds = useCallback((kinds: POIKind[]) => {
+  const updateKinds = useCallback((kinds: readonly POIKind[]) => {
     setFilter(prev => {
       const uniqueKinds = Array.from(new Set(kinds));
       if (

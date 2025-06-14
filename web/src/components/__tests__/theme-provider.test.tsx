@@ -3,8 +3,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
 
 // Mock next-themes
+const mockThemeProvider = vi.fn(({ children }) => children)
 vi.mock('next-themes', () => ({
-  ThemeProvider: vi.fn(({ children }) => children),
+  ThemeProvider: mockThemeProvider,
 }))
 
 import { ThemeProvider } from '../theme-provider'
@@ -21,6 +22,14 @@ describe('ThemeProvider Component', () => {
       )
       
       expect(getByTestId('test-child')).toBeInTheDocument()
+      expect(mockThemeProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attribute: 'class',
+          defaultTheme: 'system',
+          enableSystem: true,
+        }),
+        expect.anything()
+      )
     })
 
     it('When provided with props, Then it should render children correctly', () => {
@@ -38,6 +47,15 @@ describe('ThemeProvider Component', () => {
       )
       
       expect(getByText('Test Content')).toBeInTheDocument()
+      expect(mockThemeProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attribute: 'data-theme',
+          defaultTheme: 'dark',
+          enableSystem: false,
+          disableTransitionOnChange: true,
+        }),
+        expect.anything()
+      )
     })
 
     it('When used as a wrapper, Then it should provide theme context to children', () => {
@@ -52,6 +70,7 @@ describe('ThemeProvider Component', () => {
       )
       
       expect(getByTestId('themed-component')).toBeInTheDocument()
+      expect(mockThemeProvider).toHaveBeenCalled()
     })
   })
 })

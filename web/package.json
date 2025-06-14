@@ -7,9 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "test": "vitest --environment jsdom",
+    "test:ui": "vitest --ui --environment jsdom",
+    "test:coverage": "vitest --coverage --environment jsdom",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

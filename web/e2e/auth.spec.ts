@@ -31,11 +31,35 @@ test.describe('Authentication E2E Tests', () => {
 
   test.describe('Given an authenticated user', () => {
     test.beforeEach(async ({ page }) => {
-      // Mock authentication state
-      await page.addInitScript(() => {
-        // Mock NextAuth session
-        window.localStorage.setItem('nextauth.session-token', 'mock-token')
+      // Mock authentication state by setting NextAuth session cookie
+      await page.context().addCookies([
+        {
+          name: 'next-auth.session-token',
+          value: 'mock-session-token-value',
+          domain: 'localhost',
+          path: '/',
+          httpOnly: true,
+          secure: false,
+          sameSite: 'Lax'
+        }
+      ])
+      
+      // Also mock the session API response
+      await page.route('**/api/auth/session', route => {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            user: {
+              id: 'mock-user-id',
+              name: 'テストユーザー',
+              email: 'test@example.com'
+            },
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          })
+        })
       })
+      
       await page.goto('/')
     })
 
@@ -99,18 +123,46 @@ test.describe('Authentication E2E Tests', () => {
 
   test.describe('Given session management', () => {
     test('When the session expires, Then the user should be handled appropriately', async ({ page }) => {
-      // Start with a valid session
-      await page.addInitScript(() => {
-        window.localStorage.setItem('nextauth.session-token', 'valid-token')
+      // Start with a valid session cookie
+      await page.context().addCookies([
+        {
+          name: 'next-auth.session-token',
+          value: 'valid-session-token',
+          domain: 'localhost',
+          path: '/',
+          httpOnly: true,
+          secure: false,
+          sameSite: 'Lax'
+        }
+      ])
+      
+      // Mock valid session API response
+      await page.route('**/api/auth/session', route => {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            user: {
+              id: 'user-id',
+              name: 'テストユーザー',
+              email: 'test@example.com'
+            },
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          })
+        })
       })
+      
       await page.goto('/')
       
-      // Then expire the session
-      await page.addInitScript(() => {
-        window.localStorage.removeItem('nextauth.session-token')
+      // Then expire the session by clearing cookie and mocking expired response
+      await page.context().clearCookies()
+      await page.route('**/api/auth/session', route => {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({})
+        })
       })
-      
-      // Refresh the page to trigger session check
       await page.reload()
       
       // The application should handle the expired session gracefully
@@ -119,9 +171,35 @@ test.describe('Authentication E2E Tests', () => {
     })
 
     test('When session is refreshed, Then user state should be maintained', async ({ page }) => {
-      await page.addInitScript(() => {
-        window.localStorage.setItem('nextauth.session-token', 'mock-token')
+      // Set NextAuth session cookie
+      await page.context().addCookies([
+        {
+          name: 'next-auth.session-token',
+          value: 'refreshed-session-token',
+          domain: 'localhost',
+          path: '/',
+          httpOnly: true,
+          secure: false,
+          sameSite: 'Lax'
+        }
+      ])
+      
+      // Mock session API response
+      await page.route('**/api/auth/session', route => {
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            user: {
+              id: 'refreshed-user-id',
+              name: 'リフレッシュユーザー',
+              email: 'refresh@example.com'
+            },
+            expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          })
+        })
       })
+      
       await page.goto('/')
       
       const userMenuButton = page.getByRole('button', { name: 'ユーザーメニューを開く' })

@@ -8,11 +8,11 @@ test.describe('Map Interaction E2E Tests', () => {
 
     test('When the page loads, Then the map should initialize', async ({ page }) => {
       // Wait for map container to be visible
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
-      // Wait for loading to complete (or timeout)
-      await page.waitForTimeout(3000)
+      // Wait for map container to be visible with timeout
+      await expect(mapContainer).toBeVisible({ timeout: 3000 })
       
       // Check that map has loaded (no error state)
       const errorAlert = page.getByRole('alert')
@@ -36,6 +36,7 @@ test.describe('Map Interaction E2E Tests', () => {
       
       // Try to interact with the map (if it's loaded)
       const mapBounds = await mapContainer.boundingBox()
+      expect(mapBounds).not.toBeNull()
       if (mapBounds) {
         // Click on the map center
         await page.mouse.click(
@@ -52,7 +53,7 @@ test.describe('Map Interaction E2E Tests', () => {
       // Block map-related requests to simulate loading failure
       await page.route('**/*.pbf', route => route.abort())
       await page.route('**/*tiles*', route => route.abort())
-      await page.route('**/pmtiles**', route => route.abort())
+      await page.route('**/*.pmtiles', route => route.abort())
       
       await page.goto('/')
       
