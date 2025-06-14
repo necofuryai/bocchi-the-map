@@ -9,7 +9,8 @@
 **And** after successful authentication, the user should be redirected back to the app  
 **And** the user should be logged in  
 
-### Scenario: User can sign-out
+### Scenario: User can sign out
+
 **Given** the user is logged in  
 **When** the user clicks the sign-out button  
 **Then** the user should be logged out  
