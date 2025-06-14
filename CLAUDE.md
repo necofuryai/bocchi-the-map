@@ -66,8 +66,7 @@ This is a monorepo with three main modules:
 cd api
 make deps              # Install Go dependencies
 make proto             # Generate protobuf files
-make sqlc              # Generate sqlc code from SQL queries
-make test              # Run BDD specs with Ginkgo
+make test              # Run test suite
 make run               # Run server
 make dev               # Run with hot reload (requires air)
 make build             # Build binary to bin/api
@@ -81,13 +80,14 @@ make docs              # Generate OpenAPI documentation
 
 ```bash
 cd web
-pnpm install           # Install dependencies
+pnpm install           # Install dependencies (auto-installs Playwright)
 pnpm dev               # Development server (with Turbopack)
 pnpm build             # Production build
 pnpm start             # Start production server
 pnpm lint              # ESLint + TypeScript checking
 pnpm test              # Run unit/component tests with Vitest
 pnpm test:ui           # Run Vitest with UI mode
+pnpm test:coverage     # Run tests with coverage report
 pnpm test:e2e          # Run E2E tests with Playwright
 pnpm test:e2e:ui       # Run Playwright with UI mode
 # Note: React 19 dependency conflicts are generally resolved better with pnpm
@@ -183,7 +183,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 - Node.js 20+
 - Modern browser with ES modules support
 - Vitest: `pnpm add -D vitest @vitest/ui` (unit/component testing)
-- Playwright: `pnpm add -D @playwright/test` (E2E testing)
+- Playwright: `pnpm add -D @playwright/test` (E2E testing - auto-installed via postinstall)
 - Note: React 19 dependency conflicts are generally resolved better with pnpm
 
 #### Infrastructure
