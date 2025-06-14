@@ -40,6 +40,7 @@ This is a monorepo with three main modules:
 - Styling: Tailwind CSS + Shadcn/ui
 - Auth: NextAuth.js (Google/X OAuth)
 - Maps: MapLibre GL JS
+- Testing: Vitest (unit/component tests) + Playwright (E2E tests)
 - Hosting: Cloudflare Pages
 
 **Backend (api/)**
@@ -85,6 +86,10 @@ npm run dev            # Development server (with Turbopack)
 npm run build          # Production build
 npm run start          # Start production server
 npm run lint           # ESLint + TypeScript checking
+npm run test           # Run unit/component tests with Vitest
+npm run test:ui        # Run Vitest with UI mode
+npm run test:e2e       # Run E2E tests with Playwright
+npm run test:e2e:ui    # Run Playwright with UI mode
 # Note: React 19 dependency conflicts may require --legacy-peer-deps if needed
 ```
 
@@ -177,6 +182,8 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - Node.js 20+
 - Modern browser with ES modules support
+- Vitest: `npm install -D vitest @vitest/ui` (unit/component testing)
+- Playwright: `npm install -D @playwright/test` (E2E testing)
 - Note: React 19 dependency conflicts may require `--legacy-peer-deps` flag
 
 #### Infrastructure
