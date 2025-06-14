@@ -442,7 +442,7 @@ getTTFB(sendToAnalytics)
 
 ## 🚢 Deployment
 
-### Cloudflare Pages
+### Vercel
 
 ```bash
 # Build and deploy

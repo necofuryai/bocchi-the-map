@@ -46,7 +46,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 | **Database** | TiDB Serverless | MySQL-compatible, auto-scaling, built for cloud |
 | **Maps** | MapLibre GL JS | Open-source, vector tiles, highly customizable |
 | **Storage** | Cloudflare R2 | PMTiles format for efficient map delivery |
-| **Hosting** | Cloud Run + Cloudflare | Auto-scaling, edge distribution |
+| **Hosting** | Cloud Run + Vercel | Auto-scaling, edge distribution |
 | **DevOps** | Terraform + GitHub Actions | Infrastructure as Code, automated deployments |
 
 ## 🎯 Quick Start

@@ -41,7 +41,7 @@ This is a monorepo with three main modules:
 - Auth: NextAuth.js (Google/X OAuth)
 - Maps: MapLibre GL JS
 - Testing: Vitest (unit/component tests) + Playwright (E2E tests)
-- Hosting: Cloudflare Pages
+- Hosting: Vercel
 
 **Backend (api/)**
 - Language: Golang
@@ -190,7 +190,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - Terraform 1.5+
 - Google Cloud SDK (for Cloud Run deployment)
-- Cloudflare CLI (for Pages deployment)
+- Vercel CLI (for deployment)
 
 ### Important Development Notes
 

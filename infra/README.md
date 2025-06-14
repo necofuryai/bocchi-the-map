@@ -28,7 +28,7 @@ terraform apply                # Deploy infrastructure 🚀
 
 ```text
 🌐 Global Edge Network (Cloudflare)
-├── 📱 Frontend (Pages) - 300+ edge locations
+├── 📱 Frontend (Vercel) - Global edge network
 ├── 🗄️ Static Assets (R2) - PMTiles map storage
 └── 🔒 Security (WAF, DDoS protection)
 
@@ -71,10 +71,10 @@ module "gcp_cloud_run" {
   memory_limit = "2Gi"
 }
 
-module "cloudflare_pages" {
-  source = "./modules/cloudflare"
+module "vercel_deployment" {
+  source = "./modules/vercel"
   
-  account_id  = var.cloudflare_account_id
+  team_id     = var.vercel_team_id
   domain_name = "bocchi-map.com"
   
   # Edge optimization
@@ -162,32 +162,30 @@ resource "google_cloud_run_service" "api" {
 
 ## 🌐 Cloudflare Edge Network
 
-### Pages Deployment
+### Vercel Deployment
 
 ```hcl
-resource "cloudflare_pages_project" "frontend" {
-  account_id        = var.cloudflare_account_id
-  name             = "bocchi-map"
-  production_branch = "main"
+resource "vercel_project" "frontend" {
+  name      = "bocchi-map"
+  team_id   = var.vercel_team_id
+  framework = "nextjs"
 
-  source {
+  git_repository {
     type = "github"
-    config {
-      owner                         = "necofuryai"
-      repo_name                     = "bocchi-the-map"
-      production_branch             = "main"
-      pr_comments_enabled          = true
-      deployments_enabled          = true
-      production_deployment_enabled = true
-      preview_deployment_setting   = "all"
-    }
+    repo = "necofuryai/bocchi-the-map"
   }
 
-  build_config {
-    build_command   = "pnpm build"
-    destination_dir = "out"
-    root_dir        = "web"
-  }
+  build_command    = "pnpm build"
+  output_directory = "out"
+  root_directory   = "web"
+
+  environment = [
+    {
+      key    = "NEXT_PUBLIC_API_URL"
+      value  = "https://api.bocchi-map.com"
+      target = ["production"]
+    }
+  ]
 }
 ```
 
@@ -206,12 +204,12 @@ resource "cloudflare_worker" "map_worker" {
 }
 ```
 
-**Edge Advantages:**
+**Vercel Advantages:**
 
-- **Global CDN** - 300+ locations worldwide
-- **Smart Routing** - Traffic optimization via Argo
-- **DDoS Protection** - Built-in security layer
-- **Cost Efficiency** - Bandwidth included
+- **Global Edge Network** - 40+ regions worldwide
+- **Automatic Deployments** - GitHub integration with previews
+- **Edge Functions** - Serverless compute at the edge
+- **Zero Configuration** - Optimized for Next.js
 
 ## 💾 Database Architecture
 
