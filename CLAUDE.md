@@ -81,16 +81,16 @@ make docs              # Generate OpenAPI documentation
 
 ```bash
 cd web
-npm install            # Install dependencies
-npm run dev            # Development server (with Turbopack)
-npm run build          # Production build
-npm run start          # Start production server
-npm run lint           # ESLint + TypeScript checking
-npm run test           # Run unit/component tests with Vitest
-npm run test:ui        # Run Vitest with UI mode
-npm run test:e2e       # Run E2E tests with Playwright
-npm run test:e2e:ui    # Run Playwright with UI mode
-# Note: React 19 dependency conflicts may require --legacy-peer-deps if needed
+pnpm install           # Install dependencies
+pnpm dev               # Development server (with Turbopack)
+pnpm build             # Production build
+pnpm start             # Start production server
+pnpm lint              # ESLint + TypeScript checking
+pnpm test              # Run unit/component tests with Vitest
+pnpm test:ui           # Run Vitest with UI mode
+pnpm test:e2e          # Run E2E tests with Playwright
+pnpm test:e2e:ui       # Run Playwright with UI mode
+# Note: React 19 dependency conflicts are generally resolved better with pnpm
 ```
 
 ### Frontend Architecture (web/)
@@ -182,9 +182,9 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - Node.js 20+
 - Modern browser with ES modules support
-- Vitest: `npm install -D vitest @vitest/ui` (unit/component testing)
-- Playwright: `npm install -D @playwright/test` (E2E testing)
-- Note: React 19 dependency conflicts may require `--legacy-peer-deps` flag
+- Vitest: `pnpm add -D vitest @vitest/ui` (unit/component testing)
+- Playwright: `pnpm add -D @playwright/test` (E2E testing)
+- Note: React 19 dependency conflicts are generally resolved better with pnpm
 
 #### Infrastructure
 

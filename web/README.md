@@ -13,8 +13,8 @@ A **performance-first PWA** for solo location discovery, built with React Server
 
 ```bash
 # Prerequisites: Node.js 20+
-npm install                     # Install dependencies
-npm run dev                     # Start with Turbopack 🚀
+pnpm install                    # Install dependencies
+pnpm dev                        # Start with Turbopack 🚀
 
 # App ready at http://localhost:3000
 # Lightning-fast HMR with Turbopack
@@ -131,10 +131,10 @@ web/
 
 ```bash
 # Analyze bundle size
-npm run build && npm run analyze
+pnpm build && pnpm analyze
 
 # Performance profiling
-npm run dev -- --experimental-https
+pnpm dev -- --experimental-https
 lighthouse https://localhost:3000
 ```
 
@@ -281,16 +281,16 @@ export const authOptions: NextAuthOptions = {
 
 ```bash
 # Unit tests with Vitest
-npm run test:unit
+pnpm test:unit
 
 # Component tests with Testing Library
-npm run test:components
+pnpm test:components
 
 # E2E tests with Playwright
-npm run test:e2e
+pnpm test:e2e
 
 # Visual regression tests
-npm run test:visual
+pnpm test:visual
 ```
 
 ### Test Examples
@@ -324,17 +324,17 @@ test('user can search for spots', async ({ page }) => {
 
 ```bash
 # Development server with Turbopack
-npm run dev
+pnpm dev
 
 # Development with HTTPS (for PWA testing)
-npm run dev:https
+pnpm dev:https
 
 # Type checking
-npm run type-check
+pnpm type-check
 
 # Linting and formatting
-npm run lint
-npm run format
+pnpm lint
+pnpm format
 ```
 
 ### Environment Configuration
@@ -446,8 +446,8 @@ getTTFB(sendToAnalytics)
 
 ```bash
 # Build and deploy
-npm run build
-npm run export
+pnpm build
+pnpm export
 
 # Environment variables
 NEXT_PUBLIC_API_URL=https://api.bocchi-map.com

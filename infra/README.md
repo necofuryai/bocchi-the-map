@@ -184,7 +184,7 @@ resource "cloudflare_pages_project" "frontend" {
   }
 
   build_config {
-    build_command   = "npm run build"
+    build_command   = "pnpm build"
     destination_dir = "out"
     root_dir        = "web"
   }

@@ -75,8 +75,8 @@ make dev                    # Starts on :8080 with hot reload
 
 # Frontend (Terminal 2)  
 cd web
-npm install
-npm run dev                 # Starts on :3000 with Turbopack
+pnpm install
+pnpm dev                    # Starts on :3000 with Turbopack
 
 # Visit http://localhost:3000 🎉
 ```
@@ -138,10 +138,10 @@ make docs               # Generate OpenAPI spec
 ### Web Development  
 ```bash
 cd web
-npm run dev             # Dev server with Turbopack
-npm run build           # Production build
-npm run lint            # ESLint + TypeScript
-npm test                # Jest + Testing Library
+pnpm dev                # Dev server with Turbopack
+pnpm build              # Production build
+pnpm lint               # ESLint + TypeScript
+pnpm test               # Vitest + Testing Library
 ```
 
 ### Infrastructure
