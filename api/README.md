@@ -139,6 +139,7 @@ vim interfaces/http/handlers/spot_handler.go
 ```
 
 ### 2. BDD Testing with Ginkgo
+
 ```bash
 # BDD specs with Ginkgo framework
 ginkgo -r                   # Run all BDD specs

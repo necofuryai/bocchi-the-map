@@ -4,7 +4,8 @@
 
 [![Terraform](https://img.shields.io/badge/Terraform-1.5+-7C3AED?style=flat&logo=terraform)](https://terraform.io/)
 [![Google Cloud](https://img.shields.io/badge/Google_Cloud-Run-4285F4?style=flat&logo=googlecloud)](https://cloud.google.com/)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages_+_R2-F38020?style=flat&logo=cloudflare)](https://cloudflare.com/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel)](https://vercel.com/)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-R2-F38020?style=flat&logo=cloudflare)](https://cloudflare.com/)
 [![TiDB](https://img.shields.io/badge/TiDB-Serverless-FF6B6B?style=flat)](https://tidbcloud.com/)
 
 **Production-ready infrastructure** that scales from zero to millions of users with minimal operational overhead. Built with Infrastructure as Code principles, multi-cloud redundancy, and cost optimization.
