@@ -24,7 +24,7 @@ export interface MapFilter {
 }
 
 // Hook for managing map filter state
-export const useMapFilter = (initialKinds: POIKind[] = []) => {
+export const useMapFilter = (initialKinds: readonly POIKind[] = []) => {
   const [filter, setFilter] = useState<MapFilter>({
     kinds: [...initialKinds],
     enabled: initialKinds.length > 0,
