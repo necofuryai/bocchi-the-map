@@ -37,9 +37,24 @@ test.describe('Theme Switching E2E Tests', () => {
         const newTheme = await page.locator('html').getAttribute('class')
         expect(newTheme).not.toBe(initialTheme)
       } else {
-        // If no theme toggle is implemented yet, just verify theme system is working
+        // If no theme toggle is implemented yet, verify theme system is working
         const html = page.locator('html')
         await expect(html).toBeVisible()
+        
+        // Verify that theme mechanism is functioning by checking theme-related attributes
+        const hasThemeSystem = await html.evaluate(el => {
+          // Check for theme-related classes or attributes
+          const hasThemeClass = el.classList.contains('light') || 
+                               el.classList.contains('dark') ||
+                               el.classList.contains('system')
+          const hasThemeAttribute = el.hasAttribute('data-theme') ||
+                                   el.hasAttribute('data-color-scheme')
+          const hasStyleAttribute = el.getAttribute('style')?.includes('color-scheme')
+          
+          return hasThemeClass || hasThemeAttribute || hasStyleAttribute
+        })
+        
+        expect(hasThemeSystem).toBeTruthy()
       }
     })
 
@@ -152,10 +167,17 @@ test.describe('Theme Switching E2E Tests', () => {
       
       // Test that theme affects component styling
       const headerStyles = await header.evaluate(el => {
-        return window.getComputedStyle(el)
+        const computedStyle = window.getComputedStyle(el)
+        return {
+          backgroundColor: computedStyle.backgroundColor,
+          color: computedStyle.color,
+          borderColor: computedStyle.borderColor
+        }
       })
       
       expect(headerStyles).toBeDefined()
+      expect(headerStyles.backgroundColor).toBeDefined()
+      expect(headerStyles.color).toBeDefined()
     })
 
     test('When switching themes, Then map component should adapt', async ({ page }) => {

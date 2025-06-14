@@ -37,6 +37,9 @@ describe('Header Component', () => {
       
       fireEvent.click(mobileMenuButton)
       
+      // Check that aria-expanded is updated for accessibility
+      expect(mobileMenuButton).toHaveAttribute('aria-expanded', 'true')
+      
       // Check if mobile menu items are visible
       const mobileSearchButton = screen.getAllByText('スポットを探す').find(el => 
         el.closest('[role="menuitem"]')

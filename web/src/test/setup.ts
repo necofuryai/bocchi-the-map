@@ -6,6 +6,7 @@ import { type ReactNode } from 'react'
 beforeEach(() => {
   // Reset any mocks or state before each test
   vi.clearAllMocks()
+  vi.resetModules()
 })
 
 // Mock Next.js router

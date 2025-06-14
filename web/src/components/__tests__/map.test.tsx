@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import MapComponent from '../map'
 import type { MapError } from '../map/types'
 
@@ -46,7 +46,7 @@ describe('MapComponent', () => {
     it('When the component loads successfully, Then it should display the map container', () => {
       render(<MapComponent />)
       
-      const mapContainer = screen.getByRole('generic')
+      const mapContainer = screen.getByTestId('map-container')
       expect(mapContainer).toBeInTheDocument()
       expect(mapContainer).toHaveStyle({ height: '480px' })
     })

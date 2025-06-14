@@ -28,7 +28,7 @@ test.describe('Map Interaction E2E Tests', () => {
     })
 
     test('When map loads successfully, Then it should be interactive', async ({ page }) => {
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Wait for potential loading to complete
@@ -58,7 +58,7 @@ test.describe('Map Interaction E2E Tests', () => {
       await page.goto('/')
       
       // Either an error should be shown or loading should persist
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Check for error state or loading state
@@ -82,7 +82,7 @@ test.describe('Map Interaction E2E Tests', () => {
     })
 
     test('When map controls are available, Then user should be able to interact with them', async ({ page }) => {
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Look for map control elements (these would be rendered by MapLibre)
@@ -96,7 +96,7 @@ test.describe('Map Interaction E2E Tests', () => {
     })
 
     test('When user interacts with zoom controls, Then map should respond', async ({ page }) => {
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Look for zoom controls
@@ -125,7 +125,7 @@ test.describe('Map Interaction E2E Tests', () => {
     })
 
     test('When POIs are available, Then they should be displayed on the map', async ({ page }) => {
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Look for POI markers or features on the map
@@ -143,7 +143,7 @@ test.describe('Map Interaction E2E Tests', () => {
     })
 
     test('When clicking on a POI, Then POI details should be shown', async ({ page }) => {
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Look for clickable POI elements
@@ -183,7 +183,7 @@ test.describe('Map Interaction E2E Tests', () => {
       await page.setViewportSize({ width: 1280, height: 720 })
       await page.goto('/')
       
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Map should take appropriate space on desktop
@@ -195,7 +195,7 @@ test.describe('Map Interaction E2E Tests', () => {
       await page.setViewportSize({ width: 375, height: 667 }) // iPhone SE
       await page.goto('/')
       
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Map should fit mobile screen
@@ -208,7 +208,7 @@ test.describe('Map Interaction E2E Tests', () => {
       await page.setViewportSize({ width: 375, height: 667 })
       await page.goto('/')
       
-      const mapContainer = page.locator('[style*="height"]').first()
+      const mapContainer = page.locator('[data-testid="map-container"]').first()
       await expect(mapContainer).toBeVisible()
       
       // Change to landscape

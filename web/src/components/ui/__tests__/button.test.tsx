@@ -25,62 +25,62 @@ describe('Button Component', () => {
   })
 
   describe('Given the Button component with different variants', () => {
-    it('When variant is "default", Then it should have default variant data attribute', () => {
+    it('When variant is "default", Then it should have primary background styles', () => {
       render(<Button variant="default">Default Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('data-variant', 'default')
+      expect(button).toHaveClass('bg-primary', 'text-primary-foreground', 'shadow')
     })
 
-    it('When variant is "destructive", Then it should have destructive variant data attribute', () => {
+    it('When variant is "destructive", Then it should have destructive background styles', () => {
       render(<Button variant="destructive">Delete Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('data-variant', 'destructive')
+      expect(button).toHaveClass('bg-destructive', 'text-destructive-foreground', 'shadow-sm')
     })
 
-    it('When variant is "outline", Then it should have outline variant data attribute', () => {
+    it('When variant is "outline", Then it should have outline border styles', () => {
       render(<Button variant="outline">Outline Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('data-variant', 'outline')
+      expect(button).toHaveClass('border', 'border-input', 'bg-background', 'shadow-sm')
     })
 
-    it('When variant is "ghost", Then it should have ghost variant data attribute', () => {
+    it('When variant is "ghost", Then it should have ghost hover styles', () => {
       render(<Button variant="ghost">Ghost Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('data-variant', 'ghost')
+      expect(button).toHaveClass('hover:bg-accent', 'hover:text-accent-foreground')
     })
   })
 
   describe('Given the Button component with different sizes', () => {
-    it('When size is "default", Then it should have default size data attribute', () => {
+    it('When size is "default", Then it should have default size styles', () => {
       render(<Button size="default">Default Size</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('data-size', 'default')
+      expect(button).toHaveClass('h-9', 'px-4', 'py-2')
     })
 
-    it('When size is "sm", Then it should have small size data attribute', () => {
+    it('When size is "sm", Then it should have small size styles', () => {
       render(<Button size="sm">Small Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('data-size', 'sm')
+      expect(button).toHaveClass('h-8', 'rounded-md', 'px-3', 'text-xs')
     })
 
-    it('When size is "lg", Then it should have large size data attribute', () => {
+    it('When size is "lg", Then it should have large size styles', () => {
       render(<Button size="lg">Large Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('data-size', 'lg')
+      expect(button).toHaveClass('h-10', 'rounded-md', 'px-8')
     })
 
-    it('When size is "icon", Then it should have icon size data attribute', () => {
+    it('When size is "icon", Then it should have icon size styles', () => {
       render(<Button size="icon">Icon</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveAttribute('data-size', 'icon')
+      expect(button).toHaveClass('h-9', 'w-9')
     })
   })
 
@@ -121,8 +121,8 @@ describe('Button Component', () => {
       render(<Button className="custom-class">Custom Button</Button>)
       
       const button = screen.getByRole('button')
-      expect(button).toHaveClass('custom-class')
-      expect(button).toHaveClass('inline-flex', 'items-center', 'justify-center')
+      const classNames = button.className.split(' ')
+      expect(classNames).toEqual(expect.arrayContaining(['custom-class', 'inline-flex', 'items-center', 'justify-center']))
     })
   })
 })

@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
-import { fileURLToPath } from 'url'
 
 export default defineConfig({
   test: {
@@ -27,7 +26,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(fileURLToPath(new URL('.', import.meta.url)), './src'),
+      '@': resolve('./src'),
     },
   },
 })

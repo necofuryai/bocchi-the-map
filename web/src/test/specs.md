@@ -4,7 +4,7 @@
 ### Scenario: User can sign in with Google OAuth
 **Given** the user is on the homepage  
 **When** the user clicks the sign-in button  
-**Then** the user should be redirected to Google OAuth  
+**Then** the user should be redirected to `Google OAuth`  
 **And** after successful authentication, the user should be signed in  
 **And** the user's profile should be displayed in the header  
 

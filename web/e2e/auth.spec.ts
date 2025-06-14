@@ -81,8 +81,23 @@ test.describe('Authentication E2E Tests', () => {
       const logoutButton = page.getByText('ログアウト')
       await expect(logoutButton).toBeVisible()
       
-      // Clicking logout would trigger the sign-out flow
-      // In a real test, we'd verify the user is signed out
+      // Click logout button
+      await logoutButton.click()
+      
+      // Wait for sign-out process to complete
+      await page.waitForURL('/')
+      
+      // Verify user is signed out by checking UI state
+      await expect(page.getByText('ログイン')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'ユーザーメニューを開く' })).not.toBeVisible()
+      
+      // Verify authentication cookies are cleared
+      const cookies = await page.context().cookies()
+      const authCookies = cookies.filter(cookie => 
+        cookie.name.includes('next-auth') || 
+        cookie.name.includes('session')
+      )
+      expect(authCookies.length).toBe(0)
     })
   })
 
@@ -92,7 +107,7 @@ test.describe('Authentication E2E Tests', () => {
     })
 
     test('When authentication fails, Then error should be handled gracefully', async ({ page }) => {
-      // Mock authentication error
+      // Mock authentication error before navigation
       await page.route('**/api/auth/**', route => {
         route.fulfill({
           status: 500,
@@ -100,6 +115,8 @@ test.describe('Authentication E2E Tests', () => {
           body: JSON.stringify({ error: 'Authentication failed' })
         })
       })
+      
+      await page.goto('/')
       
       // The application should continue to function even with auth errors
       const userMenuButton = page.getByRole('button', { name: 'ユーザーメニューを開く' })
@@ -115,6 +132,8 @@ test.describe('Authentication E2E Tests', () => {
           body: JSON.stringify({ error: 'Service unavailable' })
         })
       })
+      
+      await page.goto('/')
       
       // The application should still be usable
       await expect(page.getByText('Bocchi The Map')).toBeVisible()
