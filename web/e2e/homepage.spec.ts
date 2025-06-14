@@ -24,7 +24,8 @@ test.describe('Homepage E2E Tests', () => {
       await expect(userMenuButton).toBeVisible()
       
       // And desktop navigation should be visible on larger screens
-      if (page.viewportSize()?.width! >= 768) {
+      const viewport = page.viewportSize()
+      if (viewport && viewport.width >= 768) {
         await expect(page.getByText('スポットを探す').first()).toBeVisible()
         await expect(page.getByText('レビューを書く').first()).toBeVisible()
       }

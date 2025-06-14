@@ -26,8 +26,7 @@ describe('ThemeProvider Component', () => {
           attribute: 'class',
           defaultTheme: 'system',
           enableSystem: true,
-        }),
-        expect.anything()
+        })
       )
     })
 
@@ -52,8 +51,7 @@ describe('ThemeProvider Component', () => {
           defaultTheme: 'dark',
           enableSystem: false,
           disableTransitionOnChange: true,
-        }),
-        expect.anything()
+        })
       )
     })
 

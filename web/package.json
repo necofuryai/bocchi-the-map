@@ -12,7 +12,7 @@
     "test:coverage": "vitest --coverage --environment jsdom",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "postinstall": "playwright install --with-deps"
+    "postinstall": "playwright install --with-deps || true"
   },
   "dependencies": {
     "@protomaps/basemaps": "^5.4.0",

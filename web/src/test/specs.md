@@ -1,20 +1,20 @@
-# BDD Test Specifications for Bocchi The Map
+# BDD Test Specifications
 
 ## Feature: User Authentication
 ### Scenario: User can sign in with Google OAuth
-**Given** the user is on the homepage  
-**When** the user clicks the sign-in button  
-**Then** the user should be redirected to `Google OAuth`  
-**And** after successful authentication, the user should be signed in  
-**And** the user's profile should be displayed in the header  
+**Given** the user is on the login page  
+**When** the user clicks the "Sign in with Google" button  
+**Then** the user should be redirected to Google's OAuth flow  
+**And** after successful authentication, the user should be redirected back to the app  
+**And** the user should be logged in  
 
 ### Scenario: User can sign out
-**Given** the user is signed in  
-**When** the user clicks the sign-out button  
-**Then** the user should be signed out  
-**And** the sign-in button should be visible again  
+**Given** the user is logged in  
+**When** the user clicks the sign out button  
+**Then** the user should be logged out  
+**And** the user should be redirected to the login page  
 
-## Feature: Map Display and Interaction
+## Feature: Homepage Map Display
 ### Scenario: Map loads correctly on homepage
 **Given** the user visits the homepage  
 **When** the page loads  
@@ -22,141 +22,113 @@
 **And** the map should show the default location  
 **And** the map controls should be visible  
 
-### Scenario: User can interact with map controls
-**Given** the map is displayed  
-**When** the user uses navigation controls  
-**Then** the map should zoom in/out accordingly  
-**And** the map position should change as expected  
+### Scenario: Map loading state is shown
+**Given** the user visits the homepage  
+**When** the map is loading  
+**Then** a loading indicator should be displayed  
+**And** the loading indicator should disappear once the map is loaded  
 
-### Scenario: POI features are displayed on map
-**Given** the map is loaded  
-**When** POI data is available  
-**Then** POI markers should be displayed on the map  
-**And** clicking a POI marker should show details  
+### Scenario: Map error handling
+**Given** the user visits the homepage  
+**When** the map fails to load due to network issues  
+**Then** an error message should be displayed  
+**And** the user should be presented with a retry option  
 
-### Scenario: POI API returns 4xx client error
-**Given** the map is loaded  
-**When** the POI API returns a 4xx client error (e.g., 404, 400)  
-**Then** an error message should be displayed to the user  
-**And** the error UI should explain the issue clearly  
-**And** a retry button should be available  
+### Scenario: Mobile responsiveness
+**Given** the user is on a mobile device  
+**When** the user visits the homepage  
+**Then** the map should be responsive and fit the mobile screen  
+**And** all map controls should be touch-friendly  
 
-### Scenario: POI API returns 5xx server error
-**Given** the map is loaded  
-**When** the POI API returns a 5xx server error (e.g., 500, 503)  
-**Then** a server error message should be displayed to the user  
-**And** the error UI should indicate it's a temporary issue  
-**And** a retry button should be available  
-**And** an automatic retry should be attempted after a short delay  
-
-### Scenario: Network failure during POI data fetch
-**Given** the map is loaded  
-**When** a network failure occurs during POI data fetching  
-**Then** a network error message should be displayed to the user  
-**And** the error UI should indicate connectivity issues  
-**And** a retry button should be available  
-**And** the app should retry automatically when connectivity is restored  
-
-### Scenario: User can retry after POI API failure
-**Given** the POI API has failed with any error type  
-**When** the user clicks the retry button  
-**Then** the error UI should show a loading state  
-**And** a new API request should be made  
-**And** on success, POI markers should be displayed normally  
-**And** on failure, the appropriate error message should be shown again  
-
-### Scenario: POI data takes too long to load (timeout)
-**Given** the map is loaded  
-**When** the POI API request times out  
-**Then** a timeout error message should be displayed  
-**And** the error UI should suggest checking connectivity  
-**And** a retry button should be available  
-
-## Feature: Theme Switching
-### Scenario: User can switch to dark mode
-**Given** the user is on the homepage  
-**And** the current theme is light mode  
-**When** the user clicks the theme toggle button  
-**Then** the application should switch to dark mode  
-**And** the theme preference should be saved  
-
-### Scenario: User can switch to light mode
-**Given** the user is on the homepage  
-**And** the current theme is dark mode  
-**When** the user clicks the theme toggle button  
-**Then** the application should switch to light mode  
-**And** the theme preference should be saved  
-
-## Feature: Navigation and Routing
-### Scenario: User can navigate through the application
-**Given** the user is on the homepage  
-**When** the user clicks on navigation menu items  
-**Then** the user should be navigated to the correct page  
-**And** the URL should update accordingly  
-**And** the page content should load correctly  
-
-## Feature: Responsive Design
-### Scenario: Application works on mobile devices
-**Given** the user accesses the site on a mobile device  
-**When** the page loads  
-**Then** the layout should be mobile-responsive  
-**And** the map should fit the mobile screen  
-**And** navigation should be accessible on mobile  
-
-### Scenario: Application works on desktop
-**Given** the user accesses the site on a desktop  
-**When** the page loads  
-**Then** the layout should use the full desktop width  
-**And** all components should be properly positioned  
-**And** desktop-specific features should be available  
-
-### Scenario: Application maintains layout stability in landscape mode
-**Given** the user accesses the site in landscape orientation on mobile or tablet  
-**When** the page loads  
-**Then** the layout should not break in landscape orientation  
-**And** the map should adapt properly to the wider viewport  
-**And** navigation elements should remain accessible and properly positioned  
-
-## Feature: Component Behavior
-### Scenario: Header component displays correctly
+## Feature: Navigation Header
+### Scenario: Header displays correctly
 **Given** the user visits any page  
 **When** the page loads  
 **Then** the header should be visible  
-**And** the logo/title should be displayed  
-**And** navigation elements should be present  
+**And** the application logo should be displayed  
+**And** the navigation menu should be available  
 
-### Scenario: Map status indicator works
-**Given** the map is loading  
-**When** the map data is being fetched  
-**Then** a loading indicator should be shown  
-**And** when loading completes, the indicator should disappear  
-**And** if there's an error, an error message should be shown  
+### Scenario: User menu functionality
+**Given** the user is on any page  
+**When** the user clicks the user menu button  
+**Then** the user menu should open  
+**And** the menu should display user options  
 
-## Feature: Error Handling
-### Scenario: Application handles map loading errors gracefully
-**Given** the user visits the homepage  
-**When** the map fails to load  
-**Then** an error message should be displayed  
-**And** the user should be able to retry loading the map  
+### Scenario: Mobile navigation
+**Given** the user is on a mobile device  
+**When** the user visits any page  
+**Then** the mobile navigation menu should be available  
+**And** the menu should be collapsible  
 
-### Scenario: Application handles authentication errors
-**Given** the user attempts to sign in  
-**When** the authentication process fails  
-**Then** an error message should be displayed  
-**And** the user should remain on the sign-in flow
+## Feature: Theme Support
+### Scenario: User can toggle between light and dark themes
+**Given** the user is on any page  
+**When** the user clicks the theme toggle button  
+**Then** the theme should switch from light to dark or vice versa  
+**And** the theme preference should be saved  
 
-### Scenario: Retry button functions correctly after map loading error
-**Given** the map fails to load and displays an error message  
+### Scenario: System theme preference is respected
+**Given** the user has not manually selected a theme  
+**When** the user visits the app  
+**Then** the app should use the system's theme preference  
+**And** the theme should update if the system theme changes  
+
+## Feature: POI (Point of Interest) Filtering
+### Scenario: User can filter POIs by type
+**Given** the user is viewing the map  
+**When** the user selects a specific POI type filter  
+**Then** only POIs of that type should be displayed on the map  
+**And** other POI types should be hidden  
+
+### Scenario: User can clear POI filters
+**Given** the user has applied POI filters  
+**When** the user clicks the clear filter button  
+**Then** all POI types should be displayed again  
+**And** the filter selection should be reset  
+
+### Scenario: Filter state persists during navigation
+**Given** the user has selected specific POI filters  
+**When** the user navigates to a different page and returns  
+**Then** the selected filters should still be applied  
+**And** the map should show the filtered POIs  
+
+## Feature: Accessibility
+### Scenario: Keyboard navigation works correctly
+**Given** the user is using keyboard navigation  
+**When** the user tabs through the interface  
+**Then** all interactive elements should be focusable  
+**And** focus indicators should be clearly visible  
+
+### Scenario: Screen reader compatibility
+**Given** the user is using a screen reader  
+**When** the user navigates the application  
+**Then** all content should be properly announced  
+**And** ARIA labels should provide context for interactive elements  
+
+## Feature: Performance and Loading
+### Scenario: Page loads within acceptable time
+**Given** the user visits any page  
+**When** the page starts loading  
+**Then** the page should load within 3 seconds on a standard connection  
+**And** critical content should be visible within 1 second  
+
+### Scenario: Map tiles load efficiently
+**Given** the user is viewing the map  
+**When** the user pans or zooms the map  
+**Then** new map tiles should load smoothly  
+**And** there should be minimal delay in tile rendering  
+
+## Feature: Error Handling and Recovery
+### Scenario: Network error recovery
+**Given** the user encounters a network error  
+**When** the error occurs  
+**Then** an appropriate error message should be displayed  
+**And** the user should be provided with recovery options  
+
+### Scenario: Retry functionality works correctly
+**Given** the user encounters an error with a retry option  
 **When** the user clicks the retry button  
-**Then** the map should attempt to reload  
-**And** the error message should be cleared  
-**And** a loading indicator should be shown during retry  
-
-### Scenario: Retry button handles multiple rapid clicks gracefully
-**Given** the map fails to load and displays a retry button  
-**When** the user rapidly clicks the retry button multiple times  
-**Then** only one retry attempt should be initiated  
-**And** subsequent clicks should be ignored until the current retry completes  
+**Then** the failed operation should be attempted again  
 **And** the button should be disabled during the retry process  
 
 ### Scenario: Retry button recovers from failed retry attempts

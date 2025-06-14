@@ -42,6 +42,10 @@ describe('MapComponent', () => {
     mockUsePmtiles.mockReturnValue(undefined)
   })
 
+  afterEach(() => {
+    vi.resetAllMocks()
+  })
+
   describe('Given the MapComponent is rendered', () => {
     it('When the component loads successfully, Then it should display the map container', () => {
       render(<MapComponent />)

@@ -95,7 +95,10 @@ export const useMaplibre = ({
        const initError: MapError = {
          type: 'initialization',
          message: 'Failed to initialize map',
-        originalError: error instanceof Error ? error : undefined
+        originalError:
+          error instanceof maplibregl.ErrorEvent
+            ? error
+            : undefined
        };
       setError(initError);
       setMapState('error');

@@ -1,6 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
-import { SessionProvider } from 'next-auth/react'
+
+// Mock next-auth/react
+const mockSessionProvider = vi.fn(({ children }) => children)
+vi.mock('next-auth/react', () => ({
+  SessionProvider: mockSessionProvider,
+}))
+
 import { AuthProvider } from '../auth-provider'
 
 describe('AuthProvider Component', () => {
@@ -15,7 +21,7 @@ describe('AuthProvider Component', () => {
       )
       
       expect(getByTestId('test-child')).toBeInTheDocument()
-      expect(vi.mocked(SessionProvider)).toHaveBeenCalled()
+      expect(mockSessionProvider).toHaveBeenCalled()
     })
 
     it('When used as a wrapper, Then it should provide authentication context to children', () => {
@@ -30,7 +36,7 @@ describe('AuthProvider Component', () => {
       )
       
       expect(getByTestId('auth-component')).toBeInTheDocument()
-      expect(vi.mocked(SessionProvider)).toHaveBeenCalled()
+      expect(mockSessionProvider).toHaveBeenCalled()
     })
 
     it('When multiple children are provided, Then all children should be rendered', () => {
@@ -43,7 +49,7 @@ describe('AuthProvider Component', () => {
       
       expect(getByTestId('child-1')).toBeInTheDocument()
       expect(getByTestId('child-2')).toBeInTheDocument()
-      expect(vi.mocked(SessionProvider)).toHaveBeenCalled()
+      expect(mockSessionProvider).toHaveBeenCalled()
     })
   })
 })
