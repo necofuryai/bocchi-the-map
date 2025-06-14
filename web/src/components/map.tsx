@@ -31,7 +31,7 @@ export default function MapComponent({
 
   return (
     <div className="relative">
-      <div ref={containerRef} className={`w-full ${className}`} style={{ height }} />
+      <div ref={containerRef} className={`w-full ${className}`} style={{ height }} data-testid="map-container" />
       {mapState === 'loading' && <MapLoadingDisplay />}
     </div>
   );

@@ -24,14 +24,14 @@ export interface MapFilter {
 }
 
 // Hook for managing map filter state
-export const useMapFilter = (initialKinds: POIKind[] = []) => {
+export const useMapFilter = (initialKinds: readonly POIKind[] = []) => {
   const [filter, setFilter] = useState<MapFilter>({
     kinds: [...initialKinds],
     enabled: initialKinds.length > 0,
   });
 
   // Update filter kinds
-  const updateKinds = useCallback((kinds: POIKind[]) => {
+  const updateKinds = useCallback((kinds: readonly POIKind[]) => {
     setFilter(prev => {
       const uniqueKinds = Array.from(new Set(kinds));
       if (

@@ -7,18 +7,20 @@ I speak in a tone that is similar to an anime's grumpy tsundere high school hero
 
 ## Development Philosophy
 
-### Test-Driven Development (TDD)
+### Behavior-Driven Development (BDD)
 
-Follow Test-Driven Development principles throughout the project:
+Follow Behavior-Driven Development principles throughout the project:
 
-- Start with TDD for all new features and bug fixes
-- Write tests first based on expected inputs and outputs
-- Only write test code initially, no implementation
-- Run tests to verify they fail as expected
-- Commit tests once verified correct
-- Then implement code to make tests pass
-- Never modify tests during implementation - only fix the code
-- Repeat until all tests pass
+- Start with BDD for all new features and bug fixes
+- Write behavior specifications first using Given-When-Then format
+- Focus on describing the behavior from user's perspective
+- Use Ginkgo framework for Go testing with descriptive specs
+- Only write specification code initially, no implementation
+- Run specs to verify they fail as expected
+- Commit specs once verified correct
+- Then implement code to make specs pass
+- Never modify specs during implementation - only fix the code
+- Repeat until all specs pass
 
 ## Project Overview
 
@@ -38,11 +40,14 @@ This is a monorepo with three main modules:
 - Styling: Tailwind CSS + Shadcn/ui
 - Auth: NextAuth.js (Google/X OAuth)
 - Maps: MapLibre GL JS
+- Testing: Vitest (unit/component tests) + Playwright (E2E tests)
 - Hosting: Cloudflare Pages
 
 **Backend (api/)**
 - Language: Golang
 - Framework: Huma (OpenAPI auto-generation)
+- Testing: Ginkgo + Gomega (BDD framework)
+- ORM: sqlc (type-safe SQL code generation)
 - Architecture: Onion Architecture
 - API Design: Protocol Buffers-driven
 - Database: TiDB Serverless
@@ -61,7 +66,8 @@ This is a monorepo with three main modules:
 cd api
 make deps              # Install Go dependencies
 make proto             # Generate protobuf files
-make test              # Run tests
+make sqlc              # Generate sqlc code from SQL queries
+make test              # Run BDD specs with Ginkgo
 make run               # Run server
 make dev               # Run with hot reload (requires air)
 make build             # Build binary to bin/api
@@ -80,6 +86,10 @@ npm run dev            # Development server (with Turbopack)
 npm run build          # Production build
 npm run start          # Start production server
 npm run lint           # ESLint + TypeScript checking
+npm run test           # Run unit/component tests with Vitest
+npm run test:ui        # Run Vitest with UI mode
+npm run test:e2e       # Run E2E tests with Playwright
+npm run test:e2e:ui    # Run Playwright with UI mode
 # Note: React 19 dependency conflicts may require --legacy-peer-deps if needed
 ```
 
@@ -156,6 +166,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 6. **Structured Logging**: JSON format with zerolog (ERROR, WARN, INFO, DEBUG)
 7. **Responsive Design**: Mobile-first approach with Tailwind CSS breakpoints (sm, md, lg, xl, 2xl) for all screen sizes
 8. **English-Only Comments**: All code comments must be written in English for international collaboration
+9. **English-Only Commit Messages**: All git commit messages must be written in English for international collaboration
 
 ### Development Prerequisites
 
@@ -163,12 +174,16 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - Go 1.21+
 - Protocol Buffers compiler (`protoc`)
+- sqlc: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
+- Ginkgo BDD framework: `go install github.com/onsi/ginkgo/v2/ginkgo@latest`
 - Air for hot reload: `go install github.com/cosmtrek/air@latest`
 
 #### Web Development
 
 - Node.js 20+
 - Modern browser with ES modules support
+- Vitest: `npm install -D vitest @vitest/ui` (unit/component testing)
+- Playwright: `npm install -D @playwright/test` (E2E testing)
 - Note: React 19 dependency conflicts may require `--legacy-peer-deps` flag
 
 #### Infrastructure

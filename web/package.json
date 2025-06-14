@@ -6,7 +6,13 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest --environment jsdom",
+    "test:ui": "vitest --ui --environment jsdom",
+    "test:coverage": "vitest --coverage --environment jsdom",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "postinstall": "playwright install --with-deps || true"
   },
   "dependencies": {
     "@protomaps/basemaps": "^5.4.0",
@@ -30,13 +36,20 @@
     "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.53.0",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/ui": "^3.2.3",
     "eslint": "^9.28.0",
     "eslint-config-next": "^15.3.3",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.3"
   }
 }

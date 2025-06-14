@@ -1,3 +1,4 @@
+import * as React from "react";
 import type { MapError } from "./types";
 
 interface MapErrorDisplayProps {
