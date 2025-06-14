@@ -1,6 +1,7 @@
 # BDD Test Specifications
 
 ## Feature: User Authentication
+
 ### Scenario: User can sign in with Google OAuth
 **Given** the user is on the login page  
 **When** the user clicks the "Sign in with Google" button  
@@ -8,13 +9,14 @@
 **And** after successful authentication, the user should be redirected back to the app  
 **And** the user should be logged in  
 
-### Scenario: User can sign out
+### Scenario: User can sign-out
 **Given** the user is logged in  
-**When** the user clicks the sign out button  
+**When** the user clicks the sign-out button  
 **Then** the user should be logged out  
 **And** the user should be redirected to the login page  
 
 ## Feature: Homepage Map Display
+
 ### Scenario: Map loads correctly on homepage
 **Given** the user visits the homepage  
 **When** the page loads  
@@ -41,6 +43,7 @@
 **And** all map controls should be touch-friendly  
 
 ## Feature: Navigation Header
+
 ### Scenario: Header displays correctly
 **Given** the user visits any page  
 **When** the page loads  
@@ -61,6 +64,7 @@
 **And** the menu should be collapsible  
 
 ## Feature: Theme Support
+
 ### Scenario: User can toggle between light and dark themes
 **Given** the user is on any page  
 **When** the user clicks the theme toggle button  
@@ -74,6 +78,7 @@
 **And** the theme should update if the system theme changes  
 
 ## Feature: POI (Point of Interest) Filtering
+
 ### Scenario: User can filter POIs by type
 **Given** the user is viewing the map  
 **When** the user selects a specific POI type filter  
@@ -93,6 +98,7 @@
 **And** the map should show the filtered POIs  
 
 ## Feature: Accessibility
+
 ### Scenario: Keyboard navigation works correctly
 **Given** the user is using keyboard navigation  
 **When** the user tabs through the interface  
@@ -106,6 +112,7 @@
 **And** ARIA labels should provide context for interactive elements  
 
 ## Feature: Performance and Loading
+
 ### Scenario: Page loads within acceptable time
 **Given** the user visits any page  
 **When** the page starts loading  
@@ -119,6 +126,7 @@
 **And** there should be minimal delay in tile rendering  
 
 ## Feature: Error Handling and Recovery
+
 ### Scenario: Network error recovery
 **Given** the user encounters a network error  
 **When** the error occurs  

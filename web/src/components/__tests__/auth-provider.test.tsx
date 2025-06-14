@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 
 // Mock next-auth/react
@@ -10,6 +10,10 @@ vi.mock('next-auth/react', () => ({
 import { AuthProvider } from '../auth-provider'
 
 describe('AuthProvider Component', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
   describe('Given the AuthProvider component', () => {
     it('When rendering children, Then it should wrap children with SessionProvider', () => {
       const TestChild = () => <div data-testid="test-child">Test Content</div>

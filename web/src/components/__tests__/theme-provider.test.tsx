@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 
 // Mock next-themes
@@ -10,6 +10,10 @@ vi.mock('next-themes', () => ({
 import { ThemeProvider } from '../theme-provider'
 
 describe('ThemeProvider Component', () => {
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
   describe('Given the ThemeProvider component', () => {
     it('When rendering children, Then it should wrap children with NextThemesProvider', () => {
       const TestChild = () => <div data-testid="test-child">Test Content</div>
