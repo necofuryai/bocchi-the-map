@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { MapPinIcon, MenuIcon, SearchIcon, UserIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {

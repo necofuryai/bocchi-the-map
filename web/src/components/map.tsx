@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { usePmtiles } from "../hooks/usePmtiles";
 import { useMaplibre } from "../hooks/useMaplibre";
 import { MapErrorDisplay, MapLoadingDisplay } from "./map/map-status";
