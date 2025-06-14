@@ -8,6 +8,9 @@ vendor/
 coverage/
 *.cover
 *.log
+test-results/
+playwright-report/
+optimized-playwright-report.html
 
 # Production
 build/
