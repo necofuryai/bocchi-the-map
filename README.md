@@ -58,8 +58,13 @@ go install golang.org/dl/go1.21@latest  # Go 1.21+
 node --version                          # Node.js 20+
 terraform --version                     # Terraform 1.5+
 
+# Package managers
+npm install -g pnpm                     # pnpm (preferred over npm)
+
 # Recommended
 go install github.com/cosmtrek/air@latest    # Hot reload
+go install github.com/onsi/ginkgo/v2/ginkgo@latest  # BDD testing
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest # Type-safe SQL
 ```
 
 ### Local Development
@@ -75,15 +80,23 @@ make dev                    # Starts on :8080 with hot reload
 
 # Frontend (Terminal 2)  
 cd web
-pnpm install
+pnpm install                # Auto-installs Playwright for E2E tests
 pnpm dev                    # Starts on :3000 with Turbopack
 
 # Visit http://localhost:3000 🎉
 ```
 
-### Docker Development
+### Testing
 ```bash
-docker-compose up -d        # Starts all services
+# API testing (BDD with Ginkgo)
+cd api
+make test                   # Run all tests
+ginkgo -r                   # Run BDD specs
+
+# Web testing
+cd web
+pnpm test                   # Unit tests
+pnpm test:e2e               # E2E tests
 ```
 
 ## 🏛️ Architecture Deep Dive
@@ -140,8 +153,12 @@ make docs               # Generate OpenAPI spec
 cd web
 pnpm dev                # Dev server with Turbopack
 pnpm build              # Production build
-pnpm lint               # ESLint + TypeScript
-pnpm test               # Vitest + Testing Library
+pnpm lint               # ESLint + TypeScript checking
+pnpm test               # Unit/component tests with Vitest
+pnpm test:ui            # Vitest with UI mode
+pnpm test:coverage      # Tests with coverage report
+pnpm test:e2e           # E2E tests with Playwright
+pnpm test:e2e:ui        # Playwright with UI mode
 ```
 
 ### Infrastructure

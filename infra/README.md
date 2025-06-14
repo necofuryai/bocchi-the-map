@@ -27,10 +27,10 @@ terraform apply                # Deploy infrastructure 🚀
 ### Multi-Cloud Strategy
 
 ```text
-🌐 Global Edge Network (Cloudflare)
-├── 📱 Frontend (Vercel) - Global edge network
-├── 🗄️ Static Assets (R2) - PMTiles map storage
-└── 🔒 Security (WAF, DDoS protection)
+🌐 Global Edge Network
+├── 📱 Frontend (Vercel) - Global edge network with auto-deployments
+├── 🗄️ Static Assets (Cloudflare R2) - PMTiles map storage
+└── 🔒 Security (Cloudflare WAF, DDoS protection)
 
 ☁️ Compute Layer (Google Cloud)
 ├── 🚀 API Services (Cloud Run) - Auto-scaling containers
@@ -206,10 +206,11 @@ resource "cloudflare_worker" "map_worker" {
 
 **Vercel Advantages:**
 
-- **Global Edge Network** - 40+ regions worldwide
-- **Automatic Deployments** - GitHub integration with previews
+- **Global Edge Network** - 40+ regions worldwide  
+- **Automatic Deployments** - GitHub integration with preview deployments
 - **Edge Functions** - Serverless compute at the edge
-- **Zero Configuration** - Optimized for Next.js
+- **Zero Configuration** - Optimized for Next.js with built-in performance monitoring
+- **Built-in Analytics** - Core Web Vitals tracking
 
 ## 💾 Database Architecture
 

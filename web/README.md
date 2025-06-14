@@ -12,8 +12,8 @@ A **performance-first PWA** for solo location discovery, built with React Server
 ## ⚡ Quick Start
 
 ```bash
-# Prerequisites: Node.js 20+
-pnpm install                    # Install dependencies
+# Prerequisites: Node.js 20+, pnpm
+pnpm install                    # Install dependencies (auto-installs Playwright)
 pnpm dev                        # Start with Turbopack 🚀
 
 # App ready at http://localhost:3000
@@ -333,8 +333,8 @@ pnpm dev:https
 pnpm type-check
 
 # Linting and formatting
-pnpm lint
-pnpm format
+pnpm lint                   # ESLint + TypeScript checking
+pnpm format                 # Prettier formatting
 ```
 
 ### Environment Configuration
