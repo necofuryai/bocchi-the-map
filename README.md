@@ -7,6 +7,7 @@
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.2-000000?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel)](https://vercel.com/)
 [![gRPC](https://img.shields.io/badge/gRPC-1.60+-244c5a?style=flat&logo=grpc)](https://grpc.io/)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/necofuryai/bocchi-the-map?style=flat&utm_source=oss&utm_medium=github&utm_campaign=necofuryai%2Fbocchi-the-map&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
@@ -46,7 +47,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 | **Database** | TiDB Serverless | MySQL-compatible, auto-scaling, built for cloud |
 | **Maps** | MapLibre GL JS | Open-source, vector tiles, highly customizable |
 | **Storage** | Cloudflare R2 | PMTiles format for efficient map delivery |
-| **Hosting** | Cloud Run + Cloudflare | Auto-scaling, edge distribution |
+| **Hosting** | Cloud Run + Vercel | Auto-scaling, edge distribution |
 | **DevOps** | Terraform + GitHub Actions | Infrastructure as Code, automated deployments |
 
 ## 🎯 Quick Start
@@ -58,8 +59,13 @@ go install golang.org/dl/go1.21@latest  # Go 1.21+
 node --version                          # Node.js 20+
 terraform --version                     # Terraform 1.5+
 
+# Package managers
+npm install -g pnpm                     # pnpm (preferred over npm)
+
 # Recommended
 go install github.com/cosmtrek/air@latest    # Hot reload
+go install github.com/onsi/ginkgo/v2/ginkgo@latest  # BDD testing
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest # Type-safe SQL
 ```
 
 ### Local Development
@@ -75,15 +81,24 @@ make dev                    # Starts on :8080 with hot reload
 
 # Frontend (Terminal 2)  
 cd web
-npm install
-npm run dev                 # Starts on :3000 with Turbopack
+pnpm install                # Auto-installs Playwright for E2E tests
+pnpm dev                    # Starts on :3000 with Turbopack
 
 # Visit http://localhost:3000 🎉
 ```
 
-### Docker Development
+### Testing
+
 ```bash
-docker-compose up -d        # Starts all services
+# API testing (BDD with Ginkgo)
+cd api
+make test                   # Run all tests
+ginkgo -r                   # Run BDD specs
+
+# Web testing
+cd web
+pnpm test                   # Unit tests
+pnpm test:e2e               # E2E tests
 ```
 
 ## 🏛️ Architecture Deep Dive
@@ -138,10 +153,14 @@ make docs               # Generate OpenAPI spec
 ### Web Development  
 ```bash
 cd web
-npm run dev             # Dev server with Turbopack
-npm run build           # Production build
-npm run lint            # ESLint + TypeScript
-npm test                # Jest + Testing Library
+pnpm dev                # Dev server with Turbopack
+pnpm build              # Production build
+pnpm lint               # ESLint + TypeScript checking
+pnpm test               # Unit/component tests with Vitest
+pnpm test:ui            # Vitest with UI mode
+pnpm test:coverage      # Tests with coverage report
+pnpm test:e2e           # E2E tests with Playwright
+pnpm test:e2e:ui        # Playwright with UI mode
 ```
 
 ### Infrastructure

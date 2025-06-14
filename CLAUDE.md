@@ -41,7 +41,7 @@ This is a monorepo with three main modules:
 - Auth: NextAuth.js (Google/X OAuth)
 - Maps: MapLibre GL JS
 - Testing: Vitest (unit/component tests) + Playwright (E2E tests)
-- Hosting: Cloudflare Pages
+- Hosting: Vercel
 
 **Backend (api/)**
 - Language: Golang
@@ -66,8 +66,7 @@ This is a monorepo with three main modules:
 cd api
 make deps              # Install Go dependencies
 make proto             # Generate protobuf files
-make sqlc              # Generate sqlc code from SQL queries
-make test              # Run BDD specs with Ginkgo
+make test              # Run test suite
 make run               # Run server
 make dev               # Run with hot reload (requires air)
 make build             # Build binary to bin/api
@@ -81,16 +80,17 @@ make docs              # Generate OpenAPI documentation
 
 ```bash
 cd web
-npm install            # Install dependencies
-npm run dev            # Development server (with Turbopack)
-npm run build          # Production build
-npm run start          # Start production server
-npm run lint           # ESLint + TypeScript checking
-npm run test           # Run unit/component tests with Vitest
-npm run test:ui        # Run Vitest with UI mode
-npm run test:e2e       # Run E2E tests with Playwright
-npm run test:e2e:ui    # Run Playwright with UI mode
-# Note: React 19 dependency conflicts may require --legacy-peer-deps if needed
+pnpm install           # Install dependencies (auto-installs Playwright)
+pnpm dev               # Development server (with Turbopack)
+pnpm build             # Production build
+pnpm start             # Start production server
+pnpm lint              # ESLint + TypeScript checking
+pnpm test              # Run unit/component tests with Vitest
+pnpm test:ui           # Run Vitest with UI mode
+pnpm test:coverage     # Run tests with coverage report
+pnpm test:e2e          # Run E2E tests with Playwright
+pnpm test:e2e:ui       # Run Playwright with UI mode
+# Note: React 19 dependency conflicts are generally resolved better with pnpm
 ```
 
 ### Frontend Architecture (web/)
@@ -182,15 +182,15 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - Node.js 20+
 - Modern browser with ES modules support
-- Vitest: `npm install -D vitest @vitest/ui` (unit/component testing)
-- Playwright: `npm install -D @playwright/test` (E2E testing)
-- Note: React 19 dependency conflicts may require `--legacy-peer-deps` flag
+- Vitest: `pnpm add -D vitest @vitest/ui` (unit/component testing)
+- Playwright: `pnpm add -D @playwright/test` (E2E testing - auto-installed via postinstall)
+- Note: React 19 dependency conflicts are generally resolved better with pnpm
 
 #### Infrastructure
 
 - Terraform 1.5+
 - Google Cloud SDK (for Cloud Run deployment)
-- Cloudflare CLI (for Pages deployment)
+- Vercel CLI (for deployment)
 
 ### Important Development Notes
 

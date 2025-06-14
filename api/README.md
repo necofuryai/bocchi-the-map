@@ -138,16 +138,17 @@ vim application/usecases/spot_usecase.go
 vim interfaces/http/handlers/spot_handler.go
 ```
 
-### 2. Testing Strategy
+### 2. BDD Testing with Ginkgo
+
 ```bash
-# Unit tests (domain layer) - No dependencies
-go test ./domain/... -v
+# BDD specs with Ginkgo framework
+ginkgo -r                   # Run all BDD specs
+ginkgo ./domain/... -v      # Domain layer specs
+ginkgo ./application/... -v # Use case specs
 
-# Integration tests (use cases) - With mocks
-go test ./application/... -v
-
-# End-to-end tests (full stack)
-go test ./tests/e2e/... -v
+# Traditional unit tests
+go test ./domain/... -v     # Unit tests (domain layer)
+go test ./application/... -v # Integration tests (use cases)
 
 # Coverage report
 make test-coverage
@@ -248,7 +249,12 @@ curl http://localhost:8080/health/dependencies
 
 ### Test Commands
 ```bash
-# Run specific test suites
+# BDD testing with Ginkgo
+ginkgo -r                       # Run all BDD specs
+ginkgo -r --randomizeAllSpecs   # Randomized test execution
+ginkgo -r --race                # Race condition detection
+
+# Traditional testing
 make test-unit                   # Fast, no dependencies
 make test-integration           # Requires test database
 make test-e2e                   # Full stack testing
@@ -318,8 +324,17 @@ curl http://localhost:8080/openapi.json > api-spec.json
 # Install development tools
 make setup-dev
 
+# Install BDD testing framework
+go install github.com/onsi/ginkgo/v2/ginkgo@latest
+go install github.com/onsi/gomega@latest
+
 # Pre-commit hooks
 pre-commit install
+
+# BDD workflow: Write specs first, then implement
+ginkgo generate ./domain/entities/     # Generate BDD spec files
+ginkgo -r --fail-fast                  # Run specs (should fail initially)
+# Implement code to make specs pass
 
 # Submit changes
 git commit -m "feat(spots): add radius-based search"

@@ -4,7 +4,8 @@
 
 [![Terraform](https://img.shields.io/badge/Terraform-1.5+-7C3AED?style=flat&logo=terraform)](https://terraform.io/)
 [![Google Cloud](https://img.shields.io/badge/Google_Cloud-Run-4285F4?style=flat&logo=googlecloud)](https://cloud.google.com/)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-Pages_+_R2-F38020?style=flat&logo=cloudflare)](https://cloudflare.com/)
+[![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel)](https://vercel.com/)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-R2-F38020?style=flat&logo=cloudflare)](https://cloudflare.com/)
 [![TiDB](https://img.shields.io/badge/TiDB-Serverless-FF6B6B?style=flat)](https://tidbcloud.com/)
 
 **Production-ready infrastructure** that scales from zero to millions of users with minimal operational overhead. Built with Infrastructure as Code principles, multi-cloud redundancy, and cost optimization.
@@ -27,10 +28,10 @@ terraform apply                # Deploy infrastructure 🚀
 ### Multi-Cloud Strategy
 
 ```text
-🌐 Global Edge Network (Cloudflare)
-├── 📱 Frontend (Pages) - 300+ edge locations
-├── 🗄️ Static Assets (R2) - PMTiles map storage
-└── 🔒 Security (WAF, DDoS protection)
+🌐 Global Edge Network
+├── 📱 Frontend (Vercel) - Global edge network with auto-deployments
+├── 🗄️ Static Assets (Cloudflare R2) - PMTiles map storage
+└── 🔒 Security (Cloudflare WAF, DDoS protection)
 
 ☁️ Compute Layer (Google Cloud)
 ├── 🚀 API Services (Cloud Run) - Auto-scaling containers
@@ -71,10 +72,10 @@ module "gcp_cloud_run" {
   memory_limit = "2Gi"
 }
 
-module "cloudflare_pages" {
-  source = "./modules/cloudflare"
+module "vercel_deployment" {
+  source = "./modules/vercel"
   
-  account_id  = var.cloudflare_account_id
+  team_id     = var.vercel_team_id
   domain_name = "bocchi-map.com"
   
   # Edge optimization
@@ -162,32 +163,30 @@ resource "google_cloud_run_service" "api" {
 
 ## 🌐 Cloudflare Edge Network
 
-### Pages Deployment
+### Vercel Deployment
 
 ```hcl
-resource "cloudflare_pages_project" "frontend" {
-  account_id        = var.cloudflare_account_id
-  name             = "bocchi-map"
-  production_branch = "main"
+resource "vercel_project" "frontend" {
+  name      = "bocchi-map"
+  team_id   = var.vercel_team_id
+  framework = "nextjs"
 
-  source {
+  git_repository {
     type = "github"
-    config {
-      owner                         = "necofuryai"
-      repo_name                     = "bocchi-the-map"
-      production_branch             = "main"
-      pr_comments_enabled          = true
-      deployments_enabled          = true
-      production_deployment_enabled = true
-      preview_deployment_setting   = "all"
-    }
+    repo = "necofuryai/bocchi-the-map"
   }
 
-  build_config {
-    build_command   = "npm run build"
-    destination_dir = "out"
-    root_dir        = "web"
-  }
+  build_command    = "pnpm build"
+  output_directory = "out"
+  root_directory   = "web"
+
+  environment = [
+    {
+      key    = "NEXT_PUBLIC_API_URL"
+      value  = "https://api.bocchi-map.com"
+      target = ["production"]
+    }
+  ]
 }
 ```
 
@@ -206,12 +205,13 @@ resource "cloudflare_worker" "map_worker" {
 }
 ```
 
-**Edge Advantages:**
+**Vercel Advantages:**
 
-- **Global CDN** - 300+ locations worldwide
-- **Smart Routing** - Traffic optimization via Argo
-- **DDoS Protection** - Built-in security layer
-- **Cost Efficiency** - Bandwidth included
+- **Global Edge Network** - 40+ regions worldwide  
+- **Automatic Deployments** - GitHub integration with preview deployments
+- **Edge Functions** - Serverless compute at the edge
+- **Zero Configuration** - Optimized for Next.js with built-in performance monitoring
+- **Built-in Analytics** - Core Web Vitals tracking
 
 ## 💾 Database Architecture
 

@@ -56,7 +56,7 @@
 
 **インフラ**
 - API: Google Cloud Run
-- 静的ホスティング: Cloudflare Pages
+- 静的ホスティング: Vercel
 - 地図データ: Cloudflare R2
 - IaC: Terraform
 
