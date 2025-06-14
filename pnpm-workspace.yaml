@@ -1,4 +1,5 @@
 packages:
+  - '.'
   - 'web'
-  # Currently only the web package uses Node.js/npm
+  # Root directory for shared scripts and dependencies
   # The api package uses Go and doesn't need to be included in the workspace
