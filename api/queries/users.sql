@@ -33,6 +33,8 @@ INSERT INTO users (
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?
 ) ON DUPLICATE KEY UPDATE
+    email = VALUES(email),
     display_name = VALUES(display_name),
     avatar_url = VALUES(avatar_url),
+    preferences = VALUES(preferences),
     updated_at = CURRENT_TIMESTAMP;

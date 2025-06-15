@@ -67,9 +67,13 @@ export interface POIProperties {
 
 // Auth.js type extension
 declare module "next-auth" {
-  interface User {
-    id: string
-  }
+interface User {
+     id: string
+    /** OAuth プロバイダー (例: 'google') */
+    provider?: string
+    /** プロバイダー側のアカウント ID */
+    providerAccountId?: string
+   }
   
   interface Session {
     user: {

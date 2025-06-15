@@ -7,7 +7,7 @@ CREATE TABLE users (
     avatar_url TEXT,
     auth_provider ENUM('google', 'x') NOT NULL,
     auth_provider_id VARCHAR(255) NOT NULL,
-    preferences JSON,
+    preferences JSON DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     

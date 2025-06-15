@@ -18,6 +18,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account, profile: _profile }) {
       if (account?.provider === 'google') {
         try {
+          // Check if user.email is null/undefined before making API call
+          if (!user.email) {
+            console.warn('User email is null/undefined, skipping API call and continuing sign-in')
+            return true
+          }
+          
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
           const userData = {
             email: user.email,
@@ -31,13 +37,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             console.log('Creating/updating user:', userData)
           }
           
+          const abortController = new AbortController()
+          const timeoutId = setTimeout(() => abortController.abort(), 5000)
+          
           const response = await fetch(`${apiUrl}/api/users`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(userData),
+            signal: abortController.signal,
           })
+          
+          clearTimeout(timeoutId)
           
           if (!response.ok) {
             const errorText = await response.text()
@@ -67,8 +79,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true
     },
     async session({ session, token }) {
-      if (session?.user && token?.sub) {
-        session.user.id = token.sub
+      if (session?.user && (token?.uid ?? token?.sub)) {
+        session.user.id = (token.uid ?? token.sub) as string
         session.user.provider = token.provider as string
         session.user.providerAccountId = token.providerAccountId as string
       }

@@ -108,7 +108,7 @@ pnpm test:e2e:ui       # Run Playwright with UI mode
 
 - `Map component` - Main MapLibre GL JS wrapper with PMTiles support
 - `POI Features` - Point of interest rendering and interaction logic
-- `Auth Provider` - NextAuth.js session management
+- `Auth Provider` - Auth.js session management
 - `Theme Provider` - Dark/light mode using next-themes
 
 **Infrastructure**
