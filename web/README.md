@@ -242,11 +242,11 @@ function MapView() {
 
 ## 🔐 Authentication & Security
 
-### NextAuth.js v4
+### Auth.js v5
 
 ```tsx
 // Multi-provider OAuth setup
-export const authOptions: NextAuthOptions = {
+export const { handlers, auth } = NextAuth({
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -264,7 +264,7 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
-}
+})
 ```
 
 ### Security Features

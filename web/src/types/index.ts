@@ -65,7 +65,7 @@ export interface POIProperties {
   min_zoom?: number // snake_case for TileJSON specification compliance
 }
 
-// NextAuth.js type extension
+// Auth.js type extension
 declare module "next-auth" {
   interface User {
     id: string
@@ -77,6 +77,8 @@ declare module "next-auth" {
       name?: string | null
       email?: string | null
       image?: string | null
+      provider?: string
+      providerAccountId?: string
     }
   }
 }

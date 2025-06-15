@@ -38,7 +38,7 @@ This is a monorepo with three main modules:
 **Frontend (web/)**
 - Framework: Next.js + TypeScript
 - Styling: Tailwind CSS + Shadcn/ui
-- Auth: NextAuth.js (Google/X OAuth)
+- Auth: Auth.js (Google/X OAuth)
 - Maps: MapLibre GL JS
 - Testing: Vitest (unit/component tests) + Playwright (E2E tests)
 - Hosting: Vercel

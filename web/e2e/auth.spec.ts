@@ -31,7 +31,7 @@ test.describe('Authentication E2E Tests', () => {
 
   test.describe('Given an authenticated user', () => {
     test.beforeEach(async ({ page }) => {
-      // Mock authentication state by setting NextAuth session cookie
+      // Mock authentication state by setting Auth.js session cookie
       await page.context().addCookies([
         {
           name: 'next-auth.session-token',
@@ -190,7 +190,7 @@ test.describe('Authentication E2E Tests', () => {
     })
 
     test('When session is refreshed, Then user state should be maintained', async ({ page }) => {
-      // Set NextAuth session cookie
+      // Set Auth.js session cookie
       await page.context().addCookies([
         {
           name: 'next-auth.session-token',
