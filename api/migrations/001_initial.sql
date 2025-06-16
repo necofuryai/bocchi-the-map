@@ -12,7 +12,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     UNIQUE KEY unique_provider_user (auth_provider, auth_provider_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE spots (
     id VARCHAR(36) PRIMARY KEY,
@@ -32,7 +32,7 @@ CREATE TABLE spots (
     INDEX idx_location (latitude, longitude),
     INDEX idx_category (category),
     INDEX idx_country (country_code)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE reviews (
     id VARCHAR(36) PRIMARY KEY,
@@ -47,4 +47,4 @@ CREATE TABLE reviews (
     FOREIGN KEY (spot_id) REFERENCES spots(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_user_spot_review (user_id, spot_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

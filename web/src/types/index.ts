@@ -26,7 +26,7 @@ export interface Review {
   updatedAt: string
 }
 
-export interface User {
+export interface DomainUser {
   id: string
   email: string
   displayName: string
@@ -67,13 +67,12 @@ export interface POIProperties {
 
 // Auth.js type extension
 declare module "next-auth" {
-interface User {
-     id: string
+  interface User {
     /** OAuth プロバイダー (例: 'google') */
     provider?: string
     /** プロバイダー側のアカウント ID */
     providerAccountId?: string
-   }
+  }
   
   interface Session {
     user: {

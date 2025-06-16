@@ -1,4 +1,4 @@
-.PHONY: proto sqlc clean test build run deps dev migrate-up migrate-down docs
+.PHONY: all proto sqlc clean test build run deps dev migrate-up migrate-down docs
 
 # Generate SQL code
 sqlc:

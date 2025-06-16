@@ -24,7 +24,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return true
           }
           
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+          const apiUrl = process.env.API_URL || 'http://localhost:8080'
           const userData = {
             email: user.email,
             display_name: user.name,
@@ -38,7 +38,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
           
           const abortController = new AbortController()
-          const timeoutId = setTimeout(() => abortController.abort(), 5000)
+          const timeoutId = setTimeout(() => abortController.abort(), 15000)
           
           const response = await fetch(`${apiUrl}/api/users`, {
             method: 'POST',
@@ -79,10 +79,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true
     },
     async session({ session, token }) {
-      if (session?.user && (token?.uid ?? token?.sub)) {
-        session.user.id = (token.uid ?? token.sub) as string
-        session.user.provider = token.provider as string
-        session.user.providerAccountId = token.providerAccountId as string
+      if (session?.user) {
+        const userId = token?.uid ?? token?.sub
+        if (typeof userId === 'string') {
+          session.user.id = userId
+        }
+        if (typeof token?.provider === 'string') {
+          session.user.provider = token.provider
+        }
+        if (typeof token?.providerAccountId === 'string') {
+          session.user.providerAccountId = token.providerAccountId
+        }
       }
       return session
     },

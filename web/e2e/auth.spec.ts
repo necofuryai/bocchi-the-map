@@ -31,10 +31,10 @@ test.describe('Authentication E2E Tests', () => {
 
   test.describe('Given an authenticated user', () => {
     test.beforeEach(async ({ page }) => {
-      // Mock authentication state by setting Auth.js session cookie
+      // Mock authentication state by setting Auth.js v5 session cookie
       await page.context().addCookies([
         {
-          name: 'next-auth.session-token',
+          name: 'authjs.session-token',
           value: 'mock-session-token-value',
           domain: 'localhost',
           path: '/',
@@ -94,7 +94,7 @@ test.describe('Authentication E2E Tests', () => {
       // Verify authentication cookies are cleared
       const cookies = await page.context().cookies()
       const authCookies = cookies.filter(cookie => 
-        cookie.name.includes('next-auth') || 
+        cookie.name.includes('authjs') || 
         cookie.name.includes('session')
       )
       expect(authCookies.length).toBe(0)
@@ -145,7 +145,7 @@ test.describe('Authentication E2E Tests', () => {
       // Start with a valid session cookie
       await page.context().addCookies([
         {
-          name: 'next-auth.session-token',
+          name: 'authjs.session-token',
           value: 'valid-session-token',
           domain: 'localhost',
           path: '/',
@@ -190,10 +190,10 @@ test.describe('Authentication E2E Tests', () => {
     })
 
     test('When session is refreshed, Then user state should be maintained', async ({ page }) => {
-      // Set Auth.js session cookie
+      // Set Auth.js v5 session cookie
       await page.context().addCookies([
         {
-          name: 'next-auth.session-token',
+          name: 'authjs.session-token',
           value: 'refreshed-session-token',
           domain: 'localhost',
           path: '/',

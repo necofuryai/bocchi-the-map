@@ -245,6 +245,11 @@ function MapView() {
 ### Auth.js v5
 
 ```tsx
+// Auth.js v5 imports
+import NextAuth from "next-auth"
+import GoogleProvider from "next-auth/providers/google"
+import TwitterProvider from "next-auth/providers/twitter"
+
 // Multi-provider OAuth setup
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
