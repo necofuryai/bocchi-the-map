@@ -11,7 +11,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    UNIQUE KEY unique_provider_user (auth_provider, auth_provider_id)
+    CONSTRAINT unique_provider_user UNIQUE KEY (auth_provider, auth_provider_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE spots (
@@ -44,7 +44,7 @@ CREATE TABLE reviews (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (spot_id) REFERENCES spots(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_user_spot_review (user_id, spot_id)
+    CONSTRAINT fk_reviews_spot_id FOREIGN KEY (spot_id) REFERENCES spots(id) ON DELETE CASCADE,
+    CONSTRAINT fk_reviews_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT unique_user_spot_review UNIQUE KEY (user_id, spot_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

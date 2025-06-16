@@ -2,13 +2,9 @@
 
 # Generate SQL code
 sqlc:
-	@echo "Generating SQL code..."
-	@if command -v sqlc >/dev/null 2>&1; then \
-		sqlc generate; \
-	else \
-		echo "Error: sqlc is not installed. Install with: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest"; \
-		exit 1; \
-	fi
+	@command -v sqlc >/dev/null 2>&1 || { \
+		echo "Error: sqlc is not installed. Install with: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest" ; exit 1 ; } ; \
+	echo "Generating SQL code..." && sqlc generate
 
 # Generate protobuf files
 proto:

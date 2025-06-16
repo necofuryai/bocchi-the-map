@@ -2,7 +2,14 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import Twitter from "next-auth/providers/twitter"
 
+// Auth provider constants
+const AUTH_PROVIDER = {
+  GOOGLE: 'google' as const,
+  TWITTER: 'twitter' as const,
+} as const
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID || (() => { throw new Error("GOOGLE_CLIENT_ID is required") })(),
@@ -16,7 +23,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account, profile: _profile }) {
-      if (account?.provider === 'google') {
+      if (account?.provider === AUTH_PROVIDER.GOOGLE) {
         try {
           // Check if user.email is null/undefined before making API call
           if (!user.email) {
@@ -29,7 +36,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: user.email,
             display_name: user.name,
             avatar_url: user.image,
-            auth_provider: 'google',
+            auth_provider: AUTH_PROVIDER.GOOGLE,
             auth_provider_id: account.providerAccountId,
           }
           
@@ -40,16 +47,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const abortController = new AbortController()
           const timeoutId = setTimeout(() => abortController.abort(), 15000)
           
-          const response = await fetch(`${apiUrl}/api/users`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(userData),
-            signal: abortController.signal,
-          })
-          
-          clearTimeout(timeoutId)
+          let response: Response
+          try {
+            response = await fetch(`${apiUrl}/api/users`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(userData),
+              signal: abortController.signal,
+            })
+          } finally {
+            clearTimeout(timeoutId)
+          }
           
           if (!response.ok) {
             const errorText = await response.text()
