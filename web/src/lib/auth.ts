@@ -8,6 +8,15 @@ const AUTH_PROVIDER = {
   TWITTER: 'twitter' as const,
 } as const
 
+// Type augmentation for NextAuth JWT
+declare module "next-auth/jwt" {
+  interface JWT {
+    uid?: string
+    provider?: string
+    providerAccountId?: string
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
@@ -23,7 +32,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async signIn({ user, account, profile: _profile }) {
-      if (account?.provider === AUTH_PROVIDER.GOOGLE) {
+      if (account && (account.provider === AUTH_PROVIDER.GOOGLE || account.provider === AUTH_PROVIDER.TWITTER)) {
         try {
           // Check if user.email is null/undefined before making API call
           if (!user.email) {
@@ -36,7 +45,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: user.email,
             display_name: user.name,
             avatar_url: user.image,
-            auth_provider: AUTH_PROVIDER.GOOGLE,
+            auth_provider: account.provider,
             auth_provider_id: account.providerAccountId,
           }
           

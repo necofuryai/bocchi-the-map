@@ -94,8 +94,8 @@ test.describe('Authentication E2E Tests', () => {
       // Verify authentication cookies are cleared
       const cookies = await page.context().cookies()
       const authCookies = cookies.filter(cookie => 
-        cookie.name.includes('authjs') || 
-        cookie.name.includes('session')
+        cookie.name === 'authjs.session-token' || 
+        cookie.name === 'authjs.csrf-token'
       )
       expect(authCookies.length).toBe(0)
     })

@@ -77,11 +77,8 @@ declare module "next-auth" {
   }
 
   interface Session extends DefaultSession {
-    user: {
+    user: DefaultSession["user"] & {
       id: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
       provider?: string
       providerAccountId?: string
     }

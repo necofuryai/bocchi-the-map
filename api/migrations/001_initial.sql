@@ -8,8 +8,8 @@ CREATE TABLE users (
     auth_provider ENUM('google', 'x') NOT NULL,
     auth_provider_id VARCHAR(255) NOT NULL,
     preferences JSON DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     CONSTRAINT unique_provider_user UNIQUE KEY (auth_provider, auth_provider_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -24,10 +24,10 @@ CREATE TABLE spots (
     address TEXT NOT NULL,
     address_i18n JSON,
     country_code CHAR(2) NOT NULL,
-    average_rating DECIMAL(2, 1) DEFAULT 0.0,
+    average_rating DECIMAL(3, 1) NOT NULL DEFAULT 0.0,
     review_count INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     INDEX idx_location (latitude, longitude),
     INDEX idx_category (category),
@@ -41,8 +41,8 @@ CREATE TABLE reviews (
     rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment TEXT,
     rating_aspects JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     CONSTRAINT fk_reviews_spot_id FOREIGN KEY (spot_id) REFERENCES spots(id) ON DELETE CASCADE,
     CONSTRAINT fk_reviews_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
