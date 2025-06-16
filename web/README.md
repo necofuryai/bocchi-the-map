@@ -242,17 +242,22 @@ function MapView() {
 
 ## 🔐 Authentication & Security
 
-### NextAuth.js v4
+### Auth.js v5
 
 ```tsx
+// Auth.js v5 imports
+import NextAuth from "next-auth"
+import Google from "next-auth/providers/google"
+import Twitter from "next-auth/providers/twitter"
+
 // Multi-provider OAuth setup
-export const authOptions: NextAuthOptions = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    GoogleProvider({
+    Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
-    TwitterProvider({
+    Twitter({
       clientId: process.env.TWITTER_CLIENT_ID!,
       clientSecret: process.env.TWITTER_CLIENT_SECRET!,
     }),
@@ -264,7 +269,7 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
-}
+})
 ```
 
 ### Security Features

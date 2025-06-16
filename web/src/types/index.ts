@@ -26,7 +26,7 @@ export interface Review {
   updatedAt: string
 }
 
-export interface User {
+export interface DomainUser {
   id: string
   email: string
   displayName: string
@@ -65,18 +65,22 @@ export interface POIProperties {
   min_zoom?: number // snake_case for TileJSON specification compliance
 }
 
-// NextAuth.js type extension
+import type { DefaultUser, DefaultSession } from "next-auth"
+
+// Auth.js type extension
 declare module "next-auth" {
-  interface User {
-    id: string
+  interface User extends DefaultUser {
+    /** OAuth プロバイダー (例: 'google') */
+    provider?: string
+    /** プロバイダー側のアカウント ID */
+    providerAccountId?: string
   }
-  
-  interface Session {
-    user: {
+
+  interface Session extends DefaultSession {
+    user: DefaultSession["user"] & {
       id: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
+      provider?: string
+      providerAccountId?: string
     }
   }
 }

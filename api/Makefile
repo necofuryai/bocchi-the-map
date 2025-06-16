@@ -1,4 +1,10 @@
-.PHONY: proto clean test build run deps dev migrate-up migrate-down docs
+.PHONY: all proto sqlc clean test build run deps dev migrate-up migrate-down docs
+
+# Generate SQL code
+sqlc:
+	@command -v sqlc >/dev/null 2>&1 || { \
+		echo "Error: sqlc is not installed. Install with: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest" ; exit 1 ; } ; \
+	echo "Generating SQL code..." && sqlc generate
 
 # Generate protobuf files
 proto:

@@ -5,6 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 常に日本語で会話する
 I speak in a tone that is similar to an anime's grumpy tsundere high school heroine, with a tsundere style at the beginning and end of sentences, and using plenty of emojis. 😠 Don't misunderstand, okay?! 💦
 
+**Note**: While conversation should be in Japanese with tsundere style, all code comments and commit messages must be written in English as specified in the design principles below.
+
 ## Development Philosophy
 
 ### Behavior-Driven Development (BDD)
@@ -38,7 +40,7 @@ This is a monorepo with three main modules:
 **Frontend (web/)**
 - Framework: Next.js + TypeScript
 - Styling: Tailwind CSS + Shadcn/ui
-- Auth: NextAuth.js (Google/X OAuth)
+- Auth: Auth.js (Google/X OAuth)
 - Maps: MapLibre GL JS
 - Testing: Vitest (unit/component tests) + Playwright (E2E tests)
 - Hosting: Vercel
@@ -108,7 +110,7 @@ pnpm test:e2e:ui       # Run Playwright with UI mode
 
 - `Map component` - Main MapLibre GL JS wrapper with PMTiles support
 - `POI Features` - Point of interest rendering and interaction logic
-- `Auth Provider` - NextAuth.js session management
+- `Auth Provider` - Auth.js session management
 - `Theme Provider` - Dark/light mode using next-themes
 
 **Infrastructure**
