@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"fmt"
 	"os"
 
@@ -10,6 +11,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
 	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
 )
 
@@ -20,12 +22,12 @@ type UserClient struct {
 }
 
 // NewUserClient creates a new user client
-func NewUserClient(serviceAddr string) (*UserClient, error) {
+func NewUserClient(serviceAddr string, db *sql.DB) (*UserClient, error) {
 	// For internal communication in monolith, we can use direct service calls
 	// In a true microservice setup, this would connect to remote gRPC service
 	if serviceAddr == "internal" {
 		return &UserClient{
-			service: grpcSvc.NewUserService(),
+			service: grpcSvc.NewUserService(db),
 		}, nil
 	}
 
@@ -39,7 +41,7 @@ func NewUserClient(serviceAddr string) (*UserClient, error) {
 			MinVersion: tls.VersionTLS13,
 		})
 	}
-	conn, err := grpc.NewClient(serviceAddr, grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(serviceAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to user service: %w", err)
 	}
@@ -47,7 +49,7 @@ func NewUserClient(serviceAddr string) (*UserClient, error) {
 	return &UserClient{
 		conn: conn,
 		// TODO: Use generated gRPC client when protobuf is available
-		service: grpcSvc.NewUserService(),
+		service: grpcSvc.NewUserService(db),
 	}, nil
 }
 
@@ -67,4 +69,25 @@ func (c *UserClient) GetCurrentUser(ctx context.Context, req *grpcSvc.GetCurrent
 // UpdateUserPreferences updates user preferences via gRPC
 func (c *UserClient) UpdateUserPreferences(ctx context.Context, req *grpcSvc.UpdateUserPreferencesRequest) (*grpcSvc.UpdateUserPreferencesResponse, error) {
 	return c.service.UpdateUserPreferences(ctx, req)
+}
+
+// GetUserByAuthProvider retrieves a user by authentication provider and provider ID
+func (c *UserClient) GetUserByAuthProvider(ctx context.Context, authProvider entities.AuthProvider, providerID string) (*entities.User, error) {
+	// For now, call the gRPC service method
+	// In the future, this would call a proper gRPC method
+	return c.service.GetUserByAuthProvider(ctx, authProvider, providerID)
+}
+
+// CreateUser creates a new user
+func (c *UserClient) CreateUser(ctx context.Context, user *entities.User) (*entities.User, error) {
+	// For now, call the gRPC service method
+	// In the future, this would call a proper gRPC method
+	return c.service.CreateUser(ctx, user)
+}
+
+// UpdateUser updates an existing user
+func (c *UserClient) UpdateUser(ctx context.Context, user *entities.User) (*entities.User, error) {
+	// For now, call the gRPC service method
+	// In the future, this would call a proper gRPC method
+	return c.service.UpdateUser(ctx, user)
 }

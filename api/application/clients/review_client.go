@@ -39,7 +39,7 @@ func NewReviewClient(serviceAddr string) (*ReviewClient, error) {
 			MinVersion: tls.VersionTLS13,
 		})
 	}
-	conn, err := grpc.NewClient(serviceAddr, grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(serviceAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to review service: %w", err)
 	}

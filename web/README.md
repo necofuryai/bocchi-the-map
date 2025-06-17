@@ -14,10 +14,51 @@ A **performance-first PWA** for solo location discovery, built with React Server
 ```bash
 # Prerequisites: Node.js 20+, pnpm
 pnpm install                    # Install dependencies (auto-installs Playwright)
+
+# 🔐 Setup authentication (required)
+cp .env.local.example .env.local
+# Add your OAuth credentials (see Authentication Setup below)
+
 pnpm dev                        # Start with Turbopack 🚀
 
 # App ready at http://localhost:3000
 # Lightning-fast HMR with Turbopack
+```
+
+## 🔐 Authentication Status
+
+**✅ FULLY IMPLEMENTED**
+- Auth.js v5 with Google/X OAuth providers
+- Complete authentication UI (signin/error pages)
+- Session management with useSession
+- Protected routes and auth state handling
+- User profile display in header
+
+**🔄 NEXT STEPS (for live testing)**
+1. **OAuth Credentials Setup** - Configure Google/X developer consoles
+2. **Backend Integration** - Test user creation via API
+3. **E2E Authentication Tests** - Update Playwright tests
+
+### OAuth Setup Required
+
+**Google OAuth:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create OAuth 2.0 credentials
+3. Add `http://localhost:3000` to authorized origins
+4. Add `http://localhost:3000/api/auth/callback/google` to authorized redirect URIs
+
+**X (Twitter) OAuth:**
+1. Go to [Twitter Developer Portal](https://developer.twitter.com/)
+2. Create OAuth 2.0 app
+3. Add `http://localhost:3000/api/auth/callback/twitter` to callback URLs
+
+Add credentials to `web/.env.local`:
+```bash
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+TWITTER_CLIENT_ID=your_twitter_client_id
+TWITTER_CLIENT_SECRET=your_twitter_client_secret
+NEXTAUTH_SECRET=your_random_secret_key
 ```
 
 ## 🚀 Modern React Patterns

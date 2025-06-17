@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,10 +13,10 @@ import (
 	"github.com/danielgtaylor/huma/v2/humacli"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 
 	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
 	"github.com/necofuryai/bocchi-the-map/api/interfaces/http/handlers"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
@@ -48,13 +49,26 @@ func main() {
 
 	// Create CLI
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
+		// Initialize database connection
+		db, err := sql.Open("mysql", cfg.Database.GetDSN())
+		if err != nil {
+			logger.Fatal("Failed to connect to database", err)
+		}
+		defer db.Close()
+
+		// Test database connection
+		if err := db.Ping(); err != nil {
+			logger.Fatal("Failed to ping database", err)
+		}
+		logger.Info("Database connection established")
+
 		// Initialize gRPC clients (using internal communication for monolith)
 		spotClient, err := clients.NewSpotClient("internal")
 		if err != nil {
 			logger.Fatal("Failed to create spot client", err)
 		}
 
-		userClient, err := clients.NewUserClient("internal")
+		userClient, err := clients.NewUserClient("internal", db)
 		if err != nil {
 			spotClient.Close()
 			logger.Fatal("Failed to create user client", err)
@@ -152,17 +166,14 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 		return resp, nil
 	})
 
-	// API v1 routes
-	v1 := api.Group("/api/v1")
-
 	// Spot routes
-	registerSpotRoutes(v1, spotClient)
+	registerSpotRoutes(api, spotClient)
 
 	// Review routes
-	registerReviewRoutes(v1, reviewClient)
+	registerReviewRoutes(api, reviewClient)
 
 	// User routes
-	registerUserRoutes(v1, userClient)
+	registerUserRoutes(api, userClient)
 }
 
 // registerSpotRoutes registers spot-related routes
@@ -178,6 +189,7 @@ func registerReviewRoutes(api huma.API, reviewClient *clients.ReviewClient) {
 }
 
 func registerUserRoutes(api huma.API, userClient *clients.UserClient) {
-	// TODO: Implement user routes with userClient
+	userHandler := handlers.NewUserHandler(userClient)
+	handlers.RegisterUserRoutes(api, userHandler)
 	logger.Info("User routes registered")
 }

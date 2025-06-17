@@ -2,12 +2,12 @@ version: "2"
 sql:
   - engine: "mysql"
     queries: "queries/"
-    schema: "migrations/"
+    schema: "migrations_new/"
     gen:
       go:
         package: "database"
         out: "infrastructure/database"
-        sql_package: "github.com/go-sql-driver/mysql"
+        sql_package: "database/sql"
         emit_json_tags: true
         emit_prepared_queries: false
         emit_interface: true

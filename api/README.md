@@ -13,14 +13,32 @@ A **type-safe, auto-documented REST API** that powers solo-friendly location dis
 ## ⚡ Quick Start
 
 ```bash
-# Prerequisites: Go 1.21+, protoc
-make deps                   # Install dependencies
+# 🚀 ONE-COMMAND SETUP (Recommended)
+make dev-setup              # Start MySQL + migrations + API
+
+# 📋 Manual setup (if needed)
+make deps                   # Install dependencies  
+make docker-up              # Start MySQL container
+make migrate-up             # Run database migrations
 make proto                  # Generate type-safe contracts
 make dev                    # Start with hot reload 🔥
 
 # API ready at http://localhost:8080
 # Interactive docs at http://localhost:8080/docs
 ```
+
+## 🔐 Authentication Status
+
+**✅ FULLY IMPLEMENTED**
+- OAuth integration (Google/X) via Auth.js
+- User management API (`POST /api/users`)
+- Database schema with user authentication
+- Frontend authentication UI complete
+
+**🔄 NEXT STEPS**
+- OAuth credentials setup (Google/X Console)
+- Frontend-backend integration testing  
+- Live authentication flow testing
 
 ## 🏗️ Architecture Philosophy
 
