@@ -2,100 +2,284 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/google/uuid"
 	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
+	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
 )
-
-// CreateUserRequest represents the request payload for creating a user
-type CreateUserRequest struct {
-	Email          string `json:"email" validate:"required,email" example:"user@example.com" doc:"User email address"`
-	DisplayName    string `json:"display_name" validate:"required,min=1,max=100" example:"John Doe" doc:"User display name"`
-	AvatarURL      string `json:"avatar_url,omitempty" example:"https://example.com/avatar.jpg" doc:"User avatar URL"`
-	AuthProvider   string `json:"auth_provider" validate:"required,oneof=google x" example:"google" doc:"Authentication provider (google or x)"`
-	AuthProviderID string `json:"auth_provider_id" validate:"required" example:"google_123456789" doc:"Provider-specific user ID"`
-}
-
-// CreateUserResponse represents the response for creating a user
-type CreateUserResponse struct {
-	Body *entities.User `json:"user" doc:"Created user information"`
-}
 
 // UserHandler handles user-related HTTP requests
 type UserHandler struct {
 	userClient *clients.UserClient
+	queries    *database.Queries
 }
 
-// NewUserHandler creates a new UserHandler instance
-func NewUserHandler(userClient *clients.UserClient) *UserHandler {
+// NewUserHandler creates a new user handler
+func NewUserHandler(userClient *clients.UserClient, queries *database.Queries) *UserHandler {
 	return &UserHandler{
 		userClient: userClient,
+		queries:    queries,
 	}
 }
 
-// CreateUserOperation represents the operation metadata
-type CreateUserOperation struct {
-	Request  CreateUserRequest
-	Response CreateUserResponse
+// CreateUserInput represents the OAuth user creation/update request (Auth.js compatible)
+type CreateUserInput struct {
+	Body struct {
+		Email          string `json:"email" maxLength:"255" doc:"User email address"`
+		DisplayName    string `json:"name" maxLength:"100" doc:"User display name"`
+		AvatarURL      string `json:"image,omitempty" doc:"User avatar URL"`
+		AuthProvider   string `json:"provider" enum:"google,x" doc:"OAuth provider (google or x)"`
+		AuthProviderID string `json:"provider_id" doc:"Provider-specific user ID"`
+	}
 }
 
-// CreateUser handles POST /api/users requests to create or update a user
-func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserRequest) (*CreateUserResponse, error) {
-	// Convert string auth provider to domain type
-	var authProvider entities.AuthProvider
-	switch input.AuthProvider {
-	case "google":
-		authProvider = entities.AuthProviderGoogle
-	case "x":
-		authProvider = entities.AuthProviderX  
-	default:
-		return nil, huma.Error400BadRequest("Invalid auth provider. Must be 'google' or 'x'")
+// CreateUserOutput represents the response for user creation
+type CreateUserOutput struct {
+	Body struct {
+		ID          string    `json:"id" doc:"User ID"`
+		Email       string    `json:"email" doc:"User email"`
+		DisplayName string    `json:"name" doc:"User display name"`
+		AvatarURL   string    `json:"image,omitempty" doc:"User avatar URL"`
+		CreatedAt   time.Time `json:"created_at" doc:"Creation timestamp"`
+		UpdatedAt   time.Time `json:"updated_at" doc:"Last update timestamp"`
 	}
-
-	// Check if user already exists by auth provider and provider ID
-	existingUser, err := h.userClient.GetUserByAuthProvider(ctx, authProvider, input.AuthProviderID)
-	if err != nil && err.Error() != "user not found" {
-		return nil, huma.Error500InternalServerError("Failed to check existing user", err)
-	}
-
-	var user *entities.User
-
-	if existingUser != nil {
-		// Update existing user
-		existingUser.Email = input.Email
-		existingUser.DisplayName = input.DisplayName
-		existingUser.AvatarURL = input.AvatarURL
-
-		user, err = h.userClient.UpdateUser(ctx, existingUser)
-		if err != nil {
-			return nil, huma.Error500InternalServerError("Failed to update user", err)
-		}
-	} else {
-		// Create new user
-		newUser := entities.NewUser(input.Email, input.DisplayName, authProvider, input.AuthProviderID)
-		newUser.AvatarURL = input.AvatarURL
-
-		user, err = h.userClient.CreateUser(ctx, newUser)
-		if err != nil {
-			return nil, huma.Error500InternalServerError("Failed to create user", err)
-		}
-	}
-
-	return &CreateUserResponse{
-		Body: user,
-	}, nil
 }
 
-// RegisterUserRoutes registers user-related routes with the API
-func RegisterUserRoutes(api huma.API, userHandler *UserHandler) {
+// GetCurrentUserInput represents the request to get current user
+type GetCurrentUserInput struct {
+	// Empty - user context comes from authentication
+}
+
+// GetCurrentUserOutput represents the response for getting current user
+type GetCurrentUserOutput struct {
+	Body struct {
+		ID          string                 `json:"id" doc:"User ID"`
+		Email       string                 `json:"email" doc:"User email"`
+		DisplayName string                 `json:"display_name" doc:"User display name"`
+		AvatarURL   string                 `json:"avatar_url,omitempty" doc:"User avatar URL"`
+		Preferences map[string]interface{} `json:"preferences,omitempty" doc:"User preferences"`
+		CreatedAt   time.Time              `json:"created_at" doc:"Creation timestamp"`
+		UpdatedAt   time.Time              `json:"updated_at" doc:"Last update timestamp"`
+	}
+}
+
+// UpdatePreferencesInput represents the request to update user preferences
+type UpdatePreferencesInput struct {
+	Body struct {
+		Preferences map[string]interface{} `json:"preferences" doc:"User preferences to update"`
+	}
+}
+
+// UpdatePreferencesOutput represents the response for updating preferences
+type UpdatePreferencesOutput struct {
+	Body struct {
+		ID          string                 `json:"id" doc:"User ID"`
+		Email       string                 `json:"email" doc:"User email"`
+		DisplayName string                 `json:"display_name" doc:"User display name"`
+		AvatarURL   string                 `json:"avatar_url,omitempty" doc:"User avatar URL"`
+		Preferences map[string]interface{} `json:"preferences,omitempty" doc:"Updated user preferences"`
+		UpdatedAt   time.Time              `json:"updated_at" doc:"Last update timestamp"`
+	}
+}
+
+// RegisterRoutes registers user routes (both standard API and Auth.js compatible)
+func (h *UserHandler) RegisterRoutes(api huma.API) {
+	// Standard REST API routes
 	huma.Register(api, huma.Operation{
-		OperationID: "CreateUser",
+		OperationID: "create-user",
 		Method:      http.MethodPost,
-		Path:        "/api/users",
-		Summary:     "Create or update user",
-		Description: "Creates a new user or updates an existing user based on authentication provider information. If a user with the same auth_provider and auth_provider_id already exists, it will be updated.",
-		Tags:        []string{"users"},
-	}, userHandler.CreateUser)
+		Path:        "/api/v1/users",
+		Summary:     "Create or update a user",
+		Description: "Create a new user or update existing user information",
+		Tags:        []string{"Users"},
+	}, h.CreateUser)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "get-current-user",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/users/me",
+		Summary:     "Get current user",
+		Description: "Get the current authenticated user's information",
+		Tags:        []string{"Users"},
+	}, h.GetCurrentUser)
+
+	huma.Register(api, huma.Operation{
+		OperationID: "update-user-preferences",
+		Method:      http.MethodPatch,
+		Path:        "/api/v1/users/me/preferences",
+		Summary:     "Update user preferences",
+		Description: "Update the current user's preferences",
+		Tags:        []string{"Users"},
+	}, h.UpdatePreferences)
+}
+
+// CreateUser creates or updates a user (upsert for OAuth flow)
+func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*CreateUserOutput, error) {
+	// Convert provider string to enum
+	var authProvider database.UsersAuthProvider
+	switch input.Body.AuthProvider {
+	case "google":
+		authProvider = database.UsersAuthProviderGoogle
+	case "x":
+		authProvider = database.UsersAuthProviderX
+	default:
+		return nil, huma.Error400BadRequest("invalid auth provider")
+	}
+
+	// Generate UUID for new user
+	userID := uuid.New().String()
+
+	// Convert avatar URL to nullable string
+	var avatarURL sql.NullString
+	if input.Body.AvatarURL != "" {
+		avatarURL = sql.NullString{String: input.Body.AvatarURL, Valid: true}
+	}
+
+	// Default preferences as JSON
+	defaultPrefs := map[string]interface{}{
+		"language":  "ja",
+		"dark_mode": false,
+		"timezone":  "Asia/Tokyo",
+	}
+	prefsJSON, err := json.Marshal(defaultPrefs)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("failed to marshal preferences")
+	}
+
+	// Upsert user in database
+	err = h.queries.UpsertUser(ctx, database.UpsertUserParams{
+		ID:             userID,
+		Email:          input.Body.Email,
+		DisplayName:    input.Body.DisplayName,
+		AvatarUrl:      avatarURL,
+		AuthProvider:   authProvider,
+		AuthProviderID: input.Body.AuthProviderID,
+		Preferences:    prefsJSON,
+	})
+	if err != nil {
+		return nil, huma.Error500InternalServerError("failed to create/update user")
+	}
+
+	// Retrieve the created/updated user to get accurate timestamps
+	user, err := h.queries.GetUserByProviderID(ctx, database.GetUserByProviderIDParams{
+		AuthProvider:   authProvider,
+		AuthProviderID: input.Body.AuthProviderID,
+	})
+	if err != nil {
+		return nil, huma.Error500InternalServerError("failed to retrieve user")
+	}
+
+	// Convert response
+	resp := &CreateUserOutput{}
+	resp.Body.ID = user.ID
+	resp.Body.Email = user.Email
+	resp.Body.DisplayName = user.DisplayName
+	if user.AvatarUrl.Valid {
+		resp.Body.AvatarURL = user.AvatarUrl.String
+	}
+	resp.Body.CreatedAt = user.CreatedAt
+	resp.Body.UpdatedAt = user.UpdatedAt
+
+	return resp, nil
+}
+
+// GetCurrentUser gets the current authenticated user
+func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserInput) (*GetCurrentUserOutput, error) {
+	// TODO: Extract user ID from authentication context
+	// For now, return the first user as a placeholder
+	// In production, this would come from JWT token or session
+	
+	// This is a placeholder implementation - replace with actual auth context extraction
+	users := []string{"user_123"} // This would come from auth middleware
+	if len(users) == 0 {
+		return nil, huma.Error401Unauthorized("user not authenticated")
+	}
+	
+	userID := users[0]
+	user, err := h.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, huma.Error404NotFound("user not found")
+		}
+		return nil, huma.Error500InternalServerError("failed to get user")
+	}
+
+	// Parse preferences JSON
+	var preferences map[string]interface{}
+	if len(user.Preferences) > 0 {
+		if err := json.Unmarshal(user.Preferences, &preferences); err != nil {
+			// If preferences are malformed, use defaults
+			preferences = map[string]interface{}{
+				"language":  "ja",
+				"dark_mode": false,
+				"timezone":  "Asia/Tokyo",
+			}
+		}
+	}
+
+	// Convert response
+	resp := &GetCurrentUserOutput{}
+	resp.Body.ID = user.ID
+	resp.Body.Email = user.Email
+	resp.Body.DisplayName = user.DisplayName
+	if user.AvatarUrl.Valid {
+		resp.Body.AvatarURL = user.AvatarUrl.String
+	}
+	resp.Body.Preferences = preferences
+	resp.Body.CreatedAt = user.CreatedAt
+	resp.Body.UpdatedAt = user.UpdatedAt
+
+	return resp, nil
+}
+
+// UpdatePreferences updates user preferences
+func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePreferencesInput) (*UpdatePreferencesOutput, error) {
+	// TODO: Extract user ID from authentication context
+	// For now, use placeholder user ID
+	userID := "user_123" // This would come from auth middleware
+
+	// Convert preferences to JSON
+	prefsJSON, err := json.Marshal(input.Body.Preferences)
+	if err != nil {
+		return nil, huma.Error400BadRequest("invalid preferences format")
+	}
+
+	// Update preferences in database
+	err = h.queries.UpdateUserPreferences(ctx, database.UpdateUserPreferencesParams{
+		ID:          userID,
+		Preferences: prefsJSON,
+	})
+	if err != nil {
+		return nil, huma.Error500InternalServerError("failed to update preferences")
+	}
+
+	// Retrieve updated user
+	user, err := h.queries.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("failed to retrieve updated user")
+	}
+
+	// Parse updated preferences
+	var preferences map[string]interface{}
+	if len(user.Preferences) > 0 {
+		json.Unmarshal(user.Preferences, &preferences)
+	}
+
+	// Convert response
+	resp := &UpdatePreferencesOutput{}
+	resp.Body.ID = user.ID
+	resp.Body.Email = user.Email
+	resp.Body.DisplayName = user.DisplayName
+	if user.AvatarUrl.Valid {
+		resp.Body.AvatarURL = user.AvatarUrl.String
+	}
+	resp.Body.Preferences = preferences
+	resp.Body.UpdatedAt = user.UpdatedAt
+
+	return resp, nil
 }
