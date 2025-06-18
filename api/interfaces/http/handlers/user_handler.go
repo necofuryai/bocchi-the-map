@@ -31,7 +31,7 @@ type CreateUserInput struct {
 		Email          string `json:"email" maxLength:"255" doc:"User email address"`
 		DisplayName    string `json:"name" maxLength:"100" doc:"User display name"`
 		AvatarURL      string `json:"image,omitempty" doc:"User avatar URL"`
-		AuthProvider   string `json:"provider" enum:"google,x" doc:"OAuth provider (google or x)"`
+		AuthProvider   string `json:"provider" enum:"google,twitter,x" doc:"OAuth provider (google, twitter, or x)"`
 		AuthProviderID string `json:"provider_id" doc:"Provider-specific user ID"`
 	}
 }
@@ -123,8 +123,8 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 	switch input.Body.AuthProvider {
 	case "google":
 		authProvider = database.UsersAuthProviderGoogle
-	case "x":
-		authProvider = database.UsersAuthProviderX
+	case "twitter", "x": // Support both twitter and x for compatibility
+		authProvider = database.UsersAuthProviderTwitter
 	default:
 		return nil, huma.Error400BadRequest("invalid auth provider")
 	}

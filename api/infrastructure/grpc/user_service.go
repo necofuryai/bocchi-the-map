@@ -103,7 +103,7 @@ func (s *UserService) GetUserByAuthProvider(ctx context.Context, authProvider en
 	case entities.AuthProviderGoogle:
 		dbAuthProvider = database.UsersAuthProviderGoogle
 	case entities.AuthProviderX:
-		dbAuthProvider = database.UsersAuthProviderX
+		dbAuthProvider = database.UsersAuthProviderTwitter
 	default:
 		return nil, errors.New("invalid auth provider")
 	}
@@ -139,7 +139,7 @@ func (s *UserService) CreateUser(ctx context.Context, user *entities.User) (*ent
 	case entities.AuthProviderGoogle:
 		dbAuthProvider = database.UsersAuthProviderGoogle
 	case entities.AuthProviderX:
-		dbAuthProvider = database.UsersAuthProviderX
+		dbAuthProvider = database.UsersAuthProviderTwitter
 	default:
 		return nil, errors.New("invalid auth provider")
 	}
@@ -185,7 +185,7 @@ func (s *UserService) UpdateUser(ctx context.Context, user *entities.User) (*ent
 	case entities.AuthProviderGoogle:
 		dbAuthProvider = database.UsersAuthProviderGoogle
 	case entities.AuthProviderX:
-		dbAuthProvider = database.UsersAuthProviderX
+		dbAuthProvider = database.UsersAuthProviderTwitter
 	default:
 		return nil, errors.New("invalid auth provider")
 	}
@@ -232,7 +232,7 @@ func (s *UserService) convertDatabaseUserToEntity(dbUser database.User) *entitie
 	switch dbUser.AuthProvider {
 	case database.UsersAuthProviderGoogle:
 		authProvider = entities.AuthProviderGoogle
-	case database.UsersAuthProviderX:
+	case database.UsersAuthProviderTwitter:
 		authProvider = entities.AuthProviderX
 	}
 

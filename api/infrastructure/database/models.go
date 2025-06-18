@@ -15,8 +15,8 @@ import (
 type UsersAuthProvider string
 
 const (
-	UsersAuthProviderGoogle UsersAuthProvider = "google"
-	UsersAuthProviderX      UsersAuthProvider = "x"
+	UsersAuthProviderGoogle  UsersAuthProvider = "google"
+	UsersAuthProviderTwitter UsersAuthProvider = "twitter"
 )
 
 func (e *UsersAuthProvider) Scan(src interface{}) error {
