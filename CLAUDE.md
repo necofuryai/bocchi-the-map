@@ -67,6 +67,7 @@ This is a monorepo with three main modules:
 ```bash
 cd api
 make deps              # Install Go dependencies
+make sqlc              # Generate type-safe SQL code from queries/
 make proto             # Generate protobuf files
 make test              # Run test suite
 make run               # Run server
@@ -75,7 +76,11 @@ make build             # Build binary to bin/api
 make clean             # Clean generated files
 make migrate-up        # Run database migrations
 make migrate-down      # Rollback database migrations
+make migrate-create NAME=migration_name  # Create new migration
 make docs              # Generate OpenAPI documentation
+make docker-up         # Start MySQL development environment
+make docker-down       # Stop development environment
+make dev-setup         # Complete development setup (MySQL + migrations)
 ```
 
 **Web Development**
@@ -145,6 +150,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 **Infrastructure Layer** (`/infrastructure/`)
 
+- `database/` - sqlc-generated database models and queries
 - `grpc/` - gRPC service implementations (TiDB/MySQL)
 - `external/` - Third-party service integrations
 
@@ -177,8 +183,10 @@ The Go API follows strict onion architecture principles with clear layer separat
 - Go 1.21+
 - Protocol Buffers compiler (`protoc`)
 - sqlc: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
+- golang-migrate: `brew install golang-migrate` (for database migrations)
 - Ginkgo BDD framework: `go install github.com/onsi/ginkgo/v2/ginkgo@latest`
 - Air for hot reload: `go install github.com/cosmtrek/air@latest`
+- Docker or Colima (for local MySQL development)
 
 #### Web Development
 
@@ -199,3 +207,109 @@ The Go API follows strict onion architecture principles with clear layer separat
 - **Map Data**: Uses PMTiles format stored in Cloudflare R2 for efficient vector tile delivery
 - **Database**: TiDB Serverless provides MySQL-compatible interface with auto-scaling
 - **Microservice Ready**: Current monolith designed for easy service extraction as traffic grows
+
+## 🔐 Authentication Implementation Status
+
+### ✅ COMPLETED FEATURES
+
+**Infrastructure & Environment**
+- Colima + Docker development environment
+- MySQL container with docker-compose
+- golang-migrate for database migrations
+- Environment variable management (.env, .env.example)
+- Automated Makefile workflow (`make dev-setup`)
+
+**Backend Implementation**
+- Complete Onion Architecture implementation
+- TiDB/MySQL database integration with sqlc
+- Type-safe SQL operations via sqlc
+- User authentication API (`POST /api/users`)
+- gRPC service layer with database integration
+- Application layer (clients) with full user management
+- User entity with OAuth provider support (Google/X)
+
+**Frontend Implementation**
+- Auth.js v5 configuration (Google/X OAuth)
+- Authentication state management (useSession)
+- Sign-in page (`/auth/signin`) with provider buttons
+- Error page (`/auth/error`) with detailed error handling
+- Header component with authentication state display
+- User dropdown menu with profile/logout options
+
+**Database Schema**
+- Users table with OAuth provider fields
+- Spots table for location data
+- Reviews table for user reviews
+- Proper foreign key relationships and indexes
+
+### 🔄 PENDING TASKS
+
+1. **Frontend-Backend Integration** (Priority: HIGH)
+   - Test Auth.js with backend API `/api/users` endpoint
+   - Verify OAuth flow creates users in database
+   - Confirm user session persistence
+
+2. **Live OAuth Testing** (Priority: MEDIUM)
+   - Set up Google OAuth credentials in Google Console
+   - Set up X (Twitter) OAuth credentials
+   - Test complete login flow end-to-end
+
+3. **E2E Test Updates** (Priority: MEDIUM)
+   - Update Playwright tests for actual authentication flow
+   - Test login/logout functionality
+   - Verify authenticated user experience
+
+4. **Integration Testing** (Priority: LOW)
+   - Full frontend-backend integration tests
+   - API endpoint testing with real authentication
+
+### 🚀 Quick Start for Next Developer
+
+```bash
+# 1. Start development environment
+cd api
+make dev-setup  # Starts MySQL + runs migrations
+
+# 2. Start API server
+export $(cat .env | xargs)
+make run
+
+# 3. Start frontend (in separate terminal)
+cd ../web
+cp .env.local.example .env.local
+# Add your OAuth credentials to .env.local
+pnpm dev
+```
+
+### 📋 OAuth Setup Required
+
+**Google OAuth:**
+1. Go to Google Cloud Console
+2. Create OAuth 2.0 credentials
+3. Add to `web/.env.local`:
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
+
+**X (Twitter) OAuth:**
+1. Go to Twitter Developer Portal
+2. Create OAuth 2.0 app
+3. Add to `web/.env.local`:
+   - `TWITTER_CLIENT_ID`
+   - `TWITTER_CLIENT_SECRET`
+
+### 🐛 Known Issues & Solutions
+
+**Docker Issues:**
+- If Docker not available, use Colima: `brew install colima && colima start`
+- Ensure Docker context: `docker context use colima`
+
+**Database Connection:**
+- Local MySQL: Use `make dev-setup`
+- Production TiDB: Update `.env` with TiDB credentials
+- Migration errors: Check `DATABASE_URL` format
+
+**Authentication Flow:**
+- Frontend calls Auth.js for OAuth
+- Auth.js callback creates user via `POST /api/users`
+- Backend stores user in MySQL/TiDB
+- Session managed by Auth.js JWT

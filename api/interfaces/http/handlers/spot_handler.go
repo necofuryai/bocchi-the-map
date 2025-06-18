@@ -114,7 +114,7 @@ func (h *SpotHandler) RegisterRoutes(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "create-spot",
 		Method:      http.MethodPost,
-		Path:        "/spots",
+		Path:        "/api/v1/spots",
 		Summary:     "Create a new spot",
 		Description: "Create a new reviewable spot on the map",
 		Tags:        []string{"Spots"},
@@ -124,7 +124,7 @@ func (h *SpotHandler) RegisterRoutes(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "get-spot",
 		Method:      http.MethodGet,
-		Path:        "/spots/{id}",
+		Path:        "/api/v1/spots/{id}",
 		Summary:     "Get a spot",
 		Description: "Get details of a specific spot",
 		Tags:        []string{"Spots"},
@@ -134,7 +134,7 @@ func (h *SpotHandler) RegisterRoutes(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "list-spots",
 		Method:      http.MethodGet,
-		Path:        "/spots",
+		Path:        "/api/v1/spots",
 		Summary:     "List spots",
 		Description: "List spots with optional filters",
 		Tags:        []string{"Spots"},

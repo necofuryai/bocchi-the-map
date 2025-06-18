@@ -2,13 +2,9 @@ package clients
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"os"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 
 	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
 )
@@ -29,26 +25,9 @@ func NewSpotClient(serviceAddr string) (*SpotClient, error) {
 		}, nil
 	}
 
-	// For external gRPC service connection
-	// TODO: Use TLS credentials in production
-	var creds credentials.TransportCredentials
-	if os.Getenv("GRPC_INSECURE") == "true" {
-		creds = insecure.NewCredentials()
-	} else {
-		creds = credentials.NewTLS(&tls.Config{
-			MinVersion: tls.VersionTLS13,
-		})
-	}
-	conn, err := grpc.NewClient(serviceAddr, grpc.WithTransportCredentials(creds))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to spot service: %w", err)
-	}
-
-	return &SpotClient{
-		conn: conn,
-		// TODO: Use generated gRPC client when protobuf is available
-		service: grpcSvc.NewSpotService(),
-	}, nil
+	// TODO: Implement external gRPC service connection when protobuf client is ready
+	// For now, return error for external services to avoid silent failures
+	return nil, fmt.Errorf("external gRPC service not implemented yet: %s", serviceAddr)
 }
 
 // Close closes the gRPC connection

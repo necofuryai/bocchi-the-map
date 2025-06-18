@@ -1,18 +1,18 @@
 -- Initial schema for bocchi-the-map
-CREATE TABLE users (
-    id VARCHAR(36) PRIMARY KEY,
-    anonymous_id VARCHAR(36),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    display_name VARCHAR(100) NOT NULL,
-    avatar_url TEXT,
-    auth_provider ENUM('google', 'x') NOT NULL,
-    auth_provider_id VARCHAR(255) NOT NULL,
-    preferences JSON DEFAULT '{}',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    CONSTRAINT unique_provider_user UNIQUE KEY (auth_provider, auth_provider_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE
+  `users` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `anonymous_id` VARCHAR(36),
+    `email` VARCHAR(255) UNIQUE NOT NULL,
+    `display_name` VARCHAR(100) NOT NULL,
+    `avatar_url` TEXT,
+    `auth_provider` ENUM('google', 'x') NOT NULL,
+    `auth_provider_id` VARCHAR(255) NOT NULL,
+    `preferences` JSON,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `unique_provider_user` UNIQUE KEY (`auth_provider`, `auth_provider_id`)
+  ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 CREATE TABLE spots (
     id VARCHAR(36) PRIMARY KEY,

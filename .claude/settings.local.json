@@ -1,12 +1,4 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(*)",
-      "Read(**)",
-      "Edit(~/bocchi-the-map/**)",
-      "WebFetch(domain:*)"
-    ]
-  },
   "cleanupPeriodDays": 60,
   "enableAllProjectMcpServers": false
 }
