@@ -313,3 +313,186 @@ pnpm dev
 - Auth.js callback creates user via `POST /api/users`
 - Backend stores user in MySQL/TiDB
 - Session managed by Auth.js JWT
+
+## 🔧 Advanced Development Commands
+
+### Single Test Execution
+
+**Backend (Go):**
+```bash
+cd api
+# Run specific test file
+go test -v ./infrastructure/grpc/spot_service_test.go
+
+# Run specific test function
+go test -v -run TestSpotService_CreateSpot ./infrastructure/grpc/
+
+# Run specific test with pattern matching
+go test -v -run "TestSpotService_.*" ./...
+
+# Run tests with coverage for specific package
+go test -v -cover ./infrastructure/grpc/
+```
+
+**Frontend (Vitest/Playwright):**
+```bash
+cd web
+# Run specific test file with Vitest
+pnpm test src/components/map/Map.test.tsx
+
+# Run specific test pattern
+pnpm test --run --reporter=verbose Map
+
+# Run specific E2E test file
+pnpm test:e2e tests/auth.spec.ts
+
+# Run specific E2E test by name
+pnpm test:e2e --grep "should login with Google"
+```
+
+### Debugging and Logging
+
+**Backend Debug Mode:**
+```bash
+cd api
+# Run with debug logging
+LOG_LEVEL=DEBUG make run
+
+# Run with trace logging (most verbose)
+LOG_LEVEL=TRACE make run
+
+# Run individual test with verbose output
+go test -v -run TestSpotService_CreateSpot ./infrastructure/grpc/ -test.v
+```
+
+**Frontend Debug Mode:**
+```bash
+cd web
+# Run development server with debug info
+DEBUG=* pnpm dev
+
+# Run tests with debug output
+DEBUG=vitest* pnpm test
+
+# Run E2E tests with debug mode
+pnpm test:e2e --debug
+```
+
+### Performance and Monitoring
+
+**Backend Performance:**
+```bash
+cd api
+# Run with CPU profiling
+go test -cpuprofile=cpu.prof -bench=. ./...
+
+# Memory profiling
+go test -memprofile=mem.prof -bench=. ./...
+
+# Benchmark specific functions
+go test -bench=BenchmarkSpotService ./infrastructure/grpc/
+```
+
+**Database Operations:**
+```bash
+cd api
+# Show database connection status
+make docker-logs
+
+# Reset database (caution: deletes all data)
+make migrate-down && make migrate-up
+
+# Create and run specific migration
+make migrate-create NAME=add_user_preferences
+make migrate-up
+```
+
+### Environment Management
+
+**Environment Variables:**
+```bash
+# Backend environment setup
+cd api
+cp .env.example .env
+# Edit .env with your configurations
+
+# Frontend environment setup  
+cd web
+cp .env.local.example .env.local
+# Add OAuth credentials to .env.local
+```
+
+**Multi-Environment Testing:**
+```bash
+# Test against local MySQL
+cd api
+export DATABASE_URL="mysql://bocchi_user:change_me_too@tcp(localhost:3306)/bocchi_the_map"
+make test
+
+# Test against TiDB (production-like)
+export DATABASE_URL="mysql://user:pass@tcp(gateway.tidbcloud.com:4000)/bocchi_the_map"
+make test
+```
+
+### Code Generation and Build
+
+**Protocol Buffers:**
+```bash
+cd api
+# Generate only specific proto file
+protoc -I proto --go_out=gen proto/spot.proto
+
+# Validate proto files
+protoc --proto_path=proto --lint_out=. proto/*.proto
+```
+
+**SQL Code Generation:**
+```bash
+cd api  
+# Regenerate after schema changes
+make sqlc
+
+# Validate SQL queries
+sqlc vet
+```
+
+### Troubleshooting Common Issues
+
+**Port Conflicts:**
+```bash
+# Check what's using port 8080 (API)
+lsof -i :8080
+
+# Check what's using port 3000 (Frontend)
+lsof -i :3000
+
+# Kill process using specific port
+kill -9 $(lsof -t -i:8080)
+```
+
+**Cache Issues:**
+```bash
+# Clear Next.js cache
+cd web
+rm -rf .next/
+
+# Clear Go module cache
+cd api
+go clean -modcache
+
+# Clear pnpm cache
+cd web
+pnpm store prune
+```
+
+**Dependency Issues:**
+```bash
+# Rebuild Go modules
+cd api
+rm go.sum && go mod tidy
+
+# Reinstall Node modules
+cd web
+rm -rf node_modules package-lock.json pnpm-lock.yaml
+pnpm install
+```
