@@ -39,7 +39,7 @@ func NewUserClient(serviceAddr string) (*UserClient, error) {
 			MinVersion: tls.VersionTLS13,
 		})
 	}
-	conn, err := grpc.NewClient(serviceAddr, grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(serviceAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to user service: %w", err)
 	}

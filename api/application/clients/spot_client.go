@@ -39,7 +39,7 @@ func NewSpotClient(serviceAddr string) (*SpotClient, error) {
 			MinVersion: tls.VersionTLS13,
 		})
 	}
-	conn, err := grpc.NewClient(serviceAddr, grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(serviceAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to spot service: %w", err)
 	}
