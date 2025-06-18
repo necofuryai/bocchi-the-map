@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"os"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -39,7 +40,12 @@ func NewReviewClient(serviceAddr string) (*ReviewClient, error) {
 			MinVersion: tls.VersionTLS13,
 		})
 	}
-	conn, err := grpc.Dial(serviceAddr, grpc.WithTransportCredentials(creds))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	conn, err := grpc.DialContext(ctx, serviceAddr, 
+		grpc.WithTransportCredentials(creds),
+		grpc.WithBlock())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to review service: %w", err)
 	}

@@ -91,7 +91,6 @@ export default function AuthErrorPage() {
             description: 'この機能を使用するにはログインが必要です。',
             suggestion: 'ログインしてから再度お試しください。'
           }
-        case 'Default':
         default:
           return {
             title: '認証エラー',

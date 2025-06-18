@@ -15,15 +15,13 @@ import (
 
 // UserHandler handles user-related HTTP requests
 type UserHandler struct {
-	userClient *clients.UserClient
-	queries    *database.Queries
+	queries *database.Queries
 }
 
 // NewUserHandler creates a new user handler
 func NewUserHandler(userClient *clients.UserClient, queries *database.Queries) *UserHandler {
 	return &UserHandler{
-		userClient: userClient,
-		queries:    queries,
+		queries: queries,
 	}
 }
 

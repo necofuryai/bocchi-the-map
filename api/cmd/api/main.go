@@ -14,7 +14,6 @@ import (
 	"github.com/danielgtaylor/huma/v2/humacli"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	_ "github.com/go-sql-driver/mysql"
 	"google.golang.org/grpc"
 
 	"github.com/necofuryai/bocchi-the-map/api/application/clients"
@@ -56,7 +55,7 @@ func main() {
 		if err != nil {
 			logger.Fatal("Failed to connect to database", err)
 		}
-		defer db.Close()
+		// Note: Database connection will be closed when the application shuts down
 
 		// Configure connection pool
 		db.SetMaxOpenConns(25)

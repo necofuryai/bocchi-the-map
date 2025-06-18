@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -41,7 +42,12 @@ func NewUserClient(serviceAddr string, db *sql.DB) (*UserClient, error) {
 			MinVersion: tls.VersionTLS13,
 		})
 	}
-	conn, err := grpc.Dial(serviceAddr, grpc.WithTransportCredentials(creds))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	conn, err := grpc.DialContext(ctx, serviceAddr, 
+		grpc.WithTransportCredentials(creds),
+		grpc.WithBlock())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to user service: %w", err)
 	}
@@ -49,6 +55,8 @@ func NewUserClient(serviceAddr string, db *sql.DB) (*UserClient, error) {
 	return &UserClient{
 		conn: conn,
 		// TODO: Use generated gRPC client when protobuf is available
+		// For now, we create a local service instance even for external connections
+		// This should be replaced with: NewUserServiceClient(conn) when protobuf is ready
 		service: grpcSvc.NewUserService(db),
 	}, nil
 }

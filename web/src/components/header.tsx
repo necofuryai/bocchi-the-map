@@ -19,11 +19,12 @@ export function Header() {
   const { data: session, status } = useSession()
 
   const handleSignIn = () => {
-    signIn(undefined, { callbackUrl: '/' })
+    // Explicitly ignore the Promise to avoid unhandled exceptions
+    void signIn(undefined, { callbackUrl: '/' })
   }
 
   const handleSignOut = () => {
-    signOut({ callbackUrl: '/' })
+    void signOut({ callbackUrl: '/' })
   }
 
   return (
@@ -79,7 +80,7 @@ export function Header() {
                       className="h-6 w-6 rounded-full mr-2"
                     />
                   ) : (
-                    <UserIcon className="h-5 w-5 mr-2" />
+                    <UserIcon className="h-5 w-5 mr-2" aria-hidden="true" />
                   )}
                   {session.user?.name || session.user?.email}
                 </Button>
