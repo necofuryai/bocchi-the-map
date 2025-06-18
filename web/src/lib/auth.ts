@@ -8,12 +8,22 @@ const AUTH_PROVIDER = {
   TWITTER: 'twitter' as const,
 } as const
 
-// Type augmentation for NextAuth JWT
-declare module "next-auth/jwt" {
-  interface JWT {
-    uid?: string
+// Type augmentation for Auth.js v5
+declare module "next-auth" {
+  interface User {
     provider?: string
     providerAccountId?: string
+  }
+  
+  interface Session {
+    user: {
+      id?: string
+      email?: string
+      name?: string
+      image?: string
+      provider?: string
+      providerAccountId?: string
+    }
   }
 }
 
@@ -42,10 +52,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const apiUrl = process.env.API_URL || 'http://localhost:8080'
           const userData = {
             email: user.email,
-            display_name: user.name,
-            avatar_url: user.image,
-            auth_provider: account.provider,
-            auth_provider_id: account.providerAccountId,
+            name: user.name,
+            image: user.image,
+            provider: account.provider,
+            provider_id: account.providerAccountId,
           }
           
           if (process.env.NODE_ENV === 'development') {
@@ -57,7 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           
           let response: Response
           try {
-            response = await fetch(`${apiUrl}/api/users`, {
+            response = await fetch(`${apiUrl}/api/v1/users`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -77,6 +87,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               error: errorText,
               user: user.email,
             })
+            // Log specific error for debugging
+            if (response.status >= 500) {
+              console.error('Server error - user creation will be retried on next login')
+            } else if (response.status === 400) {
+              console.error('Invalid request data - check OAuth provider configuration')
+            }
             // Allow sign-in to continue even if user creation fails
             // The user will be created on next successful API call
           } else {

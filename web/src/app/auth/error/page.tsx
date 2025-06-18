@@ -91,6 +91,24 @@ export default function AuthErrorPage() {
             description: 'この機能を使用するにはログインが必要です。',
             suggestion: 'ログインしてから再度お試しください。'
           }
+        case 'APIError':
+          return {
+            title: 'APIサーバーエラー',
+            description: 'バックエンドAPIサーバーとの通信に失敗しました。',
+            suggestion: 'ネットワーク接続とAPIサーバーの状態を確認して、再度お試しください。'
+          }
+        case 'DatabaseError':
+          return {
+            title: 'データベースエラー',
+            description: 'ユーザー情報の保存に失敗しました。',
+            suggestion: 'しばらく時間をおいてから再度お試しください。'
+          }
+        case 'InvalidProvider':
+          return {
+            title: '無効なプロバイダー',
+            description: 'サポートされていない認証プロバイダーです。',
+            suggestion: 'GoogleまたはX（Twitter）認証をご利用ください。'
+          }
         default:
           return {
             title: '認証エラー',
