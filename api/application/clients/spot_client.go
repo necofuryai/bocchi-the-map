@@ -30,29 +30,10 @@ func NewSpotClient(serviceAddr string) (*SpotClient, error) {
 		}, nil
 	}
 
-	// For external gRPC service connection
-	// TODO: Use TLS credentials in production
-	var creds credentials.TransportCredentials
-	if os.Getenv("GRPC_INSECURE") == "true" {
-		creds = insecure.NewCredentials()
-	} else {
-		creds = credentials.NewTLS(&tls.Config{
-			MinVersion: tls.VersionTLS13,
-		})
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	
-	conn, err := grpc.DialContext(ctx, serviceAddr, 
-		grpc.WithTransportCredentials(creds),
-		grpc.WithBlock())
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to spot service: %w", err)
-	}
-
+	// TODO: Implement external gRPC service connection when protobuf client is ready
+	// For now, skip connection since we're using local service anyway
 	return &SpotClient{
-		conn: conn,
-		// TODO: Use generated gRPC client when protobuf is available
+		conn: nil, // No connection needed for local service
 		service: grpcSvc.NewSpotService(),
 	}, nil
 }

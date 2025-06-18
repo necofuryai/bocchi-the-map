@@ -19,7 +19,7 @@ type UserHandler struct {
 }
 
 // NewUserHandler creates a new user handler
-func NewUserHandler(userClient *clients.UserClient, queries *database.Queries) *UserHandler {
+func NewUserHandler(queries *database.Queries) *UserHandler {
 	return &UserHandler{
 		queries: queries,
 	}
@@ -123,8 +123,10 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 	switch input.Body.AuthProvider {
 	case "google":
 		authProvider = database.UsersAuthProviderGoogle
-	case "twitter", "x": // Support both twitter and x for compatibility
+	case "twitter":
 		authProvider = database.UsersAuthProviderTwitter
+	case "x":
+		authProvider = database.UsersAuthProviderX
 	default:
 		return nil, huma.Error400BadRequest("invalid auth provider")
 	}

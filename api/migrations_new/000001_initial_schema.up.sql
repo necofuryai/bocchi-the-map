@@ -6,9 +6,9 @@ CREATE TABLE
     `email` VARCHAR(255) UNIQUE NOT NULL,
     `display_name` VARCHAR(100) NOT NULL,
     `avatar_url` TEXT,
-    `auth_provider` ENUM('google', 'twitter') NOT NULL,
+    `auth_provider` ENUM('google', 'twitter', 'x') NOT NULL,
     `auth_provider_id` VARCHAR(255) NOT NULL,
-    `preferences` JSON DEFAULT ('{}'),
+    `preferences` JSON NOT NULL DEFAULT ('{}'),
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT `unique_provider_user` UNIQUE KEY (`auth_provider`, `auth_provider_id`)

@@ -201,7 +201,7 @@ func registerReviewRoutes(api huma.API, reviewClient *clients.ReviewClient) {
 }
 
 func registerUserRoutes(api huma.API, userClient *clients.UserClient, queries *database.Queries) {
-	userHandler := handlers.NewUserHandler(userClient, queries)
+	userHandler := handlers.NewUserHandler(queries)
 	
 	// Register standard API routes (under /api/v1/users)
 	userHandler.RegisterRoutes(api)
@@ -209,7 +209,7 @@ func registerUserRoutes(api huma.API, userClient *clients.UserClient, queries *d
 }
 
 func registerAuthRoutes(api huma.API, userClient *clients.UserClient, queries *database.Queries) {
-	userHandler := handlers.NewUserHandler(userClient, queries)
+	userHandler := handlers.NewUserHandler(queries)
 	
 	// Register Auth.js compatible routes (POST /api/users)
 	huma.Register(api, huma.Operation{

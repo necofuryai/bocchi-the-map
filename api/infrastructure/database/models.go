@@ -17,6 +17,7 @@ type UsersAuthProvider string
 const (
 	UsersAuthProviderGoogle  UsersAuthProvider = "google"
 	UsersAuthProviderTwitter UsersAuthProvider = "twitter"
+	UsersAuthProviderX       UsersAuthProvider = "x"
 )
 
 func (e *UsersAuthProvider) Scan(src interface{}) error {

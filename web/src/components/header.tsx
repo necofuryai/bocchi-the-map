@@ -60,7 +60,7 @@ export function Header() {
         </div>
         
         <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-2">
-          <MapPinIcon className="h-6 w-6 text-primary" />
+          <MapPinIcon className="h-6 w-6 text-primary" aria-hidden="true" />
           <h1 className="text-xl font-bold">Bocchi The Map</h1>
         </div>
         
