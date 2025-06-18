@@ -466,8 +466,10 @@ lsof -i :8080
 # Check what's using port 3000 (Frontend)
 lsof -i :3000
 
-# Kill process using specific port
-kill -9 $(lsof -t -i:8080)
+# Kill process using specific port (try graceful termination first)
+kill -15 $(lsof -t -i:8080)
+# If process doesn't stop, force kill with:
+# kill -9 $(lsof -t -i:8080)
 ```
 
 **Cache Issues:**

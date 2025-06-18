@@ -81,17 +81,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           
           if (!response.ok) {
             const errorText = await response.text()
-            console.error('Failed to create/update user:', {
-              status: response.status,
-              statusText: response.statusText,
-              error: errorText,
-              user: user.email,
-            })
-            // Log specific error for debugging
-            if (response.status >= 500) {
-              console.error('Server error - user creation will be retried on next login')
-            } else if (response.status === 400) {
-              console.error('Invalid request data - check OAuth provider configuration')
+            if (process.env.NODE_ENV !== 'production') {
+              console.error('Failed to create/update user:', {
+                status: response.status,
+                statusText: response.statusText,
+                error: errorText,
+                user: user.email,
+              })
+              // Log specific error for debugging
+              if (response.status >= 500) {
+                console.error('Server error - user creation will be retried on next login')
+              } else if (response.status === 400) {
+                console.error('Invalid request data - check OAuth provider configuration')
+              }
             }
             // Allow sign-in to continue even if user creation fails
             // The user will be created on next successful API call
@@ -101,12 +103,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
           }
         } catch (error) {
-          console.error('Error creating/updating user:', {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-            user: user.email,
-            provider: account.provider,
-          })
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Error creating/updating user:', {
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+              user: user.email,
+              provider: account.provider,
+            })
+          }
           // Allow sign-in to continue even if user creation fails
         }
       }
