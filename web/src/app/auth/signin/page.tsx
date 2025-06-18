@@ -55,8 +55,8 @@ export default function SignInPage() {
     }
   }
 
-  const getErrorMessage = (error: string) => {
-    switch (error) {
+  const getErrorMessage = (code: string) => {
+    switch (code) {
       case 'OAuthSignin':
         return 'OAuth認証でエラーが発生しました。'
       case 'OAuthCallback':

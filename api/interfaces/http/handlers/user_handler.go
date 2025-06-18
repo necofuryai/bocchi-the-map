@@ -9,7 +9,6 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
 )
 
@@ -131,24 +130,39 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 		return nil, huma.Error400BadRequest("invalid auth provider")
 	}
 
-	// Generate UUID for new user
-	userID := uuid.New().String()
+	// Check if user already exists to avoid ID conflicts and preserve preferences
+	existingUser, err := h.queries.GetUserByProviderID(ctx, database.GetUserByProviderIDParams{
+		AuthProvider:   authProvider,
+		AuthProviderID: input.Body.AuthProviderID,
+	})
+	
+	var userID string
+	var prefsJSON []byte
+	
+	if err == sql.ErrNoRows {
+		// New user - generate UUID and use default preferences
+		userID = uuid.New().String()
+		defaultPrefs := map[string]interface{}{
+			"language":  "ja",
+			"dark_mode": false,
+			"timezone":  "Asia/Tokyo",
+		}
+		prefsJSON, err = json.Marshal(defaultPrefs)
+		if err != nil {
+			return nil, huma.Error500InternalServerError("failed to marshal preferences")
+		}
+	} else if err != nil {
+		return nil, huma.Error500InternalServerError("failed to check existing user")
+	} else {
+		// Existing user - preserve ID and existing preferences
+		userID = existingUser.ID
+		prefsJSON = existingUser.Preferences
+	}
 
 	// Convert avatar URL to nullable string
 	var avatarURL sql.NullString
 	if input.Body.AvatarURL != "" {
 		avatarURL = sql.NullString{String: input.Body.AvatarURL, Valid: true}
-	}
-
-	// Default preferences as JSON
-	defaultPrefs := map[string]interface{}{
-		"language":  "ja",
-		"dark_mode": false,
-		"timezone":  "Asia/Tokyo",
-	}
-	prefsJSON, err := json.Marshal(defaultPrefs)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to marshal preferences")
 	}
 
 	// Upsert user in database
@@ -190,17 +204,19 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 
 // GetCurrentUser gets the current authenticated user
 func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserInput) (*GetCurrentUserOutput, error) {
-	// TODO: Extract user ID from authentication context
-	// For now, return the first user as a placeholder
-	// In production, this would come from JWT token or session
+	// TODO: CRITICAL - Implement authentication context extraction
+	// This endpoint is currently INSECURE and should not be used in production
+	// Required implementation:
+	// 1. Add authentication middleware to extract user ID from JWT/session
+	// 2. Add user ID to request context in middleware
+	// 3. Extract user ID from context here using: userID, ok := ctx.Value("user_id").(string)
+	// 4. Return 401 Unauthorized if user ID is not found in context
 	
-	// This is a placeholder implementation - replace with actual auth context extraction
-	users := []string{"user_123"} // This would come from auth middleware
-	if len(users) == 0 {
+	// SECURITY WARNING: This hardcoded user ID is for development only
+	userID := "user_123"
+	if userID == "" {
 		return nil, huma.Error401Unauthorized("user not authenticated")
 	}
-	
-	userID := users[0]
 	user, err := h.queries.GetUserByID(ctx, userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -239,9 +255,19 @@ func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserI
 
 // UpdatePreferences updates user preferences
 func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePreferencesInput) (*UpdatePreferencesOutput, error) {
-	// TODO: Extract user ID from authentication context
-	// For now, use placeholder user ID
-	userID := "user_123" // This would come from auth middleware
+	// TODO: CRITICAL - Implement authentication context extraction
+	// This endpoint is currently INSECURE and should not be used in production
+	// Required implementation:
+	// 1. Add authentication middleware to extract user ID from JWT/session
+	// 2. Add user ID to request context in middleware
+	// 3. Extract user ID from context here using: userID, ok := ctx.Value("user_id").(string)
+	// 4. Return 401 Unauthorized if user ID is not found in context
+	
+	// SECURITY WARNING: This hardcoded user ID is for development only
+	userID := "user_123"
+	if userID == "" {
+		return nil, huma.Error401Unauthorized("user not authenticated")
+	}
 
 	// Convert preferences to JSON
 	prefsJSON, err := json.Marshal(input.Body.Preferences)

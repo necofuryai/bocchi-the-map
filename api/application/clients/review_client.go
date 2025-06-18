@@ -2,14 +2,9 @@ package clients
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
-	"os"
-	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 
 	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
 )
@@ -31,11 +26,8 @@ func NewReviewClient(serviceAddr string) (*ReviewClient, error) {
 	}
 
 	// TODO: Implement external gRPC service connection when protobuf client is ready
-	// For now, skip connection since we're using local service anyway
-	return &ReviewClient{
-		conn: nil, // No connection needed for local service
-		service: grpcSvc.NewReviewService(),
-	}, nil
+	// For now, return error for external services to avoid silent failures
+	return nil, fmt.Errorf("external gRPC service not implemented yet: %s", serviceAddr)
 }
 
 // Close closes the gRPC connection

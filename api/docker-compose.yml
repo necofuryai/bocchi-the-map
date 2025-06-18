@@ -6,10 +6,10 @@ services:
     env_file:
       - .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me_in_production}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-bocchi_the_map}
       MYSQL_USER: ${MYSQL_USER:-bocchi_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-bocchi_password}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_me_too}
     ports:
       - "3306:3306"
     volumes:

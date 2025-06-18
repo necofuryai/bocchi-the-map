@@ -68,6 +68,14 @@ func main() {
 		}
 		logger.Info("Database connection established")
 
+		// Ensure database connection is closed on shutdown
+		hooks.OnStop(func() {
+			logger.Info("Closing database connection")
+			if err := db.Close(); err != nil {
+				logger.Error("Failed to close database connection", err)
+			}
+		})
+
 		// Create database queries instance
 		queries := database.New(db)
 

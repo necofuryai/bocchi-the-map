@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { MapPinIcon, MenuIcon, SearchIcon, UserIcon } from "lucide-react"
 import { useSession, signIn, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -18,14 +18,14 @@ export function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const { data: session, status } = useSession()
 
-  const handleSignIn = () => {
+  const handleSignIn = useCallback(() => {
     // Explicitly ignore the Promise to avoid unhandled exceptions
     void signIn(undefined, { callbackUrl: '/' })
-  }
+  }, [])
 
-  const handleSignOut = () => {
+  const handleSignOut = useCallback(() => {
     void signOut({ callbackUrl: '/' })
-  }
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
