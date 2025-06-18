@@ -67,6 +67,7 @@ This is a monorepo with three main modules:
 ```bash
 cd api
 make deps              # Install Go dependencies
+make sqlc              # Generate type-safe SQL code from queries/
 make proto             # Generate protobuf files
 make test              # Run test suite
 make run               # Run server
@@ -75,7 +76,11 @@ make build             # Build binary to bin/api
 make clean             # Clean generated files
 make migrate-up        # Run database migrations
 make migrate-down      # Rollback database migrations
+make migrate-create NAME=migration_name  # Create new migration
 make docs              # Generate OpenAPI documentation
+make docker-up         # Start MySQL development environment
+make docker-down       # Stop development environment
+make dev-setup         # Complete development setup (MySQL + migrations)
 ```
 
 **Web Development**
@@ -145,6 +150,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 **Infrastructure Layer** (`/infrastructure/`)
 
+- `database/` - sqlc-generated database models and queries
 - `grpc/` - gRPC service implementations (TiDB/MySQL)
 - `external/` - Third-party service integrations
 
@@ -177,8 +183,10 @@ The Go API follows strict onion architecture principles with clear layer separat
 - Go 1.21+
 - Protocol Buffers compiler (`protoc`)
 - sqlc: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
+- golang-migrate: `brew install golang-migrate` (for database migrations)
 - Ginkgo BDD framework: `go install github.com/onsi/ginkgo/v2/ginkgo@latest`
 - Air for hot reload: `go install github.com/cosmtrek/air@latest`
+- Docker or Colima (for local MySQL development)
 
 #### Web Development
 
