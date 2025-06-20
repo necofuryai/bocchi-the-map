@@ -42,7 +42,6 @@ out/
 *.dll
 *.so
 *.dylib
-go.sum
 
 # Terraform
 *.tfstate
