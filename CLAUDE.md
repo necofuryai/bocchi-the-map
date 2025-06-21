@@ -37,12 +37,3 @@ This project systematically manages knowledge through the following files:
 - Standard implementation templates
 
 **Important**: When making new implementations or important decisions, please update the corresponding files.
-
-## Quick Reference
-
-For detailed information about this project, please refer to the knowledge management files:
-
-- **Project Background & Tech Stack**: See `.claude/context.md`
-- **Implementation Patterns & Architecture**: See `.claude/project-knowledge.md`
-- **Authentication Status & Improvements**: See `.claude/project-improvements.md`
-- **Development Commands & Templates**: See `.claude/common-patterns.md`

@@ -524,4 +524,27 @@ describe('useEntityManagement', () => {
         expect(result.current.entities).toHaveLength(0);
     });
 });
-```
+
+## File Formatting Rules
+
+### Markdown File End-of-File Requirements
+
+**Rule**: All markdown files must end with exactly one blank line.
+
+**Rationale**: 
+- Ensures consistent file formatting across the project
+- Prevents Git diff issues related to "No newline at end of file" warnings
+- Maintains compatibility with POSIX standards
+
+**Target Files**:
+- All README.md files in project directories
+- Documentation files (.md) in project root and subdirectories
+- All files in `.claude/` directory
+- Project-specific markdown files (CLAUDE.md, HANDOFF.md, etc.)
+
+**Excluded Files**:
+- Auto-generated test result files in `test-results/` directories
+- Auto-generated report files in `playwright-report/` directories
+- Temporary or cache-generated markdown files
+
+**Implementation**: Use automated tools or manual checks to ensure compliance during development.
