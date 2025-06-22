@@ -548,3 +548,57 @@ describe('useEntityManagement', () => {
 - Temporary or cache-generated markdown files
 
 **Implementation**: Use automated tools or manual checks to ensure compliance during development.
+
+## Commit Message Format Rules
+
+**IMPORTANT**: All commit messages MUST follow the Conventional Commit format. The project uses commitlint with husky hooks to enforce these rules.
+
+### Required Configuration Files
+- `.commitlintrc.js` - Commitlint configuration
+- `.husky/commit-msg` - Pre-commit hook for message validation
+- `package.json` - Dependencies for commitlint and husky
+
+### Allowed Commit Types
+- `feat:` A new feature
+- `fix:` A bug fix
+- `docs:` Documentation only changes
+- `style:` Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
+- `refactor:` A code change that neither fixes a bug nor adds a feature
+- `perf:` A code change that improves performance
+- `test:` Adding missing tests or correcting existing tests
+- `build:` Changes that affect the build system or external dependencies
+- `ci:` Changes to our CI configuration files and scripts
+- `chore:` Other changes that don't modify src or test files
+- `revert:` Reverts a previous commit
+- `improve:` Improvements to existing features
+
+### Format Requirements
+- Type must be lowercase
+- Subject must not be empty and should not end with a period
+- Header must not exceed 100 characters
+- Body and footer lines must not exceed 100 characters
+- Body and footer should have leading blank lines
+
+### Valid Examples
+```bash
+feat: add user authentication system
+fix: resolve map rendering issue on mobile devices
+docs: update API documentation for user endpoints
+refactor: restructure database connection logic
+improve: enhance map performance with virtualization
+test: add unit tests for user service
+build: update dependencies and fix vulnerabilities
+ci: add automated testing workflow
+chore: update .gitignore and cleanup temp files
+```
+
+### Invalid Examples (Will be rejected)
+```bash
+Add new feature              # Missing type
+FEAT: add feature           # Type not lowercase
+feat:                       # Empty subject
+feat: add feature.          # Subject ends with period
+feat: this is a very long commit message that exceeds the maximum character limit of 100 characters # Too long
+```
+
+**Note**: Commit messages that don't follow this format will be rejected by the pre-commit hook.
