@@ -70,33 +70,33 @@ This document records past trial and error, failed implementations, improvement 
    - Remove hardcoded user ID from backend handlers
 
 2. **E2E Test Polish** (Priority: LOW)  
-   
+
    **Remaining 4 Test Failures (as of 2025-06-23):**
-   
+
    a) **Authentication Logout Test** 📝
    - Test: `Authentication E2E Tests › When the user clicks logout, Then the sign-out process should work`
    - Issue: Logout button not found in authenticated state
    - Cause: Mock authentication session not properly configured
    - Fix needed: Update authentication mocking in test setup
-   
+
    b) **Authentication Error Handling** 📝  
    - Test: `Authentication E2E Tests › When authentication fails, Then error should be handled gracefully`
    - Issue: `ユーザーメニューを開く` button not found during auth error simulation
    - Cause: Auth error state shows different UI than expected
    - Fix needed: Update test to expect correct UI elements during auth errors
-   
+
    c) **Theme Default Detection** 📝
    - Test: `Theme Switching E2E Tests › When the user visits the site, Then default theme should be applied`
    - Issue: Default theme not detected (`expect(hasTheme).toBeTruthy()` fails)
    - Cause: Theme system may not be fully implemented
    - Fix needed: Implement theme system or update test expectations
-   
+
    d) **Theme Accessibility Test** 📝
    - Test: `Theme Switching E2E Tests › When theme changes, Then text contrast should remain accessible`
    - Issue: Strict mode violation with `getByText('Bocchi The Map')` (same issue as before)
    - Cause: Multiple elements match the selector
    - Fix needed: Use `getByRole('heading', { name: 'Bocchi The Map' })` instead
-   
+
    **Overall Status: 34/38 tests passing (89.5% success rate) ✅**
 
 3. **Production Readiness** (Priority: LOW)

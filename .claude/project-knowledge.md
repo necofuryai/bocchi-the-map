@@ -24,29 +24,35 @@ Follow Behavior-Driven Development principles throughout the project:
 The Go API follows strict onion architecture principles with clear layer separation:
 
 ### Domain Layer (`/domain/`)
+
 - `entities/` - Core business entities (Spot, User, Review) with validation logic
 - `repositories/` - Repository interfaces (implemented in infrastructure layer)
 - `services/` - Domain services for complex business logic
 
 ### Application Layer (`/application/`)
+
 - `clients/` - Application services orchestrating domain entities
 
 ### Infrastructure Layer (`/infrastructure/`)
+
 - `database/` - sqlc-generated database models and queries
 - `grpc/` - gRPC service implementations (TiDB/MySQL)
 - `external/` - Third-party service integrations
 
 ### Interface Layer (`/interfaces/`)
+
 - `http/handlers/` - HTTP request/response handling with Huma framework
 - `http/middleware/` - Cross-cutting concerns (auth, logging)
 
 ### Protocol Buffers (`/proto/`)
+
 - API contracts with auto-generated OpenAPI documentation
 - Type-safe communication between layers
 
 ## Frontend Architecture (web/)
 
 ### Component Structure
+
 - `src/app/` - Next.js 15 App Router pages and layouts
 - `src/components/ui/` - Reusable Shadcn/ui components
 - `src/components/map/` - MapLibre GL JS integration components
@@ -55,6 +61,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 - `src/types/` - TypeScript type definitions
 
 ### Key Components
+
 - `Map component` - Main MapLibre GL JS wrapper with PMTiles support
 - `POI Features` - Point of interest rendering and interaction logic
 - `Auth Provider` - Auth.js session management
@@ -77,6 +84,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 ### Backend Patterns
 
 #### Repository Pattern
+
 ```go
 // Domain layer - interface
 type SpotRepository interface {
@@ -91,6 +99,7 @@ type spotRepository struct {
 ```
 
 #### Service Layer Pattern
+
 ```go
 // Application layer
 type SpotClient struct {
@@ -104,6 +113,7 @@ func (c *SpotClient) CreateSpot(ctx context.Context, req *CreateSpotRequest) err
 ```
 
 #### Error Handling Pattern
+
 ```go
 // Use custom error types with context
 type ValidationError struct {
@@ -119,6 +129,7 @@ func (e ValidationError) Error() string {
 ### Frontend Patterns
 
 #### Custom Hook Pattern
+
 ```typescript
 // Map interaction hooks
 export function useMapInteraction() {
@@ -133,6 +144,7 @@ export function useMapInteraction() {
 ```
 
 #### Component Composition Pattern
+
 ```typescript
 // Composable UI components
 export function SpotCard({ spot, onSelect }: SpotCardProps) {
@@ -149,12 +161,14 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 ## Anti-Patterns to Avoid
 
 ### Backend Anti-Patterns
+
 1. **Direct Database Access in Handlers**: Always use repository pattern
 2. **Business Logic in Infrastructure**: Keep domain logic in domain layer
 3. **Tight Coupling Between Layers**: Respect onion architecture dependencies
 4. **Inconsistent Error Handling**: Use structured error types consistently
 
 ### Frontend Anti-Patterns
+
 1. **Direct State Mutation**: Use immutable updates with React state
 2. **Prop Drilling**: Use context or state management for deep component trees
 3. **Uncontrolled Side Effects**: Use useEffect dependencies properly
@@ -163,12 +177,14 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 ## Testing Strategies
 
 ### Backend Testing
+
 - **Unit Tests**: Test domain entities and services in isolation
 - **Integration Tests**: Test repository implementations with real database
 - **BDD Tests**: Use Ginkgo for behavior specifications
 - **Contract Tests**: Verify Protocol Buffer contracts
 
 ### Frontend Testing
+
 - **Unit Tests**: Test utility functions and custom hooks with Vitest
 - **Component Tests**: Test React components in isolation
 - **Integration Tests**: Test component interactions and data flow
@@ -177,12 +193,14 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 ## Performance Considerations
 
 ### Backend Performance
+
 - Use connection pooling for database connections
 - Implement proper indexing strategies
 - Use context cancellation for timeout handling
 - Profile performance with Go's built-in profiler
 
 ### Frontend Performance
+
 - Implement virtual scrolling for large lists
 - Use React.memo for expensive component renders
 - Optimize map rendering with clustering for many points
@@ -191,6 +209,7 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 ## Security Best Practices
 
 ### Authentication & Authorization
+
 - Use JWT tokens with proper expiration
 - Implement CSRF protection
 - Validate all user inputs

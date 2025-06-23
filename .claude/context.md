@@ -11,6 +11,7 @@ A location-based review application designed specifically for solo travelers and
 ## Architecture Overview
 
 This is a monorepo with three main modules:
+
 - `/api` - Backend API (Golang + Huma framework)
 - `/web` - Frontend (Next.js + TypeScript)
 - `/infra` - Infrastructure as Code (Terraform)
@@ -18,6 +19,7 @@ This is a monorepo with three main modules:
 ## Technology Stack Selection
 
 ### Frontend (web/)
+
 - **Framework**: Next.js + TypeScript
   - Rationale: Full-stack React framework with excellent developer experience and production optimizations
 - **Styling**: Tailwind CSS + Shadcn/ui
@@ -32,6 +34,7 @@ This is a monorepo with three main modules:
   - Rationale: Optimized for Next.js deployment
 
 ### Backend (api/)
+
 - **Language**: Golang
   - Rationale: Performance, concurrency, and strong typing
 - **Framework**: Huma (OpenAPI auto-generation)
@@ -50,6 +53,7 @@ This is a monorepo with three main modules:
   - Rationale: Serverless container deployment
 
 ### Infrastructure (infra/)
+
 - **IaC**: Terraform
   - Rationale: Infrastructure as code with state management
 - **Map Storage**: Cloudflare R2 (PMTiles format)
@@ -60,6 +64,7 @@ This is a monorepo with three main modules:
 ## Business Requirements
 
 ### Core Features
+
 1. **Solo-Friendly Spot Discovery**: Focus on locations suitable for solo activities
 2. **User Reviews**: Community-driven reviews with solo-specific insights
 3. **Map Integration**: Interactive map showing spot locations
@@ -67,6 +72,7 @@ This is a monorepo with three main modules:
 5. **Multi-Device Support**: Responsive design for mobile and desktop
 
 ### Technical Constraints
+
 1. **Performance**: Fast loading times for map interactions
 2. **Scalability**: Architecture ready for microservice extraction
 3. **Security**: Secure authentication and data protection
@@ -76,6 +82,7 @@ This is a monorepo with three main modules:
 ## Development Prerequisites
 
 ### API Development
+
 - Go 1.21+
 - Protocol Buffers compiler (`protoc`)
 - sqlc: `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
@@ -85,6 +92,7 @@ This is a monorepo with three main modules:
 - Docker or Colima (for local MySQL development)
 
 ### Web Development
+
 - Node.js 20+
 - Modern browser with ES modules support
 - Vitest: `pnpm add -D vitest @vitest/ui`
@@ -92,6 +100,7 @@ This is a monorepo with three main modules:
 - Note: React 19 dependency conflicts are resolved better with pnpm
 
 ### Infrastructure
+
 - Terraform 1.5+
 - Google Cloud SDK (for Cloud Run deployment)
 - Vercel CLI (for deployment)
