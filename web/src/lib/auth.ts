@@ -39,7 +39,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account, profile: _profile }) {
+    // Handle sign-in callback with user creation/update
+    async signIn({ user, account }) {
       if (account && (account.provider === AUTH_PROVIDER.GOOGLE || account.provider === AUTH_PROVIDER.TWITTER)) {
         try {
           // Check if user.email is null/undefined before making API call
@@ -125,10 +126,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               cause: error instanceof Error ? error.cause : undefined,
               user: user.email,
               provider: account.provider,
-              // Network error details if available
-              networkCode: (error && typeof error === 'object' && 'code' in error) ? (error as any).code : undefined,
-              httpStatus: (error && typeof error === 'object' && 'status' in error) ? (error as any).status : undefined,
-              responseData: (error && typeof error === 'object' && 'response' in error) ? (error as any).response : undefined,
+              // Network error details if available (safely typed)
+              networkCode: (error && typeof error === 'object' && 'code' in error) ? (error as Record<string, unknown>).code : undefined,
+              httpStatus: (error && typeof error === 'object' && 'status' in error) ? (error as Record<string, unknown>).status : undefined,
+              responseData: (error && typeof error === 'object' && 'response' in error) ? (error as Record<string, unknown>).response : undefined,
               timestamp: new Date().toISOString(),
             })
           }
@@ -137,6 +138,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true
     },
+    // Customize session object with additional user data
     async session({ session, token }) {
       if (session?.user) {
         const userId = token?.uid ?? token?.sub
@@ -152,6 +154,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return session
     },
+    // Customize JWT token with additional data
     async jwt({ token, user, account }) {
       if (user) {
         token.uid = user.id

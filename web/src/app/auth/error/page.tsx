@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { MapPinIcon, AlertTriangleIcon, RefreshCwIcon, HomeIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
@@ -200,5 +200,17 @@ export default function AuthErrorPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    }>
+      <AuthErrorContent />
+    </Suspense>
   )
 }

@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { signIn, getSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { MapPinIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function SignInPage() {
+function SignInContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [provider, setProvider] = useState<string | null>(null)
   const router = useRouter()
@@ -156,5 +156,17 @@ export default function SignInPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   )
 }

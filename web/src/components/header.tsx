@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { MapPinIcon, MenuIcon, SearchIcon, UserIcon } from "lucide-react"
+import Image from "next/image"
+import { MapPinIcon, MenuIcon, SearchIcon, UserIcon, HelpCircle } from "lucide-react"
 import { useSession, signIn, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,6 +13,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -65,6 +71,38 @@ export function Header() {
         </div>
         
         <div className="flex items-center space-x-4">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" aria-label="ヘルプを表示">
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-4">
+                <h3 className="font-medium text-sm text-center">アプリの特徴</h3>
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">🎯 簡単検索</h4>
+                    <p className="text-xs text-muted-foreground">
+                      カテゴリーや場所から、あなたにぴったりのスポットを見つけましょう
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">💬 リアルな口コミ</h4>
+                    <p className="text-xs text-muted-foreground">
+                      実際に訪れた人のレビューで、一人でも入りやすいお店がわかります
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">📍 マップ表示</h4>
+                    <p className="text-xs text-muted-foreground">
+                      現在地から近いおひとりさまスポットを地図上で確認できます
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           {status === "loading" ? (
             <Button variant="ghost" size="sm" disabled>
               読み込み中...
@@ -74,9 +112,11 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" aria-label="ユーザーメニューを開く" aria-expanded={userMenuOpen}>
                   {session.user?.image ? (
-                    <img 
+                    <Image 
                       src={session.user.image} 
                       alt="ユーザーアバター" 
+                      width={24}
+                      height={24}
                       className="h-6 w-6 rounded-full mr-2"
                     />
                   ) : (
