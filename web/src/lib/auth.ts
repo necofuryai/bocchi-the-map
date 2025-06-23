@@ -8,12 +8,22 @@ const AUTH_PROVIDER = {
   TWITTER: 'twitter' as const,
 } as const
 
-// Type augmentation for NextAuth JWT
-declare module "next-auth/jwt" {
-  interface JWT {
-    uid?: string
+// Type augmentation for Auth.js v5
+declare module "next-auth" {
+  interface User {
     provider?: string
     providerAccountId?: string
+  }
+  
+  interface Session {
+    user: {
+      id?: string
+      email?: string
+      name?: string
+      image?: string
+      provider?: string
+      providerAccountId?: string
+    }
   }
 }
 
@@ -26,7 +36,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Twitter({
       clientId: process.env.TWITTER_CLIENT_ID || (() => { throw new Error("TWITTER_CLIENT_ID is required") })(),
       clientSecret: process.env.TWITTER_CLIENT_SECRET || (() => { throw new Error("TWITTER_CLIENT_SECRET is required") })(),
-      version: "2.0",
     }),
   ],
   callbacks: {
@@ -42,10 +51,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           const apiUrl = process.env.API_URL || 'http://localhost:8080'
           const userData = {
             email: user.email,
-            display_name: user.name,
-            avatar_url: user.image,
-            auth_provider: account.provider,
-            auth_provider_id: account.providerAccountId,
+            name: user.name,
+            image: user.image,
+            provider: account.provider,
+            provider_id: account.providerAccountId,
           }
           
           if (process.env.NODE_ENV === 'development') {
@@ -57,7 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           
           let response: Response
           try {
-            response = await fetch(`${apiUrl}/api/users`, {
+            response = await fetch(`${apiUrl}/api/v1/users`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -71,12 +80,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           
           if (!response.ok) {
             const errorText = await response.text()
-            console.error('Failed to create/update user:', {
-              status: response.status,
-              statusText: response.statusText,
-              error: errorText,
-              user: user.email,
-            })
+            if (process.env.NODE_ENV !== 'production') {
+              console.error(JSON.stringify({
+                timestamp: new Date().toISOString(),
+                level: 'error',
+                message: 'Failed to create/update user',
+                details: {
+                  status: response.status,
+                  statusText: response.statusText,
+                  error: errorText,
+                  user: user.email,
+                }
+              }))
+              // Log specific error for debugging
+              if (response.status >= 500) {
+                console.error(JSON.stringify({
+                  timestamp: new Date().toISOString(),
+                  level: 'error',
+                  message: 'Server error - user creation will be retried on next login',
+                  statusCode: response.status
+                }))
+              } else if (response.status === 400) {
+                console.error(JSON.stringify({
+                  timestamp: new Date().toISOString(),
+                  level: 'error',
+                  message: 'Invalid request data - check OAuth provider configuration',
+                  statusCode: response.status
+                }))
+              }
+            }
             // Allow sign-in to continue even if user creation fails
             // The user will be created on next successful API call
           } else {
@@ -85,12 +117,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
           }
         } catch (error) {
-          console.error('Error creating/updating user:', {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-            user: user.email,
-            provider: account.provider,
-          })
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('Error creating/updating user:', {
+              message: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
+              name: error instanceof Error ? error.name : 'Unknown',
+              cause: error instanceof Error ? error.cause : undefined,
+              user: user.email,
+              provider: account.provider,
+              // Network error details if available
+              networkCode: (error && typeof error === 'object' && 'code' in error) ? (error as any).code : undefined,
+              httpStatus: (error && typeof error === 'object' && 'status' in error) ? (error as any).status : undefined,
+              responseData: (error && typeof error === 'object' && 'response' in error) ? (error as any).response : undefined,
+              timestamp: new Date().toISOString(),
+            })
+          }
           // Allow sign-in to continue even if user creation fails
         }
       }

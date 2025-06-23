@@ -192,8 +192,7 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 	// User routes
 	registerUserRoutes(api, userClient, queries)
 	
-	// Auth.js compatible routes (outside of v1 prefix)
-	registerAuthRoutes(api, userClient, queries)
+	// Auth.js compatible routes removed - using unified /api/v1/users endpoint
 }
 
 // registerSpotRoutes registers spot-related routes
@@ -216,18 +215,5 @@ func registerUserRoutes(api huma.API, userClient *clients.UserClient, queries *d
 	logger.Info("User routes registered")
 }
 
-func registerAuthRoutes(api huma.API, userClient *clients.UserClient, queries *database.Queries) {
-	userHandler := handlers.NewUserHandler(queries)
-	
-	// Register Auth.js compatible routes (POST /api/users)
-	huma.Register(api, huma.Operation{
-		OperationID: "auth-create-user",
-		Method:      http.MethodPost,
-		Path:        "/api/users", // Auth.js expects this exact path
-		Summary:     "Create or update user (Auth.js)",
-		Description: "OAuth authentication endpoint for Auth.js user creation/update",
-		Tags:        []string{"Authentication"},
-	}, userHandler.CreateUser)
-	
-	logger.Info("Auth.js compatible routes registered")
-}
+// registerAuthRoutes removed - using unified /api/v1/users endpoint for all user operations
+// This eliminates duplicate endpoints and maintains API consistency

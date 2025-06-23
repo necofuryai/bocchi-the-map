@@ -1,0 +1,21 @@
+{
+  "name": "bocchi-the-map",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Location-based review application for solo travelers",
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "prepare": "husky install",
+    "commitlint": "commitlint --edit"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
+    "husky": "^8.0.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

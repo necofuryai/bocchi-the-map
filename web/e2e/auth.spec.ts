@@ -7,25 +7,21 @@ test.describe('Authentication E2E Tests', () => {
     })
 
     test('When the user is not signed in, Then sign-in option should be available', async ({ page }) => {
-      // Then the user menu should show unauthenticated state
-      const userMenuButton = page.getByRole('button', { name: 'ユーザーメニューを開く' })
-      await userMenuButton.click()
-      
-      // Check that authentication-related options are available
-      const menuContent = page.getByText('マイアカウント')
-      await expect(menuContent).toBeVisible()
+      // Then the login button should be visible
+      const loginButton = page.getByRole('button', { name: 'ログイン' })
+      await expect(loginButton).toBeVisible()
     })
 
     test('When the user clicks sign-in, Then authentication flow should be initiated', async ({ page }) => {
-      // This test would need actual OAuth setup to work fully
-      // For now, we'll test that the UI elements are present
+      // When the user clicks the login button
+      const loginButton = page.getByRole('button', { name: 'ログイン' })
+      await loginButton.click()
       
-      const userMenuButton = page.getByRole('button', { name: 'ユーザーメニューを開く' })
-      await userMenuButton.click()
+      // Then they should be redirected to the signin page
+      await expect(page).toHaveURL(/.*\/auth\/signin/)
       
-      // Check if there's a sign-in related option in the menu
-      const menuContainer = page.locator('[role="menu"]')
-      await expect(menuContainer).toBeVisible()
+      // And OAuth provider options should be available
+      await expect(page.getByText('Googleでログイン')).toBeVisible()
     })
   })
 
@@ -136,7 +132,7 @@ test.describe('Authentication E2E Tests', () => {
       await page.goto('/')
       
       // The application should still be usable
-      await expect(page.getByText('Bocchi The Map')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Bocchi The Map' })).toBeVisible()
     })
   })
 
