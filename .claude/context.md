@@ -4,7 +4,7 @@ This document contains the project background, purpose, constraints, and technic
 
 ## Project Background
 
-**Bocchi The Map** - Solo Spot Review App (おひとりさま向けスポットレビューアプリ)
+**Bocchi The Map**: Solo Spot Review App (おひとりさま向けスポットレビューアプリ)
 
 A location-based review application designed specifically for solo travelers and individuals who enjoy exploring places alone. The app focuses on helping users discover and review spots that are comfortable and suitable for solo activities.
 
