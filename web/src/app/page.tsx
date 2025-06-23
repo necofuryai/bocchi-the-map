@@ -43,27 +43,6 @@ export default function Home() {
                 poiFilter={filterExpression}
               />
             </Card>
-            
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="p-6">
-                <h3 className="font-semibold mb-2">🎯 簡単検索</h3>
-                <p className="text-sm text-muted-foreground">
-                  カテゴリーや場所から、あなたにぴったりのスポットを見つけましょう
-                </p>
-              </Card>
-              <Card className="p-6">
-                <h3 className="font-semibold mb-2">💬 リアルな口コミ</h3>
-                <p className="text-sm text-muted-foreground">
-                  実際に訪れた人のレビューで、一人でも入りやすいお店がわかります
-                </p>
-              </Card>
-              <Card className="p-6">
-                <h3 className="font-semibold mb-2">📍 マップ表示</h3>
-                <p className="text-sm text-muted-foreground">
-                  現在地から近いおひとりさまスポットを地図上で確認できます
-                </p>
-              </Card>
-            </div>
           </div>
         </main>
     </div>

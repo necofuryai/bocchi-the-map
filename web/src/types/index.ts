@@ -65,20 +65,21 @@ export interface POIProperties {
   min_zoom?: number // snake_case for TileJSON specification compliance
 }
 
-import type { DefaultUser, DefaultSession } from "next-auth"
-
-// Auth.js type extension
+// Auth.js v5 type extension
 declare module "next-auth" {
-  interface User extends DefaultUser {
+  interface User {
     /** OAuth プロバイダー (例: 'google') */
     provider?: string
     /** プロバイダー側のアカウント ID */
     providerAccountId?: string
   }
 
-  interface Session extends DefaultSession {
-    user: DefaultSession["user"] & {
-      id: string
+  interface Session {
+    user: {
+      id?: string
+      email?: string
+      name?: string
+      image?: string
       provider?: string
       providerAccountId?: string
     }
