@@ -69,7 +69,7 @@ This document records past trial and error, failed implementations, improvement 
    - Add authentication middleware to protect `/api/v1/users/me` endpoint
    - Remove hardcoded user ID from backend handlers
 
-2. **E2E Test Polish** (Priority: LOW)  
+2. **E2E Test Polish** (Priority: LOW)
 
    **Remaining 4 Test Failures (as of 2025-06-23):**
 
@@ -151,7 +151,8 @@ The OAuth authentication system is now 100% functional with both Google and Twit
 - **Testing**: E2E tests updated and passing for new authentication flows
 
 **🔧 Technical Architecture Verified**
-```
+
+```text
 User → OAuth Provider → Auth.js → POST /api/v1/users → MySQL → Session Created ✅
 ```
 

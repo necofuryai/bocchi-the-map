@@ -111,4 +111,4 @@ This is a monorepo with three main modules:
 - **Database**: TiDB Serverless provides MySQL-compatible interface with auto-scaling
 - **Microservice Ready**: Current monolith designed for easy service extraction as traffic grows
 - **Mobile-First**: Responsive design with Tailwind CSS breakpoints (sm, md, lg, xl, 2xl)
-- **International Collaboration**: All code comments and commit messages must be in English
+- **International Collaboration**: All code comments and commit messages must be in English following Conventional Commit format (feat:, fix:, docs:, etc.)

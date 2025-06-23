@@ -162,8 +162,8 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 
 ### Backend Anti-Patterns
 
-1. **Direct Database Access in Handlers**: Always use repository pattern
-2. **Business Logic in Infrastructure**: Keep domain logic in domain layer
+1. **Direct Database Access in Handlers**: Always use the repository pattern
+2. **Business Logic in Infrastructure**: Keep domain logic in the domain layer
 3. **Tight Coupling Between Layers**: Respect onion architecture dependencies
 4. **Inconsistent Error Handling**: Use structured error types consistently
 
@@ -216,7 +216,8 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 - Use HTTPS everywhere
 
 ### Data Protection
+
 - Sanitize database queries (sqlc helps prevent SQL injection)
-- Implement rate limiting
+- Implement rate-limiting
 - Log security events appropriately
 - Never log sensitive information
