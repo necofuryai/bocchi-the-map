@@ -12,6 +12,30 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
 )
 
+// getTracesSampleRate returns the traces sample rate based on environment
+func getTracesSampleRate(environment string) float64 {
+	switch environment {
+	case "production":
+		return 0.01 // 1% sampling in production
+	case "staging":
+		return 0.05 // 5% sampling in staging
+	default: // development and other environments
+		return 0.1 // 10% sampling for development
+	}
+}
+
+// getProfilesSampleRate returns the profiles sample rate based on environment
+func getProfilesSampleRate(environment string) float64 {
+	switch environment {
+	case "production":
+		return 0.01 // 1% sampling in production
+	case "staging":
+		return 0.05 // 5% sampling in staging
+	default: // development and other environments
+		return 0.1 // 10% sampling for development
+	}
+}
+
 // InitSentry initializes Sentry error monitoring
 func InitSentry(dsn, environment, release string) error {
 	if dsn == "" {
@@ -20,12 +44,12 @@ func InitSentry(dsn, environment, release string) error {
 	}
 
 	err := sentry.Init(sentry.ClientOptions{
-		Dsn:              dsn,
-		Environment:      environment,
-		Release:          release,
-		AttachStacktrace: true,
-		TracesSampleRate: 0.1,
-		ProfilesSampleRate: 0.1,
+		Dsn:                dsn,
+		Environment:        environment,
+		Release:            release,
+		AttachStacktrace:   true,
+		TracesSampleRate:   getTracesSampleRate(environment),
+		ProfilesSampleRate: getProfilesSampleRate(environment),
 		BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 			// Filter out sensitive information
 			if event.Request != nil {

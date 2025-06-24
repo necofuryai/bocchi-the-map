@@ -69,10 +69,6 @@ resource "google_cloud_run_v2_service" "api" {
         value = var.environment == "prod" ? "INFO" : "DEBUG"
       }
       
-      env {
-        name  = "PORT"
-        value = "8080"
-      }
       
       env {
         name  = "HOST"
@@ -83,10 +79,6 @@ resource "google_cloud_run_v2_service" "api" {
         limits = {
           cpu    = "2"
           memory = "1Gi"
-        }
-        requests = {
-          cpu    = "0.5"
-          memory = "256Mi"
         }
       }
     }

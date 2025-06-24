@@ -58,7 +58,7 @@ func main() {
 		cfg.Monitoring.SentryDSN,
 		"bocchi-the-map-api",
 		cfg.App.Environment,
-		"1.0.0", // You can make this configurable
+		cfg.App.Version,
 	); err != nil {
 		logger.Error("Failed to initialize monitoring", err)
 		// Don't exit - monitoring is not critical for basic functionality
@@ -84,27 +84,6 @@ func main() {
 		}
 		logger.Info("Database connection established")
 
-		// Ensure proper cleanup on shutdown
-		hooks.OnStop(func() {
-			logger.Info("Shutting down application...")
-			
-			// Shutdown monitoring services
-			monitoring.ShutdownMonitoring()
-			
-			// Close gRPC clients
-			spotClient.Close()
-			userClient.Close()
-			reviewClient.Close()
-			
-			// Close database connection
-			logger.Info("Closing database connection")
-			if err := db.Close(); err != nil {
-				logger.Error("Failed to close database connection", err)
-			}
-			
-			logger.Info("Application shutdown complete")
-		})
-
 		// Create database queries instance
 		queries := database.New(db)
 
@@ -127,9 +106,26 @@ func main() {
 			logger.Fatal("Failed to create review client", err)
 		}
 
-		defer spotClient.Close()
-		defer userClient.Close()
-		defer reviewClient.Close()
+		// Ensure proper cleanup on shutdown
+		hooks.OnStop(func() {
+			logger.Info("Shutting down application...")
+			
+			// Shutdown monitoring services
+			monitoring.ShutdownMonitoring()
+			
+			// Close gRPC clients
+			spotClient.Close()
+			userClient.Close()
+			reviewClient.Close()
+			
+			// Close database connection
+			logger.Info("Closing database connection")
+			if err := db.Close(); err != nil {
+				logger.Error("Failed to close database connection", err)
+			}
+			
+			logger.Info("Application shutdown complete")
+		})
 
 		// Create chi router
 		router := chi.NewRouter()
@@ -147,7 +143,7 @@ func main() {
 		router.Use(monitoring.PerformanceMiddleware())
 
 		// Create Huma API
-		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", "1.0.0"))
+		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", cfg.App.Version))
 
 		// Register routes with gRPC clients and database queries
 		registerRoutes(api, spotClient, userClient, reviewClient, queries)
@@ -244,7 +240,7 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 	}, func(ctx context.Context, input *struct{}) (*HealthCheckOutput, error) {
 		resp := &HealthCheckOutput{}
 		resp.Body.Status = "ok"
-		resp.Body.Version = "1.0.0"
+		resp.Body.Version = cfg.App.Version
 		return resp, nil
 	})
 

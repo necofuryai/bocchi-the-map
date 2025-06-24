@@ -3,7 +3,7 @@
 # Docker build and push script for Bocchi The Map API
 # Usage: ./scripts/build.sh [environment] [project-id] [region]
 
-set -e
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -81,22 +81,12 @@ gcloud auth configure-docker --quiet
 echo -e "${GREEN}Building Docker image...${NC}"
 docker build -t "${IMAGE_TAG}" -t "${LATEST_TAG}" .
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Docker build failed${NC}"
-    exit 1
-fi
-
 echo -e "${GREEN}Docker image built successfully!${NC}"
 
 # Push the image to GCR
 echo -e "${GREEN}Pushing image to Google Container Registry...${NC}"
 docker push "${IMAGE_TAG}"
 docker push "${LATEST_TAG}"
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Error: Docker push failed${NC}"
-    exit 1
-fi
 
 echo -e "${GREEN}Image pushed successfully!${NC}"
 
@@ -112,6 +102,12 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         AUTH_FLAG="--allow-unauthenticated"
     fi
     
+    # Set minimum instances based on environment
+    MIN_INSTANCES=0
+    if [ "$ENVIRONMENT" = "prod" ]; then
+        MIN_INSTANCES=1
+    fi
+    
     gcloud run deploy "${SERVICE_NAME}" \
         --image="${LATEST_TAG}" \
         --platform=managed \
@@ -122,7 +118,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         --memory=1Gi \
         --cpu=1 \
         --max-instances=10 \
-        --min-instances=$([ "$ENVIRONMENT" = "prod" ] && echo 1 || echo 0) \
+        --min-instances=${MIN_INSTANCES} \
         --quiet
 
     if [ $? -eq 0 ]; then

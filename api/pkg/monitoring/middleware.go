@@ -9,6 +9,12 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
 )
 
+// contextKey is a custom type for context keys to prevent collisions
+type contextKey string
+
+// requestIDKey is the typed key for request ID in context
+const requestIDKey contextKey = "request_id"
+
 // InitMonitoring initializes both New Relic and Sentry monitoring
 func InitMonitoring(newRelicKey, sentryDSN, appName, environment, release string) error {
 	// Initialize New Relic
@@ -49,7 +55,7 @@ func RequestIDMiddleware() func(http.Handler) http.Handler {
 			w.Header().Set("X-Request-ID", requestID)
 
 			// Add request ID to context for logging
-			ctx := context.WithValue(r.Context(), "request_id", requestID)
+			ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 			
 			// Add breadcrumb to Sentry
 			AddBreadcrumb(ctx, &struct {
@@ -92,8 +98,11 @@ func PerformanceMiddleware() func(http.Handler) http.Handler {
 			RecordCustomMetric("Custom/HTTP/ResponseTime", duration.Seconds())
 			RecordCustomMetric("Custom/HTTP/RequestCount", 1)
 			
-			if wrappedWriter.statusCode >= 400 {
-				RecordCustomMetric("Custom/HTTP/ErrorCount", 1)
+			// Record detailed error metrics
+			if wrappedWriter.statusCode >= 400 && wrappedWriter.statusCode < 500 {
+				RecordCustomMetric("Custom/HTTP/ClientErrorCount", 1)
+			} else if wrappedWriter.statusCode >= 500 {
+				RecordCustomMetric("Custom/HTTP/ServerErrorCount", 1)
 			}
 
 			// Log performance data
@@ -153,12 +162,9 @@ func randomString(length int) string {
 	// Use crypto/rand for cryptographically secure random bytes
 	randomBytes := make([]byte, length)
 	if _, err := rand.Read(randomBytes); err != nil {
-		// Fallback to a basic implementation if crypto/rand fails
-		// This should rarely happen in practice
-		for i := range b {
-			b[i] = charset[0] // Safe fallback
-		}
-		return string(b)
+		// If crypto/rand fails, this is a critical security issue
+		// We should not continue with weak random generation
+		panic("crypto/rand failure: cannot generate secure request ID")
 	}
 	
 	for i := range b {
