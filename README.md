@@ -192,6 +192,7 @@ make deploy-production
 ### Cloud Run Deployment
 
 #### Prerequisites
+
 ```bash
 # Install and configure Google Cloud CLI
 gcloud auth login
@@ -208,6 +209,7 @@ gcloud auth configure-docker
 ```
 
 #### Build and Deploy API
+
 ```bash
 cd api
 
@@ -225,6 +227,7 @@ terraform apply -var="gcp_project_id=YOUR_PROJECT_ID"
 ```
 
 #### Environment Setup
+
 ```bash
 # Set required secrets in Google Secret Manager
 # Note: You need to provide the actual secret values from your environment
@@ -283,18 +286,21 @@ gh pr create --title "feat: your amazing feature"
 ## 📈 Analytics & Monitoring
 
 ### Observability Stack
+
 - **🔍 New Relic** - Application performance monitoring, custom metrics, distributed tracing
 - **🚨 Sentry** - Error tracking, performance insights, real-time alerting
 - **📊 Structured Logging** - JSON logs with correlation IDs, centralized via Cloud Logging
 - **💓 Health Checks** - Kubernetes-ready probes with dependency validation
 
 ### Key Metrics Tracked
+
 - **Performance**: API response times (p50, p95, p99), throughput, error rates
 - **Business**: Spot discoveries, review submissions, user engagement patterns
 - **Infrastructure**: Memory usage, CPU utilization, database connection pools
 - **User Experience**: Page load times, frontend errors, conversion funnels
 
 ### Monitoring Endpoints
+
 ```bash
 # Health check
 curl https://api.bocchi-map.com/health
@@ -320,6 +326,7 @@ http_request_duration_seconds_count{method="GET",endpoint="/api/spots"} 1234
 ```
 
 ### Alerting & Incident Response
+
 - **Critical Alerts**: > 5% error rate, > 2s p95 latency, dependency failures
 - **Escalation**: Slack notifications → PagerDuty → On-call engineer
 - **Runbooks**: Automated remediation for common issues

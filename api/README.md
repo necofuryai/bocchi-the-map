@@ -304,6 +304,7 @@ docker buildx build --platform linux/amd64,linux/arm64 .
 ### Docker Development
 
 #### Local Docker Build
+
 ```bash
 # Build Docker image locally
 docker build -t bocchi-api:dev .
@@ -318,6 +319,7 @@ docker run -p 8080:8080 \
 ```
 
 #### Docker Compose (Development)
+
 ```bash
 # Start MySQL and API together
 make docker-up
@@ -330,6 +332,7 @@ docker-compose up api
 ### Cloud Run Deployment
 
 #### Automated Deployment Script
+
 ```bash
 # Build, push, and optionally deploy to Cloud Run
 cd api
@@ -344,6 +347,7 @@ cd api
 ```
 
 #### Manual Cloud Run Deployment
+
 ```bash
 # Build and push to Google Container Registry
 gcloud auth configure-docker
@@ -379,6 +383,7 @@ gcloud run deploy bocchi-api-prod \
 ```
 
 #### Terraform Infrastructure Deployment
+
 ```bash
 # Deploy complete infrastructure including secrets management
 cd infra
@@ -401,6 +406,7 @@ echo "your-sentry-dsn" | gcloud secrets create sentry-dsn-dev --data-file=-
 ### Monitoring and Observability
 
 #### New Relic Setup
+
 ```bash
 # Environment variables for New Relic
 NEW_RELIC_LICENSE_KEY=your-license-key
@@ -411,6 +417,7 @@ curl https://your-cloud-run-url/metrics
 ```
 
 #### Sentry Setup
+
 ```bash
 # Environment variable for Sentry
 SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
@@ -420,6 +427,7 @@ curl -X POST https://your-cloud-run-url/test-error
 ```
 
 #### Health Checks
+
 ```bash
 # Basic health check
 curl https://your-cloud-run-url/health
