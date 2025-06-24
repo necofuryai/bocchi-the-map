@@ -306,3 +306,162 @@ ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON U
 2. Social features (following, sharing)
 3. Advanced search and filtering
 4. Machine learning recommendations
+
+## Cloud Run & Monitoring Integration Implementation (2025-06-24)
+
+### ✅ COMPLETED IMPLEMENTATION
+
+**🚀 Cloud Run Production Deployment**
+- **Docker Containerization**: Multi-stage Dockerfile with security best practices (non-root user, minimal Alpine base image)
+- **Build Automation**: Interactive shell script (`api/scripts/build.sh`) for Docker build/push/deploy with environment-specific configuration
+- **Google Container Registry**: Automated authentication and image pushing with timestamp-based tagging
+- **Infrastructure as Code**: Complete Terraform modules for Cloud Run deployment with environment-specific scaling
+
+**📊 Comprehensive Monitoring Integration**
+- **New Relic APM**: Application performance monitoring with custom metrics, distributed tracing, and performance insights
+- **Sentry Error Tracking**: Context-aware error capturing with breadcrumbs, performance monitoring, and release tracking
+- **Unified Monitoring Middleware**: Centralized request tracing and performance measurement combining both services
+- **Logger Integration**: Automatic error reporting to Sentry with context preservation and structured logging
+
+**🔐 Security & Secret Management**
+- **Google Secret Manager**: Complete integration for sensitive configuration (database passwords, API keys)
+- **Service Accounts**: Dedicated IAM with minimal required permissions following principle of least privilege
+- **Environment-Based Configuration**: Secure configuration management with graceful degradation when monitoring unavailable
+- **Container Security**: Non-root user execution, health checks, and minimal attack surface
+
+**⚙️ Infrastructure & DevOps**
+- **Terraform Infrastructure**: Modular approach with secret management, service accounts, and Cloud Run configuration
+- **Graceful Shutdown**: Proper resource cleanup and monitoring service shutdown with signal handling
+- **Health Checks**: Kubernetes-ready endpoints with dependency validation
+- **Environment-Specific Deployment**: Development (min 0, max 3) vs Production (min 1, max 10) scaling configuration
+
+### 🔧 KEY IMPLEMENTATION PATTERNS ESTABLISHED
+
+**Monitoring Middleware Pattern:**
+```go
+// Combined monitoring with fail-safe design
+router.Use(monitoring.RequestIDMiddleware())
+router.Use(monitoring.MonitoringMiddleware())
+router.Use(monitoring.PerformanceMiddleware())
+```
+
+**Error Handling Pattern:**
+```go
+// Unified error reporting with context
+logger.ErrorWithContext(ctx, "Database operation failed", err)
+logger.ErrorWithContextAndFields(ctx, "User operation failed", err, fields)
+```
+
+**Configuration Management Pattern:**
+```go
+// Environment-based config with validation
+type MonitoringConfig struct {
+    NewRelicLicenseKey string // From Secret Manager
+    SentryDSN          string // From Secret Manager
+}
+// Graceful degradation - application continues without monitoring
+```
+
+**Docker Build Pattern:**
+```dockerfile
+# Multi-stage build for security and efficiency
+FROM golang:1.21-alpine AS builder
+# ... build steps
+FROM alpine:latest
+# Security: non-root user, minimal base, health checks
+```
+
+### 📈 PERFORMANCE & OBSERVABILITY IMPROVEMENTS
+
+**Monitoring Capabilities Added:**
+- Request latency tracking (p50, p95, p99)
+- Error rate monitoring with automatic Sentry reporting
+- Custom business metrics (API calls, user actions)
+- Database connection pool monitoring
+- Memory and CPU utilization tracking
+
+**Alerting & Incident Response:**
+- Critical alerts for >5% error rate, >2s p95 latency
+- Automatic error context collection and reporting
+- Performance bottleneck identification
+- Real-time error tracking with source code integration
+
+### 🛠️ DEPLOYMENT AUTOMATION ACHIEVED
+
+**Build Script Features:**
+- Environment validation (dev, staging, prod)
+- Automatic Docker authentication for GCR
+- Multi-architecture build support (linux/amd64, linux/arm64)
+- Timestamp-based image tagging with latest tag
+- Interactive Cloud Run deployment option
+- Service URL retrieval and health check validation
+
+**Terraform Infrastructure:**
+- Automated secret creation and access management
+- Service account provisioning with minimal permissions
+- Environment-specific resource allocation
+- Integration with Google Cloud logging and monitoring
+
+### 🏗️ ARCHITECTURAL DECISIONS & RATIONALE
+
+**Why New Relic + Sentry Combination:**
+- New Relic: Superior for performance monitoring, infrastructure metrics, custom business metrics
+- Sentry: Excellent for error tracking with source code integration and release tracking
+- Complementary strengths provide comprehensive observability coverage
+
+**Why Cloud Run over GKE/EKS:**
+- Zero cluster management overhead
+- Pay-per-request pricing model ideal for variable traffic
+- Instant auto-scaling including scale-to-zero
+- Native integration with Google Cloud services (Secret Manager, IAM, Logging)
+
+**Why Multi-Stage Docker Builds:**
+- Significant reduction in final image size (Go build tools not included in production image)
+- Security improvement through minimal attack surface
+- Better caching and faster deployments
+- Separation of build-time and runtime dependencies
+
+### 🎯 LESSONS LEARNED
+
+**Monitoring Implementation:**
+1. **Fail Gracefully**: Monitoring failures should never break application functionality
+2. **Context Preservation**: Always pass request context to monitoring calls for proper correlation
+3. **Structured Data**: Use structured logging for better searchability and analysis
+4. **Performance Impact**: Monitor the monitoring - ensure instrumentation has minimal overhead
+
+**Cloud Run Deployment:**
+1. **Build Optimization**: Multi-stage Docker builds significantly reduce deployment time and security risks
+2. **Secret Management**: Google Secret Manager integration is straightforward but requires careful IAM configuration
+3. **Health Checks**: Essential for proper load balancing and deployment validation
+4. **Resource Tuning**: Start conservative with CPU/memory allocation, scale based on actual metrics
+
+**DevOps Integration:**
+1. **Automation First**: Build scripts save significant development time and reduce deployment errors
+2. **Environment Parity**: Use consistent configuration patterns across all environments
+3. **Rollback Strategy**: Ensure quick rollback capability in all deployment processes
+4. **Infrastructure as Code**: Terraform state management crucial for team collaboration
+
+### 🚀 PRODUCTION READINESS STATUS
+
+**✅ READY FOR PRODUCTION:**
+- Docker containerization with security best practices
+- Comprehensive monitoring and error tracking
+- Automated deployment pipeline
+- Secret management and security controls
+- Infrastructure as Code with Terraform
+- Environment-specific configuration management
+
+**📋 DEPLOYMENT CHECKLIST:**
+1. Set up Google Cloud Project with required APIs enabled
+2. Configure Secret Manager with production credentials
+3. Run Terraform to provision infrastructure
+4. Execute build script for production deployment
+5. Verify monitoring dashboards and alerting
+6. Validate health checks and performance metrics
+
+**🔄 NEXT ITERATION IMPROVEMENTS:**
+- Implement blue/green deployment strategy
+- Add automated testing in CI/CD pipeline
+- Enhance monitoring with custom dashboards
+- Implement log aggregation and analysis
+- Add performance benchmarking and alerts

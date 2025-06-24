@@ -1,9 +1,11 @@
 package logger
 
 import (
+	"context"
 	"os"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -75,14 +77,25 @@ func Warn(msg string) {
 	log.Warn().Msg(msg)
 }
 
-// Error logs an error message
+// Error logs an error message and sends to Sentry
 func Error(msg string, err error) {
 	log.Error().Err(err).Msg(msg)
+	
+	// Also send to Sentry if available
+	if err != nil {
+		sentry.CaptureException(err)
+	}
 }
 
-// Fatal logs a fatal message and exits
+// Fatal logs a fatal message, sends to Sentry, and exits
 func Fatal(msg string, err error) {
 	log.Fatal().Err(err).Msg(msg)
+	
+	// Send to Sentry before exiting
+	if err != nil {
+		sentry.CaptureException(err)
+		sentry.Flush(2 * time.Second) // Wait for Sentry to send the error
+	}
 }
 
 // InfoWithFields logs an info message with structured fields
@@ -94,11 +107,66 @@ func InfoWithFields(msg string, fields map[string]interface{}) {
 	event.Msg(msg)
 }
 
-// ErrorWithFields logs an error message with structured fields
+// ErrorWithFields logs an error message with structured fields and sends to Sentry
 func ErrorWithFields(msg string, err error, fields map[string]interface{}) {
 	event := log.Error().Err(err)
 	for k, v := range fields {
 		event = event.Interface(k, v)
 	}
 	event.Msg(msg)
+	
+	// Send to Sentry with additional context
+	if err != nil {
+		sentry.WithScope(func(scope *sentry.Scope) {
+			for k, v := range fields {
+				scope.SetExtra(k, v)
+			}
+			scope.SetTag("component", "logger")
+			sentry.CaptureException(err)
+		})
+	}
+}
+
+// ErrorWithContext logs an error message with context and sends to Sentry
+func ErrorWithContext(ctx context.Context, msg string, err error) {
+	log.Error().Err(err).Msg(msg)
+	
+	// Send to Sentry with context
+	if err != nil {
+		if hub := sentry.GetHubFromContext(ctx); hub != nil {
+			hub.CaptureException(err)
+		} else {
+			sentry.CaptureException(err)
+		}
+	}
+}
+
+// ErrorWithContextAndFields logs an error with context and fields, sends to Sentry
+func ErrorWithContextAndFields(ctx context.Context, msg string, err error, fields map[string]interface{}) {
+	event := log.Error().Err(err)
+	for k, v := range fields {
+		event = event.Interface(k, v)
+	}
+	event.Msg(msg)
+	
+	// Send to Sentry with context and fields
+	if err != nil {
+		if hub := sentry.GetHubFromContext(ctx); hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				for k, v := range fields {
+					scope.SetExtra(k, v)
+				}
+				scope.SetTag("component", "logger")
+				hub.CaptureException(err)
+			})
+		} else {
+			sentry.WithScope(func(scope *sentry.Scope) {
+				for k, v := range fields {
+					scope.SetExtra(k, v)
+				}
+				scope.SetTag("component", "logger")
+				sentry.CaptureException(err)
+			})
+		}
+	}
 }

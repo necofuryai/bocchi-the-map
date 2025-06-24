@@ -301,16 +301,131 @@ docker build -t bocchi-api:latest .
 docker buildx build --platform linux/amd64,linux/arm64 .
 ```
 
-### Cloud Run Deployment
-```bash
-# Deploy to staging
-gcloud run deploy bocchi-api-staging \
-  --image gcr.io/your-project/bocchi-api:latest \
-  --region asia-northeast1 \
-  --allow-unauthenticated
+### Docker Development
 
-# Production deployment (blue/green)
-make deploy-production
+#### Local Docker Build
+```bash
+# Build Docker image locally
+docker build -t bocchi-api:dev .
+
+# Run with environment variables
+docker run -p 8080:8080 \
+  -e TIDB_HOST=your-tidb-host \
+  -e TIDB_PASSWORD=your-password \
+  -e NEW_RELIC_LICENSE_KEY=your-key \
+  -e SENTRY_DSN=your-dsn \
+  bocchi-api:dev
+```
+
+#### Docker Compose (Development)
+```bash
+# Start MySQL and API together
+make docker-up
+
+# Or manually
+docker-compose up -d mysql
+docker-compose up api
+```
+
+### Cloud Run Deployment
+
+#### Automated Deployment Script
+```bash
+# Build, push, and optionally deploy to Cloud Run
+cd api
+./scripts/build.sh dev YOUR_PROJECT_ID asia-northeast1
+
+# Script features:
+# - Automated Docker build with optimized caching
+# - GCR authentication and image push
+# - Environment-specific configuration
+# - Interactive Cloud Run deployment option
+# - Service URL retrieval and health check validation
+```
+
+#### Manual Cloud Run Deployment
+```bash
+# Build and push to Google Container Registry
+gcloud auth configure-docker
+docker build -t gcr.io/YOUR_PROJECT_ID/bocchi-api:latest .
+docker push gcr.io/YOUR_PROJECT_ID/bocchi-api:latest
+
+# Deploy to Cloud Run
+gcloud run deploy bocchi-api-dev \
+  --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
+  --platform=managed \
+  --region=asia-northeast1 \
+  --allow-unauthenticated \
+  --port=8080 \
+  --memory=1Gi \
+  --cpu=1 \
+  --max-instances=10 \
+  --min-instances=0
+
+# For production
+gcloud run deploy bocchi-api-prod \
+  --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
+  --platform=managed \
+  --region=asia-northeast1 \
+  --allow-unauthenticated \
+  --port=8080 \
+  --memory=1Gi \
+  --cpu=2 \
+  --max-instances=10 \
+  --min-instances=1  # Keep warm for production
+```
+
+#### Terraform Infrastructure Deployment
+```bash
+# Deploy complete infrastructure including secrets management
+cd infra
+
+# Initialize Terraform
+terraform init
+
+# Plan infrastructure changes
+terraform plan -var="gcp_project_id=YOUR_PROJECT_ID"
+
+# Apply infrastructure
+terraform apply -var="gcp_project_id=YOUR_PROJECT_ID"
+
+# Set secrets in Google Secret Manager
+echo "your-tidb-password" | gcloud secrets create tidb-password-dev --data-file=-
+echo "your-new-relic-key" | gcloud secrets create new-relic-license-key-dev --data-file=-
+echo "your-sentry-dsn" | gcloud secrets create sentry-dsn-dev --data-file=-
+```
+
+### Monitoring and Observability
+
+#### New Relic Setup
+```bash
+# Environment variables for New Relic
+NEW_RELIC_LICENSE_KEY=your-license-key
+NEW_RELIC_APP_NAME=bocchi-the-map-api
+
+# Metrics endpoint (when enabled)
+curl https://your-cloud-run-url/metrics
+```
+
+#### Sentry Setup
+```bash
+# Environment variable for Sentry
+SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+
+# Test error reporting
+curl -X POST https://your-cloud-run-url/test-error
+```
+
+#### Health Checks
+```bash
+# Basic health check
+curl https://your-cloud-run-url/health
+
+# Detailed health with dependencies
+curl https://your-cloud-run-url/health/detailed
+
+# Kubernetes readiness probe
+curl https://your-cloud-run-url/health/ready
 ```
 
 ## 📚 API Documentation

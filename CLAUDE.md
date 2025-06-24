@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Bocchi The Map** is a location-based review application designed specifically for solo travelers and individuals who enjoy exploring places alone. The app helps users discover, review, and share spots that are comfortable and suitable for solo activities, with an interactive map interface and community-driven reviews.
 
-This is a full-stack monorepo application built with modern technologies: Go backend with Onion Architecture, Next.js frontend, and Terraform infrastructure, designed to scale from monolith to microservices as needed.
+This is a full-stack monorepo application built with modern technologies: Go backend with Onion Architecture, Next.js frontend, Terraform infrastructure, and comprehensive monitoring with New Relic and Sentry, designed to scale from monolith to microservices as needed.
 
 ## Bocchi The Map - おひとりさま向けスポットレビューアプリ (Solo Spot Review App)
 
@@ -37,3 +37,19 @@ This project systematically manages knowledge through the following files:
 - Standard implementation templates
 
 **Important**: When making new implementations or important decisions, please update the corresponding files.
+
+## Quick Reference for Latest Updates
+
+For the most recent implementation details and architectural decisions, see:
+- **📋 Latest Implementation Status**: `.claude/project-improvements.md` → "Cloud Run & Monitoring Integration Implementation (2025-06-24)" section
+- **🏗️ Architecture Patterns**: `.claude/project-knowledge.md` → "Cloud Run & Monitoring Integration" section  
+- **🛠️ Deployment Commands**: `.claude/common-patterns.md` → "Cloud Run and Docker Deployment Patterns" section
+
+## Development Principles
+
+### Core Development Standards
+- Follow BDD (Behavior-Driven Development) with Ginkgo framework
+- Implement comprehensive monitoring and observability from project start
+- Use Protocol Buffers for type-safe API contracts
+- Follow Onion Architecture with clear dependency boundaries
+- Prioritize security and performance in all implementations

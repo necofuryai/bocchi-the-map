@@ -48,6 +48,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 | **Maps** | MapLibre GL JS | Open-source, vector tiles, highly customizable |
 | **Storage** | Cloudflare R2 | PMTiles format for efficient map delivery |
 | **Hosting** | Cloud Run + Vercel | Auto-scaling, edge distribution |
+| **Monitoring** | New Relic + Sentry | APM, error tracking, performance insights |
 | **DevOps** | Terraform + GitHub Actions | Infrastructure as Code, automated deployments |
 
 ## 🎯 Quick Start
@@ -188,6 +189,50 @@ make deploy-staging
 make deploy-production
 ```
 
+### Cloud Run Deployment
+
+#### Prerequisites
+```bash
+# Install and configure Google Cloud CLI
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# Configure Docker for Google Container Registry
+gcloud auth configure-docker
+```
+
+#### Build and Deploy API
+```bash
+cd api
+
+# Build and push Docker image
+./scripts/build.sh dev YOUR_PROJECT_ID asia-northeast1
+
+# Or manual steps:
+docker build -t gcr.io/YOUR_PROJECT_ID/bocchi-api:latest .
+docker push gcr.io/YOUR_PROJECT_ID/bocchi-api:latest
+
+# Deploy with Terraform
+cd ../infra
+terraform init
+terraform apply -var="gcp_project_id=YOUR_PROJECT_ID"
+```
+
+#### Environment Setup
+```bash
+# Set required secrets in Google Secret Manager
+gcloud secrets create tidb-password-dev --data-file=-
+gcloud secrets create new-relic-license-key-dev --data-file=-
+gcloud secrets create sentry-dsn-dev --data-file=-
+
+# Deploy Cloud Run service
+gcloud run deploy bocchi-api-dev \
+  --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
+  --platform=managed \
+  --region=asia-northeast1 \
+  --allow-unauthenticated
+```
+
 <!-- ## 🤝 Contributing
 
 We welcome contributions! This project follows modern open-source practices:
@@ -226,10 +271,34 @@ gh pr create --title "feat: your amazing feature"
 
 ## 📈 Analytics & Monitoring
 
-- **New Relic** - Application performance monitoring
-- **Sentry** - Error tracking and performance insights
-- **Structured Logging** - JSON logs with correlation IDs
-- **Health Checks** - Automated monitoring with alerting
+### Observability Stack
+- **🔍 New Relic** - Application performance monitoring, custom metrics, distributed tracing
+- **🚨 Sentry** - Error tracking, performance insights, real-time alerting
+- **📊 Structured Logging** - JSON logs with correlation IDs, centralized via Cloud Logging
+- **💓 Health Checks** - Kubernetes-ready probes with dependency validation
+
+### Key Metrics Tracked
+- **Performance**: API response times (p50, p95, p99), throughput, error rates
+- **Business**: Spot discoveries, review submissions, user engagement patterns
+- **Infrastructure**: Memory usage, CPU utilization, database connection pools
+- **User Experience**: Page load times, frontend errors, conversion funnels
+
+### Monitoring Endpoints
+```bash
+# Health check
+curl https://api.bocchi-map.com/health
+
+# Detailed system status
+curl https://api.bocchi-map.com/health/detailed
+
+# Metrics (Prometheus format)
+curl https://api.bocchi-map.com/metrics
+```
+
+### Alerting & Incident Response
+- **Critical Alerts**: > 5% error rate, > 2s p95 latency, dependency failures
+- **Escalation**: Slack notifications → PagerDuty → On-call engineer
+- **Runbooks**: Automated remediation for common issues
 
 ## 📄 License
 

@@ -206,6 +206,123 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 - Optimize map rendering with clustering for many points
 - Implement proper image lazy loading
 
+## Cloud Run & Monitoring Integration (Latest Implementation)
+
+### Monitoring Architecture
+
+#### New Relic Integration
+- **Application Performance Monitoring**: Custom metrics, distributed tracing, and performance insights
+- **Middleware Integration**: HTTP request monitoring with transaction tracking
+- **Custom Metrics**: Business metrics recording (spot creations, user activities)
+- **Background Transactions**: Non-web operation monitoring
+- **Graceful Shutdown**: Proper flush handling on application termination
+
+```go
+// Initialize monitoring in main()
+if err := monitoring.InitMonitoring(
+    cfg.Monitoring.NewRelicLicenseKey,
+    cfg.Monitoring.SentryDSN,
+    "bocchi-the-map-api",
+    cfg.App.Environment,
+    "1.0.0",
+); err != nil {
+    logger.Error("Failed to initialize monitoring", err)
+    // Don't exit - monitoring is not critical for basic functionality
+}
+```
+
+#### Sentry Integration
+- **Error Tracking**: Context-aware error capturing with breadcrumbs
+- **Performance Monitoring**: Transaction tracking and bottleneck identification
+- **Release Tracking**: Version-based error attribution
+- **User Context**: Request-specific error attribution
+- **Sensitive Data Filtering**: Automatic removal of sensitive headers and data
+
+```go
+// Unified error handling with Sentry integration
+logger.ErrorWithContext(ctx, "Database operation failed", err)
+logger.ErrorWithContextAndFields(ctx, "User operation failed", err, map[string]interface{}{
+    "user_id": userID,
+    "operation": "create_spot",
+})
+```
+
+### Docker Containerization
+
+#### Multi-Stage Build Pattern
+```dockerfile
+# Build stage - Full Go development environment
+FROM golang:1.21-alpine AS builder
+# ... build steps
+
+# Production stage - Minimal runtime
+FROM alpine:latest
+# Security: non-root user, ca-certificates, health checks
+```
+
+#### Security Best Practices
+- **Non-root execution**: Application runs as dedicated user (uid 1001)
+- **Minimal base image**: Alpine Linux for reduced attack surface
+- **Health checks**: Container orchestration support
+- **Efficient layering**: Optimized for Docker layer caching
+
+### Terraform Infrastructure
+
+#### Secret Management
+```hcl
+# Google Secret Manager integration
+resource "google_secret_manager_secret" "new_relic_license_key" {
+  secret_id = "new-relic-license-key-${var.environment}"
+  replication { auto {} }
+}
+
+# Service account with minimal permissions
+resource "google_service_account" "cloud_run_service_account" {
+  account_id   = "bocchi-cloud-run-${var.environment}"
+  display_name = "Bocchi Cloud Run Service Account"
+}
+```
+
+#### Cloud Run Configuration
+- **Service Account Integration**: Dedicated IAM with minimal required permissions
+- **Environment-Specific Scaling**: Production (min 1, max 10), Development (min 0, max 3)
+- **Resource Optimization**: CPU/memory requests and limits based on usage patterns
+- **Health Check Integration**: Kubernetes-ready probes
+
+### Configuration Management
+
+#### Environment-Based Pattern
+```go
+type MonitoringConfig struct {
+    NewRelicLicenseKey string // From Secret Manager
+    SentryDSN          string // From Secret Manager
+}
+
+// Graceful degradation when monitoring unavailable
+func (c *Config) Validate() error {
+    if c.Database.Password == "" {
+        return errors.New("TIDB_PASSWORD is required")
+    }
+    // Monitoring is optional - application continues without it
+    return nil
+}
+```
+
+### Build and Deployment
+
+#### Automated Build Script
+```bash
+# Environment-aware build and deployment
+./scripts/build.sh dev YOUR_PROJECT_ID asia-northeast1
+
+# Features:
+# - Multi-arch Docker builds
+# - Automatic image tagging with timestamps
+# - Optional Cloud Run deployment
+# - GCR authentication handling
+# - Environment validation
+```
+
 ## Security Best Practices
 
 ### Authentication & Authorization
@@ -221,3 +338,10 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 - Implement rate-limiting
 - Log security events appropriately
 - Never log sensitive information
+
+### Cloud Security
+
+- **Secret Management**: Use Google Secret Manager, never environment variables for secrets
+- **Service Accounts**: Minimal IAM permissions following principle of least privilege
+- **Container Security**: Non-root user execution, minimal base images
+- **Network Security**: Cloud Run managed HTTPS with automatic certificate management
