@@ -30,7 +30,6 @@ coverage.out
 coverage.html
 
 # Docker
-Dockerfile*
 docker-compose*.yml
 .dockerignore
 

@@ -61,9 +61,15 @@ if ! command -v gcloud &> /dev/null; then
     exit 1
 fi
 
-# Check if Docker is running
-if ! docker info &> /dev/null; then
-    echo -e "${RED}Error: Docker is not running${NC}"
+# Check if gcloud is authenticated
+if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" 2>/dev/null | grep -q .; then
+    echo -e "${RED}Error: gcloud is not authenticated. Please run 'gcloud auth login'${NC}"
+    exit 1
+fi
+
+# Check if Docker is accessible
+if ! docker ps &> /dev/null; then
+    echo -e "${RED}Error: Docker is not accessible. Please ensure Docker is running and you have permission to access it${NC}"
     exit 1
 fi
 
@@ -100,12 +106,18 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo -e "${GREEN}Deploying to Cloud Run...${NC}"
     
+    # Conditionally add --allow-unauthenticated flag for non-production environments
+    AUTH_FLAG=""
+    if [ "$ENVIRONMENT" != "prod" ]; then
+        AUTH_FLAG="--allow-unauthenticated"
+    fi
+    
     gcloud run deploy "${SERVICE_NAME}" \
         --image="${LATEST_TAG}" \
         --platform=managed \
         --region="${REGION}" \
         --project="${PROJECT_ID}" \
-        --allow-unauthenticated \
+        ${AUTH_FLAG} \
         --port=8080 \
         --memory=1Gi \
         --cpu=1 \
@@ -132,7 +144,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 else
     echo -e "${YELLOW}Skipping deployment.${NC}"
     echo -e "${YELLOW}To deploy manually, run:${NC}"
-    echo "gcloud run deploy ${SERVICE_NAME} --image=${LATEST_TAG} --platform=managed --region=${REGION} --project=${PROJECT_ID}"
+    echo "gcloud run deploy ${SERVICE_NAME} --image=${LATEST_TAG} --platform=managed --region=${REGION} --project=${PROJECT_ID} $([ "$ENVIRONMENT" != "prod" ] && echo "--allow-unauthenticated")"
 fi
 
 echo ""

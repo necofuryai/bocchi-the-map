@@ -350,7 +350,7 @@ gcloud auth configure-docker
 docker build -t gcr.io/YOUR_PROJECT_ID/bocchi-api:latest .
 docker push gcr.io/YOUR_PROJECT_ID/bocchi-api:latest
 
-# Deploy to Cloud Run
+# Deploy to Cloud Run (development - allows unauthenticated access for testing)
 gcloud run deploy bocchi-api-dev \
   --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
   --platform=managed \
@@ -362,17 +362,19 @@ gcloud run deploy bocchi-api-dev \
   --max-instances=10 \
   --min-instances=0
 
-# For production
+# For production (requires authentication)
 gcloud run deploy bocchi-api-prod \
   --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
   --platform=managed \
   --region=asia-northeast1 \
-  --allow-unauthenticated \
   --port=8080 \
   --memory=1Gi \
   --cpu=2 \
   --max-instances=10 \
   --min-instances=1  # Keep warm for production
+
+# Note: Production deployment requires authentication by omitting --allow-unauthenticated flag
+# Set up IAM policies and service account authentication as needed for secure access
 ```
 
 #### Terraform Infrastructure Deployment

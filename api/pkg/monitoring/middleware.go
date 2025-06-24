@@ -1,6 +1,8 @@
 package monitoring
 
 import (
+	"context"
+	"crypto/rand"
 	"net/http"
 	"time"
 
@@ -47,7 +49,7 @@ func RequestIDMiddleware() func(http.Handler) http.Handler {
 			w.Header().Set("X-Request-ID", requestID)
 
 			// Add request ID to context for logging
-			ctx := r.Context()
+			ctx := context.WithValue(r.Context(), "request_id", requestID)
 			
 			// Add breadcrumb to Sentry
 			AddBreadcrumb(ctx, &struct {
@@ -67,7 +69,7 @@ func RequestIDMiddleware() func(http.Handler) http.Handler {
 			// Set tag in Sentry
 			SetTag(ctx, "request_id", requestID)
 
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
@@ -143,12 +145,24 @@ func generateRequestID() string {
 	return time.Now().Format("20060102150405") + "-" + randomString(8)
 }
 
-// randomString generates a random string of specified length
+// randomString generates a cryptographically secure random string of specified length
 func randomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
+	
+	// Use crypto/rand for cryptographically secure random bytes
+	randomBytes := make([]byte, length)
+	if _, err := rand.Read(randomBytes); err != nil {
+		// Fallback to a basic implementation if crypto/rand fails
+		// This should rarely happen in practice
+		for i := range b {
+			b[i] = charset[0] // Safe fallback
+		}
+		return string(b)
+	}
+	
 	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
+		b[i] = charset[randomBytes[i]%byte(len(charset))]
 	}
 	return string(b)
 }

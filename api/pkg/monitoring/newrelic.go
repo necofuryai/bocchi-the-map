@@ -105,8 +105,8 @@ func NoticeError(ctx context.Context, err error) {
 	if txn := newrelic.FromContext(ctx); txn != nil {
 		txn.NoticeError(err)
 	} else {
-		// If no transaction context, create a background transaction
-		txn := nrApp.StartTransaction("background-error")
+		// If no transaction context, create a background transaction for orphaned errors
+		txn := nrApp.StartTransaction("error-without-transaction-context")
 		defer txn.End()
 		txn.NoticeError(err)
 	}

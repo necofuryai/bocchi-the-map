@@ -3,6 +3,8 @@ package logger
 import (
 	"context"
 	"os"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -89,13 +91,13 @@ func Error(msg string, err error) {
 
 // Fatal logs a fatal message, sends to Sentry, and exits
 func Fatal(msg string, err error) {
-	log.Fatal().Err(err).Msg(msg)
-	
 	// Send to Sentry before exiting
 	if err != nil {
 		sentry.CaptureException(err)
 		sentry.Flush(2 * time.Second) // Wait for Sentry to send the error
 	}
+	
+	log.Fatal().Err(err).Msg(msg)
 }
 
 // InfoWithFields logs an info message with structured fields
@@ -141,13 +143,48 @@ func ErrorWithContext(ctx context.Context, msg string, err error) {
 	}
 }
 
+// getCallerComponent extracts component name from caller's package path
+func getCallerComponent() string {
+	// Skip 3 levels: runtime.Caller -> getCallerComponent -> ErrorWithContextAndFields -> actual caller
+	pc, _, _, ok := runtime.Caller(3)
+	if !ok {
+		return "unknown"
+	}
+	
+	funcName := runtime.FuncForPC(pc).Name()
+	parts := strings.Split(funcName, "/")
+	if len(parts) > 0 {
+		lastPart := parts[len(parts)-1]
+		if dotIndex := strings.Index(lastPart, "."); dotIndex != -1 {
+			return lastPart[:dotIndex]
+		}
+		return lastPart
+	}
+	return "unknown"
+}
+
 // ErrorWithContextAndFields logs an error with context and fields, sends to Sentry
 func ErrorWithContextAndFields(ctx context.Context, msg string, err error, fields map[string]interface{}) {
+	errorWithContextAndFieldsAndComponent(ctx, msg, err, fields, "")
+}
+
+// ErrorWithContextAndFieldsAndComponent logs an error with context, fields and component, sends to Sentry
+func ErrorWithContextAndFieldsAndComponent(ctx context.Context, msg string, err error, fields map[string]interface{}, component string) {
+	errorWithContextAndFieldsAndComponent(ctx, msg, err, fields, component)
+}
+
+// errorWithContextAndFieldsAndComponent is the internal implementation
+func errorWithContextAndFieldsAndComponent(ctx context.Context, msg string, err error, fields map[string]interface{}, component string) {
 	event := log.Error().Err(err)
 	for k, v := range fields {
 		event = event.Interface(k, v)
 	}
 	event.Msg(msg)
+	
+	// Determine component name
+	if component == "" {
+		component = getCallerComponent()
+	}
 	
 	// Send to Sentry with context and fields
 	if err != nil {
@@ -156,7 +193,7 @@ func ErrorWithContextAndFields(ctx context.Context, msg string, err error, field
 				for k, v := range fields {
 					scope.SetExtra(k, v)
 				}
-				scope.SetTag("component", "logger")
+				scope.SetTag("component", component)
 				hub.CaptureException(err)
 			})
 		} else {
@@ -164,7 +201,7 @@ func ErrorWithContextAndFields(ctx context.Context, msg string, err error, field
 				for k, v := range fields {
 					scope.SetExtra(k, v)
 				}
-				scope.SetTag("component", "logger")
+				scope.SetTag("component", component)
 				sentry.CaptureException(err)
 			})
 		}

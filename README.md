@@ -195,6 +195,12 @@ make deploy-production
 ```bash
 # Install and configure Google Cloud CLI
 gcloud auth login
+
+# Get your Google Cloud project ID (if you don't know it)
+gcloud config get-value project
+# Or list all projects: gcloud projects list
+
+# Set your project ID (replace with your actual project ID)
 gcloud config set project YOUR_PROJECT_ID
 
 # Configure Docker for Google Container Registry
@@ -221,6 +227,11 @@ terraform apply -var="gcp_project_id=YOUR_PROJECT_ID"
 #### Environment Setup
 ```bash
 # Set required secrets in Google Secret Manager
+# Note: You need to provide the actual secret values from your environment
+# Example methods to provide secrets:
+# 1. From environment variables: echo "$TIDB_PASSWORD" | gcloud secrets create tidb-password-dev --data-file=-
+# 2. From file: gcloud secrets create tidb-password-dev --data-file=path/to/secret.txt
+# 3. Interactive input (type secret and press Ctrl+D):
 gcloud secrets create tidb-password-dev --data-file=-
 gcloud secrets create new-relic-license-key-dev --data-file=-
 gcloud secrets create sentry-dsn-dev --data-file=-
@@ -293,6 +304,19 @@ curl https://api.bocchi-map.com/health/detailed
 
 # Metrics (Prometheus format)
 curl https://api.bocchi-map.com/metrics
+
+# Example metrics output:
+# HELP http_requests_total Total number of HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{method="GET",endpoint="/api/spots",status="200"} 1234
+http_requests_total{method="POST",endpoint="/api/reviews",status="201"} 567
+
+# HELP http_request_duration_seconds HTTP request duration in seconds
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{method="GET",endpoint="/api/spots",le="0.1"} 800
+http_request_duration_seconds_bucket{method="GET",endpoint="/api/spots",le="0.5"} 1200
+http_request_duration_seconds_sum{method="GET",endpoint="/api/spots"} 145.67
+http_request_duration_seconds_count{method="GET",endpoint="/api/spots"} 1234
 ```
 
 ### Alerting & Incident Response

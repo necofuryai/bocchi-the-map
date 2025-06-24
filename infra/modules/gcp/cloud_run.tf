@@ -126,6 +126,11 @@ resource "google_cloud_run_service_iam_member" "public" {
 variable "environment" {
   description = "Environment name"
   type        = string
+  
+  validation {
+    condition = contains(["prod", "dev", "staging", "test"], var.environment)
+    error_message = "Environment must be one of: prod, dev, staging, test."
+  }
 }
 
 variable "region" {
@@ -144,6 +149,7 @@ variable "tidb_host" {
   type        = string
 }
 
+# TODO: project_id variable defined for future use with GCP project-specific resources
 variable "project_id" {
   description = "GCP project ID"
   type        = string

@@ -29,8 +29,9 @@ RUN apk --no-cache add ca-certificates tzdata
 RUN addgroup -g 1001 -S bocchi && \
     adduser -S bocchi -u 1001
 
-# Set working directory
-WORKDIR /root/
+# Set working directory and ensure ownership
+WORKDIR /home/bocchi
+RUN chown bocchi:bocchi /home/bocchi
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
