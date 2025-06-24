@@ -188,7 +188,15 @@ LOG_LEVEL=debug make dev
 
 ### Environment Variables
 ```bash
-# 🗄️ Database
+# 🗄️ Database Configuration
+# Local Development (MySQL 8.0):
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=password
+MYSQL_DATABASE=bocchi_the_map
+
+# Production Environment (TiDB Serverless):
 TIDB_HOST=gateway01.ap-northeast-1.prod.aws.tidbcloud.com
 TIDB_PORT=4000
 TIDB_USER=your-username  
@@ -309,10 +317,10 @@ docker buildx build --platform linux/amd64,linux/arm64 .
 # Build Docker image locally
 docker build -t bocchi-api:dev .
 
-# Run with environment variables
+# Run with environment variables (using MySQL for local development)
 docker run -p 8080:8080 \
-  -e TIDB_HOST=your-tidb-host \
-  -e TIDB_PASSWORD=your-password \
+  -e MYSQL_HOST=host.docker.internal \
+  -e MYSQL_PASSWORD=password \
   -e NEW_RELIC_LICENSE_KEY=your-key \
   -e SENTRY_DSN=your-dsn \
   bocchi-api:dev
@@ -323,6 +331,7 @@ docker run -p 8080:8080 \
 ```bash
 # Start MySQL (local development database) and API together
 # Note: Uses MySQL 8.0 for local development, TiDB is used in production
+# Requires docker-compose.yml in the root directory
 make docker-up
 
 # Or manually
@@ -335,6 +344,12 @@ docker-compose up api
 #### Automated Deployment Script
 
 ```bash
+# Prerequisites:
+# - gcloud CLI authenticated: gcloud auth login
+# - Project configured: gcloud config set project YOUR_PROJECT_ID
+# - Docker permissions: Make script executable: chmod +x scripts/build.sh
+# - Docker Buildx available for multi-platform builds
+
 # Build, push, and optionally deploy to Cloud Run
 cd api
 ./scripts/build.sh dev YOUR_PROJECT_ID asia-northeast1
@@ -367,7 +382,7 @@ gcloud run deploy bocchi-api-dev \
   --max-instances=10 \
   --min-instances=0
 
-# For production (requires authentication)
+# For production (requires authentication and dedicated service account)
 gcloud run deploy bocchi-api-prod \
   --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
   --platform=managed \
@@ -376,7 +391,8 @@ gcloud run deploy bocchi-api-prod \
   --memory=1Gi \
   --cpu=2 \
   --max-instances=10 \
-  --min-instances=1  # Keep warm for production
+  --min-instances=1 \
+  --service-account=bocchi-api-service-account@YOUR_PROJECT_ID.iam.gserviceaccount.com  # Keep warm for production
 
 # ⚠️ IMPORTANT: Production deployment requires authentication
 # The --allow-unauthenticated flag is intentionally omitted for security
@@ -398,10 +414,18 @@ terraform plan -var="gcp_project_id=YOUR_PROJECT_ID"
 # Apply infrastructure
 terraform apply -var="gcp_project_id=YOUR_PROJECT_ID"
 
-# Set secrets in Google Secret Manager
-echo "your-tidb-password" | gcloud secrets create tidb-password-dev --data-file=-
-echo "your-new-relic-key" | gcloud secrets create new-relic-license-key-dev --data-file=-
-echo "your-sentry-dsn" | gcloud secrets create sentry-dsn-dev --data-file=-
+# Set secrets in Google Secret Manager (idempotent - safe to re-run)
+echo "your-tidb-password" | \
+  (gcloud secrets versions add tidb-password-dev --data-file=- 2>/dev/null || \
+   gcloud secrets create tidb-password-dev --data-file=-)
+
+echo "your-new-relic-key" | \
+  (gcloud secrets versions add new-relic-license-key-dev --data-file=- 2>/dev/null || \
+   gcloud secrets create new-relic-license-key-dev --data-file=-)
+
+echo "your-sentry-dsn" | \
+  (gcloud secrets versions add sentry-dsn-dev --data-file=- 2>/dev/null || \
+   gcloud secrets create sentry-dsn-dev --data-file=-)
 ```
 
 ### Monitoring and Observability
@@ -414,6 +438,8 @@ NEW_RELIC_LICENSE_KEY=your-license-key
 NEW_RELIC_APP_NAME=bocchi-the-map-api
 
 # Metrics endpoint (when enabled)
+# ⚠️ WARNING: Metrics may contain sensitive information
+# Protect with IAM or API key restrictions if publicly exposed
 curl https://your-cloud-run-url/metrics
 ```
 
@@ -424,13 +450,20 @@ curl https://your-cloud-run-url/metrics
 SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
 
 # Test error reporting (⚠️ DEVELOPMENT ONLY - should not be enabled in production)
+# This endpoint should be disabled in production environments for security
 curl -X POST https://your-cloud-run-url/test-error
 ```
 
 #### Health Checks
 
+| Endpoint | Purpose | Response Content | Recommended Use |
+|----------|---------|------------------|-----------------|
+| `/health` | Basic health check | Simple OK/ERROR status | Cloud Run health check path |
+| `/health/ready` | Kubernetes readiness | Service readiness status | K8s readiness probe |
+| `/health/detailed` | Detailed system status | Full dependency check | Monitoring and debugging |
+
 ```bash
-# Basic health check
+# Basic health check (recommended for Cloud Run --health-check-path)
 curl https://your-cloud-run-url/health
 
 # Detailed health with dependencies
