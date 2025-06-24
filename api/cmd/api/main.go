@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -21,6 +24,7 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/interfaces/http/handlers"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/monitoring"
 )
 
 // Options for the CLI
@@ -48,6 +52,18 @@ func main() {
 	logger.Init(logger.Level(cfg.App.LogLevel))
 	logger.Info("Starting Bocchi The Map API")
 
+	// Initialize monitoring services
+	if err := monitoring.InitMonitoring(
+		cfg.Monitoring.NewRelicLicenseKey,
+		cfg.Monitoring.SentryDSN,
+		"bocchi-the-map-api",
+		cfg.App.Environment,
+		cfg.App.Version,
+	); err != nil {
+		logger.Error("Failed to initialize monitoring", err)
+		// Don't exit - monitoring is not critical for basic functionality
+	}
+
 	// Create CLI
 	cli := humacli.New(func(hooks humacli.Hooks, options *Options) {
 		// Initialize database connection
@@ -67,14 +83,6 @@ func main() {
 			logger.Fatal("Failed to ping database", err)
 		}
 		logger.Info("Database connection established")
-
-		// Ensure database connection is closed on shutdown
-		hooks.OnStop(func() {
-			logger.Info("Closing database connection")
-			if err := db.Close(); err != nil {
-				logger.Error("Failed to close database connection", err)
-			}
-		})
 
 		// Create database queries instance
 		queries := database.New(db)
@@ -98,9 +106,26 @@ func main() {
 			logger.Fatal("Failed to create review client", err)
 		}
 
-		defer spotClient.Close()
-		defer userClient.Close()
-		defer reviewClient.Close()
+		// Ensure proper cleanup on shutdown
+		hooks.OnStop(func() {
+			logger.Info("Shutting down application...")
+			
+			// Shutdown monitoring services
+			monitoring.ShutdownMonitoring()
+			
+			// Close gRPC clients
+			spotClient.Close()
+			userClient.Close()
+			reviewClient.Close()
+			
+			// Close database connection
+			logger.Info("Closing database connection")
+			if err := db.Close(); err != nil {
+				logger.Error("Failed to close database connection", err)
+			}
+			
+			logger.Info("Application shutdown complete")
+		})
 
 		// Create chi router
 		router := chi.NewRouter()
@@ -111,12 +136,17 @@ func main() {
 		router.Use(middleware.Logger)
 		router.Use(middleware.Recoverer)
 		router.Use(middleware.Compress(5))
+		
+		// Add monitoring middleware
+		router.Use(monitoring.RequestIDMiddleware())
+		router.Use(monitoring.MonitoringMiddleware())
+		router.Use(monitoring.PerformanceMiddleware())
 
 		// Create Huma API
-		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", "1.0.0"))
+		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", cfg.App.Version))
 
 		// Register routes with gRPC clients and database queries
-		registerRoutes(api, spotClient, userClient, reviewClient, queries)
+		registerRoutes(api, spotClient, userClient, reviewClient, queries, cfg)
 
 		// Start gRPC server in a goroutine
 		errChan := make(chan error, 1)
@@ -134,12 +164,43 @@ func main() {
 			// Continue if no immediate errors
 		}
 
-		// Start HTTP server
+		// Start HTTP server with graceful shutdown
 		hooks.OnStart(func() {
 			logger.Info(fmt.Sprintf("HTTP server starting on port %s", options.Port))
 			logger.Info(fmt.Sprintf("gRPC server starting on port %s", options.GRPCPort))
-			if err := http.ListenAndServe(":"+options.Port, router); err != nil {
-				logger.Fatal("HTTP server failed to start", err)
+			
+			// Create HTTP server
+			server := &http.Server{
+				Addr:    ":" + options.Port,
+				Handler: router,
+				ReadTimeout:  15 * time.Second,
+				WriteTimeout: 15 * time.Second,
+				IdleTimeout:  60 * time.Second,
+			}
+			
+			// Channel to listen for interrupt signal
+			quit := make(chan os.Signal, 1)
+			signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+			
+			// Start server in a goroutine
+			go func() {
+				logger.Info("Server is ready to handle requests")
+				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					logger.Fatal("HTTP server failed to start", err)
+				}
+			}()
+			
+			// Wait for interrupt signal
+			<-quit
+			logger.Info("Shutting down server...")
+			
+			// Create context with timeout for graceful shutdown
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			
+			// Shutdown server gracefully
+			if err := server.Shutdown(ctx); err != nil {
+				logger.Error("Server forced to shutdown", err)
 			}
 		})
 	})
@@ -167,7 +228,7 @@ func startGRPCServer(port string) error {
 }
 
 // registerRoutes registers all API routes
-func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *clients.UserClient, reviewClient *clients.ReviewClient, queries *database.Queries) {
+func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *clients.UserClient, reviewClient *clients.ReviewClient, queries *database.Queries, cfg *config.Config) {
 	// Health check endpoint
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
@@ -179,7 +240,7 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 	}, func(ctx context.Context, input *struct{}) (*HealthCheckOutput, error) {
 		resp := &HealthCheckOutput{}
 		resp.Body.Status = "ok"
-		resp.Body.Version = "1.0.0"
+		resp.Body.Version = cfg.App.Version
 		return resp, nil
 	})
 

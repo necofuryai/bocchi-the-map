@@ -1,0 +1,64 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Testing
+*_test.go
+coverage.out
+coverage.html
+
+# Docker
+docker-compose*.yml
+.dockerignore
+
+# Build artifacts
+main
+bocchi-api
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Temporary files
+*.tmp
+*.temp
+
+# Logs
+*.log
+
+# Database
+*.sql
+*.db
+*.sqlite*
+
+# Migrations (if they're for development only)
+migrations/
+migrations_new/
+
+# Scripts
+scripts/
+
+# Makefile
+Makefile

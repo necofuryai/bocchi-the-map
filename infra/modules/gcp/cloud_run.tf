@@ -15,6 +15,8 @@ resource "google_cloud_run_v2_service" "api" {
   location = var.region
   
   template {
+    service_account = google_service_account.cloud_run_service_account.email
+    
     containers {
       image = var.api_image
       
@@ -42,10 +44,41 @@ resource "google_cloud_run_v2_service" "api" {
         }
       }
       
+      env {
+        name = "NEW_RELIC_LICENSE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.new_relic_license_key.id
+            version = "latest"
+          }
+        }
+      }
+      
+      env {
+        name = "SENTRY_DSN"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.sentry_dsn.id
+            version = "latest"
+          }
+        }
+      }
+      
+      env {
+        name  = "LOG_LEVEL"
+        value = var.environment == "prod" ? "INFO" : "DEBUG"
+      }
+      
+      
+      env {
+        name  = "HOST"
+        value = "0.0.0.0"
+      }
+      
       resources {
         limits = {
-          cpu    = "1"
-          memory = "512Mi"
+          cpu    = "2"
+          memory = "1Gi"
         }
       }
     }
@@ -85,6 +118,11 @@ resource "google_cloud_run_service_iam_member" "public" {
 variable "environment" {
   description = "Environment name"
   type        = string
+  
+  validation {
+    condition = contains(["prod", "dev", "staging", "test"], var.environment)
+    error_message = "Environment must be one of: prod, dev, staging, test."
+  }
 }
 
 variable "region" {
@@ -100,6 +138,12 @@ variable "api_image" {
 
 variable "tidb_host" {
   description = "TiDB host"
+  type        = string
+}
+
+# TODO: project_id variable defined for future use with GCP project-specific resources
+variable "project_id" {
+  description = "GCP project ID"
   type        = string
 }
 

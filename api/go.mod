@@ -4,9 +4,12 @@ go 1.21
 
 require (
 	github.com/danielgtaylor/huma/v2 v2.19.0
+	github.com/getsentry/sentry-go v0.28.1
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/google/uuid v1.6.0
+	github.com/newrelic/go-agent/v3 v3.34.0
+	github.com/newrelic/go-agent/v3/integrations/nrgorilla v1.2.2
 	github.com/rs/zerolog v1.33.0
 	google.golang.org/grpc v1.62.1
 )

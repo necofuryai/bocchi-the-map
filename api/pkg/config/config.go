@@ -41,6 +41,7 @@ type MonitoringConfig struct {
 type AppConfig struct {
 	Environment string
 	LogLevel    string
+	Version     string
 }
 
 // Load loads configuration from environment variables
@@ -64,6 +65,7 @@ func Load() (*Config, error) {
 		App: AppConfig{
 			Environment: getEnvWithDefault("ENV", "development"),
 			LogLevel:    getEnvWithDefault("LOG_LEVEL", "INFO"),
+			Version:     getEnvWithDefault("APP_VERSION", "1.0.0"),
 		},
 	}
 

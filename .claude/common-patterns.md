@@ -602,3 +602,215 @@ feat: this is a very long commit message that exceeds the maximum character limi
 ```
 
 **Note**: Commit messages that don't follow this format will be rejected by the pre-commit hook.
+
+## Cloud Run and Docker Deployment Patterns
+
+### Docker Build Commands
+```bash
+# Local development build
+docker build -t bocchi-api:dev .
+
+# Production multi-arch build
+docker buildx build --platform linux/amd64,linux/arm64 -t bocchi-api:latest .
+
+# Build with specific tag for Cloud Run
+docker build -t gcr.io/YOUR_PROJECT_ID/bocchi-api:v1.0.0 .
+```
+
+### Cloud Run Deployment Commands
+
+#### Automated Deployment Script
+```bash
+# Development environment
+cd api
+./scripts/build.sh dev YOUR_PROJECT_ID asia-northeast1
+
+# Production environment  
+./scripts/build.sh prod YOUR_PROJECT_ID asia-northeast1
+
+# Custom region
+./scripts/build.sh staging YOUR_PROJECT_ID us-central1
+```
+
+#### Manual Cloud Run Commands
+```bash
+# Deploy with minimal configuration
+gcloud run deploy bocchi-api-dev \
+  --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
+  --platform=managed \
+  --region=asia-northeast1 \
+  --allow-unauthenticated
+
+# Deploy with production settings
+gcloud run deploy bocchi-api-prod \
+  --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
+  --platform=managed \
+  --region=asia-northeast1 \
+  --allow-unauthenticated \
+  --port=8080 \
+  --memory=1Gi \
+  --cpu=2 \
+  --max-instances=10 \
+  --min-instances=1 \
+  --timeout=300 \
+  --concurrency=100
+
+# Update existing service with new image
+gcloud run services update bocchi-api-dev \
+  --image=gcr.io/YOUR_PROJECT_ID/bocchi-api:latest \
+  --region=asia-northeast1
+```
+
+### Google Container Registry Commands
+```bash
+# Configure Docker for GCR
+gcloud auth configure-docker
+
+# Push image to GCR
+docker push gcr.io/YOUR_PROJECT_ID/bocchi-api:latest
+
+# List images in registry
+gcloud container images list --repository=gcr.io/YOUR_PROJECT_ID
+
+# List image tags
+gcloud container images list-tags gcr.io/YOUR_PROJECT_ID/bocchi-api
+
+# Delete old images (cleanup)
+gcloud container images delete gcr.io/YOUR_PROJECT_ID/bocchi-api:old-tag --force-delete-tags
+```
+
+### Secret Management Commands
+```bash
+# Create secrets in Google Secret Manager
+echo "your-tidb-password" | gcloud secrets create tidb-password-dev --data-file=-
+echo "your-new-relic-key" | gcloud secrets create new-relic-license-key-dev --data-file=-
+echo "your-sentry-dsn" | gcloud secrets create sentry-dsn-dev --data-file=-
+
+# Update existing secret
+echo "new-password" | gcloud secrets versions add tidb-password-dev --data-file=-
+
+# Access secret value (for testing)
+gcloud secrets versions access latest --secret="tidb-password-dev"
+
+# List all secrets
+gcloud secrets list
+
+# Grant service account access to secret
+gcloud secrets add-iam-policy-binding tidb-password-dev \
+  --member="serviceAccount:bocchi-cloud-run-dev@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+### Terraform Infrastructure Commands
+```bash
+# Initialize Terraform with backend
+cd infra
+terraform init
+
+# Plan infrastructure changes
+terraform plan -var="gcp_project_id=YOUR_PROJECT_ID" -var="environment=dev"
+
+# Apply infrastructure
+terraform apply -var="gcp_project_id=YOUR_PROJECT_ID" -var="environment=dev"
+
+# Destroy infrastructure (caution!)
+terraform destroy -var="gcp_project_id=YOUR_PROJECT_ID" -var="environment=dev"
+
+# Format Terraform files
+terraform fmt -recursive
+
+# Validate Terraform configuration
+terraform validate
+
+# Show current state
+terraform show
+
+# Import existing resources
+terraform import google_cloud_run_v2_service.api projects/YOUR_PROJECT_ID/locations/asia-northeast1/services/bocchi-api-dev
+```
+
+### Monitoring and Health Check Commands
+```bash
+# Health check endpoints
+curl https://bocchi-api-dev-xxx.a.run.app/health
+curl https://bocchi-api-dev-xxx.a.run.app/health/detailed
+
+# View Cloud Run logs
+gcloud run services logs read bocchi-api-dev --region=asia-northeast1 --limit=50
+
+# Follow real-time logs
+gcloud run services logs tail bocchi-api-dev --region=asia-northeast1
+
+# Get service details
+gcloud run services describe bocchi-api-dev --region=asia-northeast1
+
+# List all Cloud Run services
+gcloud run services list
+
+# Check service URL
+gcloud run services describe bocchi-api-dev \
+  --region=asia-northeast1 \
+  --format="value(status.url)"
+```
+
+### Environment Variable Patterns
+```bash
+# Development environment variables
+export ENV=development
+export LOG_LEVEL=DEBUG
+export TIDB_HOST=localhost
+export PORT=8080
+
+# Production environment variables
+export ENV=production
+export LOG_LEVEL=INFO
+export PORT=8080
+export NEW_RELIC_LICENSE_KEY=$(gcloud secrets versions access latest --secret="new-relic-license-key-prod")
+export SENTRY_DSN=$(gcloud secrets versions access latest --secret="sentry-dsn-prod")
+```
+
+### Docker Compose for Local Development
+```bash
+# Start complete development environment
+cd api
+docker-compose up -d
+
+# Start only database
+docker-compose up -d mysql
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+
+# Remove volumes (reset data)
+docker-compose down -v
+
+# Rebuild services
+docker-compose up --build
+```
+
+### Troubleshooting Cloud Run Deployments
+```bash
+# Check deployment status
+gcloud run services describe bocchi-api-dev --region=asia-northeast1
+
+# View recent revisions
+gcloud run revisions list --service=bocchi-api-dev --region=asia-northeast1
+
+# Rollback to previous revision
+gcloud run services update-traffic bocchi-api-dev \
+  --to-revisions=bocchi-api-dev-00002-abc=100 \
+  --region=asia-northeast1
+
+# Delete failed revisions
+gcloud run revisions delete bocchi-api-dev-00003-def --region=asia-northeast1
+
+# Test service connectivity
+curl -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  https://bocchi-api-dev-xxx.a.run.app/health
+
+# Check IAM permissions
+gcloud run services get-iam-policy bocchi-api-dev --region=asia-northeast1
+```
