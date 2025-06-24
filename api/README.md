@@ -416,16 +416,16 @@ terraform apply -var="gcp_project_id=YOUR_PROJECT_ID"
 
 # Set secrets in Google Secret Manager (idempotent - safe to re-run)
 echo "your-tidb-password" | \
-  (gcloud secrets versions add tidb-password-dev --data-file=- 2>/dev/null || \
-   gcloud secrets create tidb-password-dev --data-file=-)
+  (gcloud secrets versions add tidb-password-dev --data-file=- --quiet 2>/dev/null || \
+   gcloud secrets create tidb-password-dev --data-file=- --quiet)
 
 echo "your-new-relic-key" | \
-  (gcloud secrets versions add new-relic-license-key-dev --data-file=- 2>/dev/null || \
-   gcloud secrets create new-relic-license-key-dev --data-file=-)
+  (gcloud secrets versions add new-relic-license-key-dev --data-file=- --quiet 2>/dev/null || \
+   gcloud secrets create new-relic-license-key-dev --data-file=- --quiet)
 
 echo "your-sentry-dsn" | \
-  (gcloud secrets versions add sentry-dsn-dev --data-file=- 2>/dev/null || \
-   gcloud secrets create sentry-dsn-dev --data-file=-)
+  (gcloud secrets versions add sentry-dsn-dev --data-file=- --quiet 2>/dev/null || \
+   gcloud secrets create sentry-dsn-dev --data-file=- --quiet)
 ```
 
 ### Monitoring and Observability
