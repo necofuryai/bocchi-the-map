@@ -321,7 +321,8 @@ docker run -p 8080:8080 \
 #### Docker Compose (Development)
 
 ```bash
-# Start MySQL and API together
+# Start MySQL (local development database) and API together
+# Note: Uses MySQL 8.0 for local development, TiDB is used in production
 make docker-up
 
 # Or manually
@@ -422,7 +423,7 @@ curl https://your-cloud-run-url/metrics
 # Environment variable for Sentry
 SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
 
-# Test error reporting
+# Test error reporting (⚠️ DEVELOPMENT ONLY - should not be enabled in production)
 curl -X POST https://your-cloud-run-url/test-error
 ```
 
