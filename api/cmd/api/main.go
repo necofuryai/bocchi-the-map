@@ -146,7 +146,7 @@ func main() {
 		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", cfg.App.Version))
 
 		// Register routes with gRPC clients and database queries
-		registerRoutes(api, spotClient, userClient, reviewClient, queries)
+		registerRoutes(api, spotClient, userClient, reviewClient, queries, cfg)
 
 		// Start gRPC server in a goroutine
 		errChan := make(chan error, 1)
@@ -228,7 +228,7 @@ func startGRPCServer(port string) error {
 }
 
 // registerRoutes registers all API routes
-func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *clients.UserClient, reviewClient *clients.ReviewClient, queries *database.Queries) {
+func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *clients.UserClient, reviewClient *clients.ReviewClient, queries *database.Queries, cfg *config.Config) {
 	// Health check endpoint
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",

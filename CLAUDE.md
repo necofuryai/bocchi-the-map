@@ -41,6 +41,7 @@ This project systematically manages knowledge through the following files:
 ## Quick Reference for Latest Updates
 
 For the most recent implementation details and architectural decisions, see:
+
 - **📋 Latest Implementation Status**: `.claude/project-improvements.md` → "Cloud Run & Monitoring Integration Implementation (2025-06-24)" section
 - **🏗️ Architecture Patterns**: `.claude/project-knowledge.md` → "Cloud Run & Monitoring Integration" section  
 - **🛠️ Deployment Commands**: `.claude/common-patterns.md` → "Cloud Run and Docker Deployment Patterns" section
@@ -48,6 +49,7 @@ For the most recent implementation details and architectural decisions, see:
 ## Development Principles
 
 ### Core Development Standards
+
 - Follow BDD (Behavior-Driven Development) with Ginkgo framework
 - Implement comprehensive monitoring and observability from project start
 - Use Protocol Buffers for type-safe API contracts

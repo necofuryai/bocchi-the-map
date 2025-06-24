@@ -26,6 +26,17 @@ resource "google_secret_manager_secret" "sentry_dsn" {
   depends_on = [google_project_service.secret_manager_api]
 }
 
+# Secret for TiDB Password
+resource "google_secret_manager_secret" "tidb_password" {
+  secret_id = "tidb-password-${var.environment}"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secret_manager_api]
+}
+
 # IAM binding for Cloud Run service account to access secrets
 resource "google_secret_manager_secret_iam_member" "new_relic_access" {
   secret_id = google_secret_manager_secret.new_relic_license_key.secret_id
@@ -85,4 +96,9 @@ output "new_relic_secret_name" {
 output "sentry_secret_name" {
   value = google_secret_manager_secret.sentry_dsn.name
   description = "Full name of the Sentry DSN secret. Use this to set the secret value manually."
+}
+
+output "tidb_secret_name" {
+  value = google_secret_manager_secret.tidb_password.name
+  description = "Full name of the TiDB password secret. Use this to set the secret value manually."
 }

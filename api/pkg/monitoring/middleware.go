@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
 )
 
@@ -58,14 +59,10 @@ func RequestIDMiddleware() func(http.Handler) http.Handler {
 			ctx := context.WithValue(r.Context(), requestIDKey, requestID)
 			
 			// Add breadcrumb to Sentry
-			AddBreadcrumb(ctx, &struct {
-				Message string            `json:"message"`
-				Level   string            `json:"level"`
-				Data    map[string]string `json:"data"`
-			}{
+			AddBreadcrumb(ctx, &sentry.Breadcrumb{
 				Message: "HTTP Request",
-				Level:   "info",
-				Data: map[string]string{
+				Level:   sentry.LevelInfo,
+				Data: map[string]interface{}{
 					"request_id": requestID,
 					"method":     r.Method,
 					"url":        r.URL.String(),

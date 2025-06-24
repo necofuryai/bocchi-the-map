@@ -373,8 +373,9 @@ gcloud run deploy bocchi-api-prod \
   --max-instances=10 \
   --min-instances=1  # Keep warm for production
 
-# Note: Production deployment requires authentication by omitting --allow-unauthenticated flag
-# Set up IAM policies and service account authentication as needed for secure access
+# ⚠️ IMPORTANT: Production deployment requires authentication
+# The --allow-unauthenticated flag is intentionally omitted for security
+# You MUST set up IAM policies and service account authentication before accessing the service
 ```
 
 #### Terraform Infrastructure Deployment

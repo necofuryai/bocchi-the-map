@@ -231,7 +231,7 @@ terraform apply -var="gcp_project_id=YOUR_PROJECT_ID"
 # Example methods to provide secrets:
 # 1. From environment variables: echo "$TIDB_PASSWORD" | gcloud secrets create tidb-password-dev --data-file=-
 # 2. From file: gcloud secrets create tidb-password-dev --data-file=path/to/secret.txt
-# 3. Interactive input (type secret and press Ctrl+D):
+# 3. Interactive input (type secret and press Ctrl+D) - Recommended for security:
 gcloud secrets create tidb-password-dev --data-file=-
 gcloud secrets create new-relic-license-key-dev --data-file=-
 gcloud secrets create sentry-dsn-dev --data-file=-

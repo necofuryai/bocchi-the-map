@@ -79,7 +79,7 @@ gcloud auth configure-docker --quiet
 
 # Build the Docker image
 echo -e "${GREEN}Building Docker image...${NC}"
-docker build -t "${IMAGE_TAG}" -t "${LATEST_TAG}" .
+docker build --platform linux/amd64 -t "${IMAGE_TAG}" -t "${LATEST_TAG}" .
 
 echo -e "${GREEN}Docker image built successfully!${NC}"
 
