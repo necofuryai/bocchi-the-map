@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"bocchi-the-map/api/pkg/errors"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 )
 
 // AuthMiddleware validates JWT tokens and extracts user context

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 )
 
@@ -91,9 +92,49 @@ func (c *Config) Validate() error {
 	if c.Database.Password == "" {
 		return errors.New("TIDB_PASSWORD is required")
 	}
-	if c.Auth.JWTSecret == "" {
+	if err := c.validateJWTSecret(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateJWTSecret validates the JWT secret with strict security requirements
+func (c *Config) validateJWTSecret() error {
+	secret := c.Auth.JWTSecret
+	
+	if secret == "" {
 		return errors.New("JWT_SECRET is required")
 	}
+	
+	// Minimum length requirement (32 characters)
+	if len(secret) < 32 {
+		return errors.New("JWT_SECRET must be at least 32 characters long")
+	}
+	
+	// Check for lowercase letters
+	hasLower, _ := regexp.MatchString(`[a-z]`, secret)
+	if !hasLower {
+		return errors.New("JWT_SECRET must contain at least one lowercase letter")
+	}
+	
+	// Check for uppercase letters
+	hasUpper, _ := regexp.MatchString(`[A-Z]`, secret)
+	if !hasUpper {
+		return errors.New("JWT_SECRET must contain at least one uppercase letter")
+	}
+	
+	// Check for numbers
+	hasNumber, _ := regexp.MatchString(`[0-9]`, secret)
+	if !hasNumber {
+		return errors.New("JWT_SECRET must contain at least one number")
+	}
+	
+	// Check for special characters
+	hasSpecial, _ := regexp.MatchString(`[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~` + "`" + `]`, secret)
+	if !hasSpecial {
+		return errors.New("JWT_SECRET must contain at least one special character")
+	}
+	
 	return nil
 }
 
