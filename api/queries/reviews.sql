@@ -1,0 +1,74 @@
+-- name: CreateReview :exec
+INSERT INTO reviews (
+    id, spot_id, user_id, rating, comment, rating_aspects
+) VALUES (
+    ?, ?, ?, ?, ?, ?
+);
+
+-- name: GetReviewByID :one
+SELECT * FROM reviews 
+WHERE id = ?;
+
+-- name: GetReviewByUserAndSpot :one
+SELECT * FROM reviews 
+WHERE user_id = ? AND spot_id = ?;
+
+-- name: UpdateReview :exec
+UPDATE reviews 
+SET rating = ?, comment = ?, rating_aspects = ?, updated_at = CURRENT_TIMESTAMP
+WHERE id = ?;
+
+-- name: DeleteReview :exec
+DELETE FROM reviews 
+WHERE id = ?;
+
+-- name: ListReviewsBySpot :many
+SELECT r.*, u.display_name as user_name, u.avatar_url as user_avatar
+FROM reviews r
+JOIN users u ON r.user_id = u.id
+WHERE r.spot_id = ?
+ORDER BY r.created_at DESC
+LIMIT ? OFFSET ?;
+
+-- name: CountReviewsBySpot :one
+SELECT COUNT(*) FROM reviews 
+WHERE spot_id = ?;
+
+-- name: ListReviewsByUser :many
+SELECT r.*, s.name as spot_name, s.category as spot_category
+FROM reviews r
+JOIN spots s ON r.spot_id = s.id
+WHERE r.user_id = ?
+ORDER BY r.created_at DESC
+LIMIT ? OFFSET ?;
+
+-- name: CountReviewsByUser :one
+SELECT COUNT(*) FROM reviews 
+WHERE user_id = ?;
+
+-- name: GetSpotRatingStats :one
+SELECT 
+    AVG(rating) as average_rating,
+    COUNT(*) as review_count,
+    COUNT(CASE WHEN rating = 5 THEN 1 END) as five_star_count,
+    COUNT(CASE WHEN rating = 4 THEN 1 END) as four_star_count,
+    COUNT(CASE WHEN rating = 3 THEN 1 END) as three_star_count,
+    COUNT(CASE WHEN rating = 2 THEN 1 END) as two_star_count,
+    COUNT(CASE WHEN rating = 1 THEN 1 END) as one_star_count
+FROM reviews 
+WHERE spot_id = ?;
+
+-- name: ListTopRatedSpots :many
+SELECT s.*, AVG(r.rating) as avg_rating, COUNT(r.id) as total_reviews
+FROM spots s
+LEFT JOIN reviews r ON s.id = r.spot_id
+GROUP BY s.id
+HAVING COUNT(r.id) >= ?
+ORDER BY avg_rating DESC, total_reviews DESC
+LIMIT ? OFFSET ?;
+
+-- name: CountTopRatedSpots :one
+SELECT COUNT(DISTINCT s.id) FROM spots s
+LEFT JOIN reviews r ON s.id = r.spot_id
+GROUP BY s.id
+HAVING COUNT(r.id) >= ?;

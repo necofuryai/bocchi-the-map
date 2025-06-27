@@ -88,7 +88,7 @@ func main() {
 		queries := database.New(db)
 
 		// Initialize gRPC clients (using internal communication for monolith)
-		spotClient, err := clients.NewSpotClient("internal")
+		spotClient, err := clients.NewSpotClient("internal", db)
 		if err != nil {
 			logger.Fatal("Failed to create spot client", err)
 		}
@@ -99,7 +99,7 @@ func main() {
 			logger.Fatal("Failed to create user client", err)
 		}
 
-		reviewClient, err := clients.NewReviewClient("internal")
+		reviewClient, err := clients.NewReviewClient("internal", db)
 		if err != nil {
 			spotClient.Close()
 			userClient.Close()
@@ -264,12 +264,15 @@ func registerSpotRoutes(api huma.API, spotClient *clients.SpotClient) {
 }
 
 func registerReviewRoutes(api huma.API, reviewClient *clients.ReviewClient) {
-	// TODO: Implement review routes with reviewClient
+	reviewHandler := handlers.NewReviewHandler(reviewClient)
+	
+	// Register standard API routes (under /api/v1/reviews)
+	reviewHandler.RegisterRoutes(api)
 	logger.Info("Review routes registered")
 }
 
 func registerUserRoutes(api huma.API, userClient *clients.UserClient, queries *database.Queries) {
-	userHandler := handlers.NewUserHandler(queries)
+	userHandler := handlers.NewUserHandler(userClient)
 	
 	// Register standard API routes (under /api/v1/users)
 	userHandler.RegisterRoutes(api)

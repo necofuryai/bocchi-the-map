@@ -2,21 +2,29 @@ package grpc
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
 )
 
 // SpotService implements the gRPC SpotService
 type SpotService struct {
-	// TODO: Add dependencies like repository interfaces
+	queries *database.Queries
 }
 
 // NewSpotService creates a new SpotService instance
-func NewSpotService() *SpotService {
-	return &SpotService{}
+func NewSpotService(db *sql.DB) *SpotService {
+	return &SpotService{
+		queries: database.New(db),
+	}
 }
 
 // Temporary structs until protobuf generates them
@@ -109,22 +117,64 @@ func (s *SpotService) CreateSpot(ctx context.Context, req *CreateSpotRequest) (*
 	if req.Coordinates == nil {
 		return nil, status.Error(codes.InvalidArgument, "coordinates are required")
 	}
-
-	// TODO: Implement actual business logic using domain services
-	// For now, return dummy data
-	spot := &Spot{
-		ID:          fmt.Sprintf("spot_%d", time.Now().Unix()),
-		Name:        req.Name,
-		NameI18n:    req.NameI18n,
-		Coordinates: req.Coordinates,
-		Category:    req.Category,
-		Address:     req.Address,
-		AddressI18n: req.AddressI18n,
-		CountryCode: req.CountryCode,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+	if req.Category == "" {
+		return nil, status.Error(codes.InvalidArgument, "category is required")
+	}
+	if req.Address == "" {
+		return nil, status.Error(codes.InvalidArgument, "address is required")
+	}
+	if req.CountryCode == "" {
+		return nil, status.Error(codes.InvalidArgument, "country code is required")
 	}
 
+	// Generate UUID for new spot
+	spotID := uuid.New().String()
+
+	// Convert coordinates to strings (as expected by database)
+	latitude := strconv.FormatFloat(req.Coordinates.Latitude, 'f', 8, 64)
+	longitude := strconv.FormatFloat(req.Coordinates.Longitude, 'f', 8, 64)
+
+	// Convert i18n maps to JSON
+	nameI18nJSON, err := json.Marshal(req.NameI18n)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to marshal name i18n")
+	}
+	if req.NameI18n == nil {
+		nameI18nJSON = []byte("{}")
+	}
+
+	addressI18nJSON, err := json.Marshal(req.AddressI18n)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to marshal address i18n")
+	}
+	if req.AddressI18n == nil {
+		addressI18nJSON = []byte("{}")
+	}
+
+	// Create spot in database
+	err = s.queries.CreateSpot(ctx, database.CreateSpotParams{
+		ID:          spotID,
+		Name:        req.Name,
+		NameI18n:    nameI18nJSON,
+		Latitude:    latitude,
+		Longitude:   longitude,
+		Category:    req.Category,
+		Address:     req.Address,
+		AddressI18n: addressI18nJSON,
+		CountryCode: req.CountryCode,
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to create spot")
+	}
+
+	// Retrieve the created spot to get accurate timestamps and data
+	dbSpot, err := s.queries.GetSpotByID(ctx, spotID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "failed to retrieve created spot")
+	}
+
+	// Convert database spot to gRPC response
+	spot := s.convertDatabaseSpotToGRPC(dbSpot)
 	return &CreateSpotResponse{Spot: spot}, nil
 }
 
@@ -134,21 +184,17 @@ func (s *SpotService) GetSpot(ctx context.Context, req *GetSpotRequest) (*GetSpo
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
-	// TODO: Implement actual retrieval logic
-	// For now, return dummy data
-	spot := &Spot{
-		ID:            req.ID,
-		Name:          "Sample Spot",
-		Coordinates:   &Coordinates{Latitude: 35.6762, Longitude: 139.6503},
-		Category:      "cafe",
-		Address:       "Tokyo, Japan",
-		CountryCode:   "JP",
-		AverageRating: 4.5,
-		ReviewCount:   10,
-		CreatedAt:     time.Now().Add(-24 * time.Hour),
-		UpdatedAt:     time.Now(),
+	// Get spot from database
+	dbSpot, err := s.queries.GetSpotByID(ctx, req.ID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, status.Error(codes.NotFound, "spot not found")
+		}
+		return nil, status.Error(codes.Internal, "failed to get spot")
 	}
 
+	// Convert database spot to gRPC response
+	spot := s.convertDatabaseSpotToGRPC(dbSpot)
 	return &GetSpotResponse{Spot: spot}, nil
 }
 
@@ -218,4 +264,41 @@ func (s *SpotService) SearchSpots(ctx context.Context, req *SearchSpotsRequest) 
 		Spots:      []*Spot{spot},
 		Pagination: pagination,
 	}, nil
+}
+
+// convertDatabaseSpotToGRPC converts database spot model to gRPC spot struct
+func (s *SpotService) convertDatabaseSpotToGRPC(dbSpot database.Spot) *Spot {
+	// Parse coordinates from strings
+	latitude, _ := strconv.ParseFloat(dbSpot.Latitude, 64)
+	longitude, _ := strconv.ParseFloat(dbSpot.Longitude, 64)
+	averageRating, _ := strconv.ParseFloat(dbSpot.AverageRating, 64)
+
+	// Parse i18n JSON fields
+	var nameI18n map[string]string
+	if len(dbSpot.NameI18n) > 0 {
+		json.Unmarshal(dbSpot.NameI18n, &nameI18n)
+	}
+
+	var addressI18n map[string]string
+	if len(dbSpot.AddressI18n) > 0 {
+		json.Unmarshal(dbSpot.AddressI18n, &addressI18n)
+	}
+
+	return &Spot{
+		ID:   dbSpot.ID,
+		Name: dbSpot.Name,
+		NameI18n: nameI18n,
+		Coordinates: &Coordinates{
+			Latitude:  latitude,
+			Longitude: longitude,
+		},
+		Category:      dbSpot.Category,
+		Address:       dbSpot.Address,
+		AddressI18n:   addressI18n,
+		CountryCode:   dbSpot.CountryCode,
+		AverageRating: averageRating,
+		ReviewCount:   dbSpot.ReviewCount,
+		CreatedAt:     dbSpot.CreatedAt,
+		UpdatedAt:     dbSpot.UpdatedAt,
+	}
 }

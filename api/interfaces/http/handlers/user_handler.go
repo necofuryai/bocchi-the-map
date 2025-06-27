@@ -2,25 +2,27 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/google/uuid"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
+	"github.com/necofuryai/bocchi-the-map/api/application/clients"
+	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/converters"
 )
 
 // UserHandler handles user-related HTTP requests
 type UserHandler struct {
-	queries *database.Queries
+	userClient    *clients.UserClient
+	userConverter *converters.UserConverter
 }
 
 // NewUserHandler creates a new user handler
-func NewUserHandler(queries *database.Queries) *UserHandler {
+func NewUserHandler(userClient *clients.UserClient) *UserHandler {
 	return &UserHandler{
-		queries: queries,
+		userClient:    userClient,
+		userConverter: converters.NewUserConverter(),
 	}
 }
 
@@ -117,85 +119,57 @@ func (h *UserHandler) RegisterRoutes(api huma.API) {
 
 // CreateUser creates or updates a user (upsert for OAuth flow)
 func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*CreateUserOutput, error) {
-	// Convert provider string to enum
-	var authProvider database.UsersAuthProvider
-	switch input.Body.AuthProvider {
-	case "google":
-		authProvider = database.UsersAuthProviderGoogle
-	case "twitter":
-		authProvider = database.UsersAuthProviderTwitter
-	case "x":
-		authProvider = database.UsersAuthProviderX
-	default:
-		return nil, huma.Error400BadRequest("invalid auth provider")
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "create_user_http")
+
+	// Convert provider string to domain enum using standardized converter
+	authProvider, err := h.userConverter.ConvertHTTPAuthProviderToEntity(input.Body.AuthProvider)
+	if err != nil {
+		return nil, errors.HandleHTTPError(ctx, err, "convert_auth_provider", "invalid auth provider")
 	}
 
-	// Check if user already exists to avoid ID conflicts and preserve preferences
-	existingUser, err := h.queries.GetUserByProviderID(ctx, database.GetUserByProviderIDParams{
-		AuthProvider:   authProvider,
-		AuthProviderID: input.Body.AuthProviderID,
-	})
-	
-	var userID string
-	var prefsJSON []byte
-	
-	if err == sql.ErrNoRows {
-		// New user - generate UUID and use default preferences
-		userID = uuid.New().String()
-		defaultPrefs := map[string]interface{}{
-			"language":  "ja",
-			"dark_mode": false,
-			"timezone":  "Asia/Tokyo",
-		}
-		prefsJSON, err = json.Marshal(defaultPrefs)
+	// Check if user already exists
+	existingUser, err := h.userClient.GetUserByAuthProvider(ctx, authProvider, input.Body.AuthProviderID)
+	if err != nil && !errors.Is(err, errors.ErrTypeNotFound) {
+		return nil, errors.HandleHTTPError(ctx, err, "check_existing_user", "failed to check existing user")
+	}
+
+	var user *entities.User
+	if existingUser != nil {
+		// Update existing user
+		existingUser.Email = input.Body.Email
+		existingUser.DisplayName = input.Body.DisplayName
+		existingUser.AvatarURL = input.Body.AvatarURL
+		user, err = h.userClient.UpdateUser(ctx, existingUser)
 		if err != nil {
-			return nil, huma.Error500InternalServerError("failed to marshal preferences")
+			return nil, errors.HandleHTTPError(ctx, err, "update_user", "failed to update user")
 		}
-	} else if err != nil {
-		return nil, huma.Error500InternalServerError("failed to check existing user")
 	} else {
-		// Existing user - preserve ID and existing preferences
-		userID = existingUser.ID
-		prefsJSON = existingUser.Preferences
+		// Create new user
+		newUser := &entities.User{
+			Email:          input.Body.Email,
+			DisplayName:    input.Body.DisplayName,
+			AvatarURL:      input.Body.AvatarURL,
+			AuthProvider:   authProvider,
+			AuthProviderID: input.Body.AuthProviderID,
+			Preferences: entities.UserPreferences{
+				Language: "ja",
+				DarkMode: false,
+				Timezone: "Asia/Tokyo",
+			},
+		}
+		user, err = h.userClient.CreateUser(ctx, newUser)
+		if err != nil {
+			return nil, errors.HandleHTTPError(ctx, err, "create_user", "failed to create user")
+		}
 	}
 
-	// Convert avatar URL to nullable string
-	var avatarURL sql.NullString
-	if input.Body.AvatarURL != "" {
-		avatarURL = sql.NullString{String: input.Body.AvatarURL, Valid: true}
-	}
-
-	// Upsert user in database
-	err = h.queries.UpsertUser(ctx, database.UpsertUserParams{
-		ID:             userID,
-		Email:          input.Body.Email,
-		DisplayName:    input.Body.DisplayName,
-		AvatarUrl:      avatarURL,
-		AuthProvider:   authProvider,
-		AuthProviderID: input.Body.AuthProviderID,
-		Preferences:    prefsJSON,
-	})
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to create/update user")
-	}
-
-	// Retrieve the created/updated user to get accurate timestamps
-	user, err := h.queries.GetUserByProviderID(ctx, database.GetUserByProviderIDParams{
-		AuthProvider:   authProvider,
-		AuthProviderID: input.Body.AuthProviderID,
-	})
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to retrieve user")
-	}
-
-	// Convert response
+	// Convert domain entity to HTTP response
 	resp := &CreateUserOutput{}
 	resp.Body.ID = user.ID
 	resp.Body.Email = user.Email
 	resp.Body.DisplayName = user.DisplayName
-	if user.AvatarUrl.Valid {
-		resp.Body.AvatarURL = user.AvatarUrl.String
-	}
+	resp.Body.AvatarURL = user.AvatarURL
 	resp.Body.CreatedAt = user.CreatedAt
 	resp.Body.UpdatedAt = user.UpdatedAt
 
@@ -204,48 +178,28 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 
 // GetCurrentUser gets the current authenticated user
 func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserInput) (*GetCurrentUserOutput, error) {
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "get_current_user_http")
+
 	// TODO: CRITICAL - Implement authentication context extraction
 	// This endpoint is currently INSECURE and should not be used in production
-	// Required implementation:
-	// 1. Add authentication middleware to extract user ID from JWT/session
-	// 2. Add user ID to request context in middleware
-	// 3. Extract user ID from context here using: userID, ok := ctx.Value("user_id").(string)
-	// 4. Return 401 Unauthorized if user ID is not found in context
+	// For now, using gRPC service which has the same TODO
 	
-	// SECURITY WARNING: This hardcoded user ID is for development only
-	userID := "user_123"
-	if userID == "" {
-		return nil, huma.Error401Unauthorized("user not authenticated")
-	}
-	user, err := h.queries.GetUserByID(ctx, userID)
+	// Get user via gRPC client
+	user, err := h.userClient.GetCurrentUserFromGRPC(ctx)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, huma.Error404NotFound("user not found")
-		}
-		return nil, huma.Error500InternalServerError("failed to get user")
+		return nil, errors.HandleHTTPError(ctx, err, "get_current_user", "failed to get current user")
 	}
 
-	// Parse preferences JSON
-	var preferences map[string]interface{}
-	if len(user.Preferences) > 0 {
-		if err := json.Unmarshal(user.Preferences, &preferences); err != nil {
-			// If preferences are malformed, use defaults
-			preferences = map[string]interface{}{
-				"language":  "ja",
-				"dark_mode": false,
-				"timezone":  "Asia/Tokyo",
-			}
-		}
-	}
+	// Convert preferences to map format for HTTP response using standardized converter
+	preferences := h.userConverter.ConvertEntityPreferencesToHTTP(user.Preferences)
 
-	// Convert response
+	// Convert domain entity to HTTP response
 	resp := &GetCurrentUserOutput{}
 	resp.Body.ID = user.ID
 	resp.Body.Email = user.Email
 	resp.Body.DisplayName = user.DisplayName
-	if user.AvatarUrl.Valid {
-		resp.Body.AvatarURL = user.AvatarUrl.String
-	}
+	resp.Body.AvatarURL = user.AvatarURL
 	resp.Body.Preferences = preferences
 	resp.Body.CreatedAt = user.CreatedAt
 	resp.Body.UpdatedAt = user.UpdatedAt
@@ -255,55 +209,31 @@ func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserI
 
 // UpdatePreferences updates user preferences
 func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePreferencesInput) (*UpdatePreferencesOutput, error) {
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "update_user_preferences_http")
+
 	// TODO: CRITICAL - Implement authentication context extraction
 	// This endpoint is currently INSECURE and should not be used in production
-	// Required implementation:
-	// 1. Add authentication middleware to extract user ID from JWT/session
-	// 2. Add user ID to request context in middleware
-	// 3. Extract user ID from context here using: userID, ok := ctx.Value("user_id").(string)
-	// 4. Return 401 Unauthorized if user ID is not found in context
+	// For now, using gRPC service which has the same TODO
 	
-	// SECURITY WARNING: This hardcoded user ID is for development only
-	userID := "user_123"
-	if userID == "" {
-		return nil, huma.Error401Unauthorized("user not authenticated")
-	}
+	// Convert HTTP preferences to domain preferences using standardized converter
+	prefs := h.userConverter.ConvertHTTPPreferencesToEntity(input.Body.Preferences)
 
-	// Convert preferences to JSON
-	prefsJSON, err := json.Marshal(input.Body.Preferences)
+	// Update preferences via gRPC client
+	user, err := h.userClient.UpdateUserPreferencesFromGRPC(ctx, prefs)
 	if err != nil {
-		return nil, huma.Error400BadRequest("invalid preferences format")
+		return nil, errors.HandleHTTPError(ctx, err, "update_user_preferences", "failed to update preferences")
 	}
 
-	// Update preferences in database
-	err = h.queries.UpdateUserPreferences(ctx, database.UpdateUserPreferencesParams{
-		ID:          userID,
-		Preferences: prefsJSON,
-	})
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to update preferences")
-	}
+	// Convert preferences to map format for HTTP response using standardized converter
+	preferences := h.userConverter.ConvertEntityPreferencesToHTTP(user.Preferences)
 
-	// Retrieve updated user
-	user, err := h.queries.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to retrieve updated user")
-	}
-
-	// Parse updated preferences
-	var preferences map[string]interface{}
-	if len(user.Preferences) > 0 {
-		json.Unmarshal(user.Preferences, &preferences)
-	}
-
-	// Convert response
+	// Convert domain entity to HTTP response
 	resp := &UpdatePreferencesOutput{}
 	resp.Body.ID = user.ID
 	resp.Body.Email = user.Email
 	resp.Body.DisplayName = user.DisplayName
-	if user.AvatarUrl.Valid {
-		resp.Body.AvatarURL = user.AvatarUrl.String
-	}
+	resp.Body.AvatarURL = user.AvatarURL
 	resp.Body.Preferences = preferences
 	resp.Body.UpdatedAt = user.UpdatedAt
 

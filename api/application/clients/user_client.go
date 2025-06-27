@@ -52,21 +52,161 @@ func (c *UserClient) UpdateUserPreferences(ctx context.Context, req *grpcSvc.Upd
 
 // GetUserByAuthProvider retrieves a user by authentication provider and provider ID
 func (c *UserClient) GetUserByAuthProvider(ctx context.Context, authProvider entities.AuthProvider, providerID string) (*entities.User, error) {
-	// For now, call the gRPC service method
-	// In the future, this would call a proper gRPC method
-	return c.service.GetUserByAuthProvider(ctx, authProvider, providerID)
+	// Convert domain auth provider to gRPC enum
+	var grpcAuthProvider grpcSvc.AuthProvider
+	switch authProvider {
+	case entities.AuthProviderGoogle:
+		grpcAuthProvider = grpcSvc.AuthProviderGoogle
+	case entities.AuthProviderX:
+		grpcAuthProvider = grpcSvc.AuthProviderX
+	default:
+		return nil, fmt.Errorf("invalid auth provider")
+	}
+
+	// Call gRPC service method
+	resp, err := c.service.GetUserByAuthProviderGRPC(ctx, &grpcSvc.GetUserByAuthProviderRequest{
+		AuthProvider:   grpcAuthProvider,
+		AuthProviderID: providerID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to domain entity
+	return c.convertGRPCUserToEntity(resp.User), nil
 }
 
 // CreateUser creates a new user
 func (c *UserClient) CreateUser(ctx context.Context, user *entities.User) (*entities.User, error) {
-	// For now, call the gRPC service method
-	// In the future, this would call a proper gRPC method
-	return c.service.CreateUser(ctx, user)
+	// Convert domain auth provider to gRPC enum
+	var grpcAuthProvider grpcSvc.AuthProvider
+	switch user.AuthProvider {
+	case entities.AuthProviderGoogle:
+		grpcAuthProvider = grpcSvc.AuthProviderGoogle
+	case entities.AuthProviderX:
+		grpcAuthProvider = grpcSvc.AuthProviderX
+	default:
+		return nil, fmt.Errorf("invalid auth provider")
+	}
+
+	// Call gRPC service method
+	resp, err := c.service.CreateUserGRPC(ctx, &grpcSvc.CreateUserRequest{
+		Email:          user.Email,
+		DisplayName:    user.DisplayName,
+		AvatarURL:      user.AvatarURL,
+		AuthProvider:   grpcAuthProvider,
+		AuthProviderID: user.AuthProviderID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to domain entity
+	return c.convertGRPCUserToEntity(resp.User), nil
 }
 
 // UpdateUser updates an existing user
 func (c *UserClient) UpdateUser(ctx context.Context, user *entities.User) (*entities.User, error) {
-	// For now, call the gRPC service method
-	// In the future, this would call a proper gRPC method
-	return c.service.UpdateUser(ctx, user)
+	// Convert domain preferences to gRPC preferences
+	grpcPrefs := &grpcSvc.UserPreferences{
+		Language: user.Preferences.Language,
+		DarkMode: user.Preferences.DarkMode,
+		Timezone: user.Preferences.Timezone,
+	}
+
+	// Call gRPC service method
+	resp, err := c.service.UpdateUserGRPC(ctx, &grpcSvc.UpdateUserRequest{
+		ID:          user.ID,
+		Email:       user.Email,
+		DisplayName: user.DisplayName,
+		AvatarURL:   user.AvatarURL,
+		Preferences: grpcPrefs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to domain entity
+	return c.convertGRPCUserToEntity(resp.User), nil
+}
+
+// convertGRPCUserToEntity converts gRPC User struct to domain entity
+func (c *UserClient) convertGRPCUserToEntity(grpcUser *grpcSvc.User) *entities.User {
+	if grpcUser == nil {
+		return nil
+	}
+
+	// Convert gRPC auth provider to domain enum
+	var authProvider entities.AuthProvider
+	switch grpcUser.AuthProvider {
+	case grpcSvc.AuthProviderGoogle:
+		authProvider = entities.AuthProviderGoogle
+	case grpcSvc.AuthProviderX:
+		authProvider = entities.AuthProviderX
+	default:
+		authProvider = entities.AuthProviderUnspecified
+	}
+
+	// Convert gRPC preferences to domain preferences
+	var prefs entities.UserPreferences
+	if grpcUser.Preferences != nil {
+		prefs = entities.UserPreferences{
+			Language: grpcUser.Preferences.Language,
+			DarkMode: grpcUser.Preferences.DarkMode,
+			Timezone: grpcUser.Preferences.Timezone,
+		}
+	} else {
+		// Default preferences
+		prefs = entities.UserPreferences{
+			Language: "ja",
+			DarkMode: false,
+			Timezone: "Asia/Tokyo",
+		}
+	}
+
+	return &entities.User{
+		ID:             grpcUser.ID,
+		AnonymousID:    grpcUser.AnonymousID,
+		Email:          grpcUser.Email,
+		DisplayName:    grpcUser.DisplayName,
+		AvatarURL:      grpcUser.AvatarURL,
+		AuthProvider:   authProvider,
+		AuthProviderID: grpcUser.AuthProviderID,
+		Preferences:    prefs,
+		CreatedAt:      grpcUser.CreatedAt,
+		UpdatedAt:      grpcUser.UpdatedAt,
+	}
+}
+
+// GetCurrentUserFromGRPC gets the current user via gRPC service  
+func (c *UserClient) GetCurrentUserFromGRPC(ctx context.Context) (*entities.User, error) {
+	// Call gRPC service method
+	resp, err := c.service.GetCurrentUser(ctx, &grpcSvc.GetCurrentUserRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to domain entity
+	return c.convertGRPCUserToEntity(resp.User), nil
+}
+
+// UpdateUserPreferencesFromGRPC updates user preferences via gRPC service
+func (c *UserClient) UpdateUserPreferencesFromGRPC(ctx context.Context, prefs entities.UserPreferences) (*entities.User, error) {
+	// Convert domain preferences to gRPC preferences
+	grpcPrefs := &grpcSvc.UserPreferences{
+		Language: prefs.Language,
+		DarkMode: prefs.DarkMode,
+		Timezone: prefs.Timezone,
+	}
+
+	// Call gRPC service method
+	resp, err := c.service.UpdateUserPreferences(ctx, &grpcSvc.UpdateUserPreferencesRequest{
+		Preferences: grpcPrefs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to domain entity
+	return c.convertGRPCUserToEntity(resp.User), nil
 }

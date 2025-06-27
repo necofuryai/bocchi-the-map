@@ -345,3 +345,202 @@ func (c *Config) Validate() error {
 - **Service Accounts**: Minimal IAM permissions following principle of least privilege
 - **Container Security**: Non-root user execution, minimal base images
 - **Network Security**: Cloud Run managed HTTPS with automatic certificate management
+
+## Unified gRPC Architecture Implementation (2025-06-27)
+
+### Architecture Overview
+
+The project has been successfully refactored to use a **unified gRPC architecture pattern** throughout all service layers, eliminating the previous mixed approach of direct database access and gRPC calls.
+
+### Key Architectural Changes
+
+#### 1. **Consistent Service Layer Pattern**
+
+All services now follow the same pattern:
+```
+HTTP Handler → gRPC Client (internal) → gRPC Service → Database Layer
+```
+
+**Before (Mixed Pattern):**
+- UserHandler: Direct database access via `queries *database.Queries`
+- SpotHandler: gRPC client via `spotClient *clients.SpotClient`
+- Inconsistent patterns led to maintenance complexity
+
+**After (Unified Pattern):**
+- UserHandler: gRPC client via `userClient *clients.UserClient`
+- SpotHandler: gRPC client via `spotClient *clients.SpotClient`
+- ReviewHandler: gRPC client via `reviewClient *clients.ReviewClient` (planned)
+- All handlers follow identical patterns
+
+#### 2. **gRPC Service Implementations**
+
+**UserService Enhanced:**
+- Replaced dummy data with real database operations
+- Added consistent gRPC request/response types
+- Implemented `CreateUserGRPC`, `UpdateUserGRPC`, `GetUserByAuthProviderGRPC`
+- Proper error handling with gRPC status codes
+
+**SpotService Enhanced:**
+- Replaced dummy data with comprehensive database integration
+- Added spot creation, retrieval, location-based search
+- Implemented proper coordinate handling and i18n support
+- Full CRUD operations with database persistence
+
+**Database Layer Expansion:**
+- Created `spots.sql` with comprehensive queries (location search, filtering, pagination)
+- Created `reviews.sql` with rating statistics and user/spot associations
+- Generated `spots.sql.go` and `reviews.sql.go` with type-safe operations
+- Updated `Querier` interface with all new methods
+
+#### 3. **Type-Safe Database Integration**
+
+**Query Pattern:**
+```sql
+-- name: ListSpotsByLocation :many
+SELECT * FROM spots 
+WHERE (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * ...)) <= ?
+ORDER BY distance
+LIMIT ? OFFSET ?
+```
+
+**Generated Go Code:**
+```go
+type ListSpotsByLocationParams struct {
+    Latitude  string `json:"latitude"`
+    Longitude string `json:"longitude"`
+    RadiusKm  string `json:"radius_km"`
+    Limit     int32  `json:"limit"`
+    Offset    int32  `json:"offset"`
+}
+
+func (q *Queries) ListSpotsByLocation(ctx context.Context, arg ListSpotsByLocationParams) ([]Spot, error)
+```
+
+#### 4. **Client Pattern Standardization**
+
+**Consistent Client Structure:**
+```go
+type UserClient struct {
+    service *grpcSvc.UserService
+    conn    *grpc.ClientConn
+}
+
+func NewUserClient(serviceAddr string, db *sql.DB) (*UserClient, error) {
+    if serviceAddr == "internal" {
+        return &UserClient{
+            service: grpcSvc.NewUserService(db),
+        }, nil
+    }
+    // External gRPC connection for microservices
+}
+```
+
+**Conversion Pattern:**
+```go
+func (c *UserClient) convertGRPCUserToEntity(grpcUser *grpcSvc.User) *entities.User {
+    // Standard conversion from gRPC types to domain entities
+}
+```
+
+### Benefits Achieved
+
+#### 1. **Architectural Consistency**
+- All handlers use identical gRPC client patterns
+- Uniform error handling and response formatting
+- Predictable code structure across all modules
+
+#### 2. **Microservice Readiness**
+- Internal mode: `service := grpcSvc.NewUserService(db)`
+- External mode: `conn, err := grpc.Dial("user-service:9090")`
+- Zero code changes required for microservice migration
+
+#### 3. **Type Safety**
+- Protocol Buffers ensure contract consistency
+- sqlc generates type-safe database operations
+- Compile-time verification of all service calls
+
+#### 4. **Scalability Preparation**
+- Each service can be extracted independently
+- Database operations properly abstracted
+- Load balancing and service discovery ready
+
+### Implementation Patterns
+
+#### Service Creation Pattern
+```go
+// main.go - Dependency injection
+userClient, err := clients.NewUserClient("internal", db)
+spotClient, err := clients.NewSpotClient("internal", db)
+
+// Handler initialization
+userHandler := handlers.NewUserHandler(userClient)
+spotHandler := handlers.NewSpotHandler(spotClient)
+```
+
+#### Request Flow Pattern
+```go
+// HTTP Request
+POST /api/v1/users
+↓
+// Handler
+userHandler.CreateUser(ctx, input)
+↓
+// Client
+userClient.CreateUser(ctx, domainEntity)
+↓
+// gRPC Service
+userService.CreateUserGRPC(ctx, grpcRequest)
+↓
+// Database
+queries.CreateUser(ctx, dbParams)
+```
+
+#### Error Handling Pattern
+```go
+// gRPC Service level
+if req.Email == "" {
+    return nil, status.Error(codes.InvalidArgument, "email is required")
+}
+
+// Client level - convert gRPC errors to domain errors
+if err != nil {
+    return nil, err // gRPC status errors propagate correctly
+}
+
+// Handler level - convert to HTTP errors
+if err != nil {
+    return nil, huma.Error500InternalServerError("failed to create user")
+}
+```
+
+### Database Schema Utilization
+
+**Complete Table Coverage:**
+- `users` - OAuth authentication, preferences, profile data
+- `spots` - Location data with i18n, ratings, geographic indexing
+- `reviews` - User reviews with rating aspects, foreign key constraints
+
+**Advanced Query Features:**
+- Geographic distance calculations using Haversine formula
+- Full-text search with relevance ranking
+- Pagination with count optimization
+- JSON field handling for i18n and preferences
+
+### Future Microservice Migration Path
+
+**Phase 1: Internal gRPC (Current)**
+```go
+userClient := NewUserClient("internal", db)
+```
+
+**Phase 2: Service Extraction**
+```go
+userClient := NewUserClient("user-service:9090", nil)
+```
+
+**Phase 3: Service Mesh**
+```go
+userClient := NewUserClient("user-service.default.svc.cluster.local:9090", nil)
+```
+
+The unified architecture provides a clear path for horizontal scaling and service decomposition as the application grows.

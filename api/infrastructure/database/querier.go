@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	// User operations
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
@@ -16,6 +17,28 @@ type Querier interface {
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error
+	
+	// Spot operations
+	CreateSpot(ctx context.Context, arg CreateSpotParams) error
+	DeleteSpot(ctx context.Context, id string) error
+	GetSpotByID(ctx context.Context, id string) (Spot, error)
+	ListSpotsByLocation(ctx context.Context, arg ListSpotsByLocationParams) ([]Spot, error)
+	CountSpotsByLocation(ctx context.Context, arg CountSpotsByLocationParams) (int64, error)
+	SearchSpots(ctx context.Context, arg SearchSpotsParams) ([]Spot, error)
+	UpdateSpot(ctx context.Context, arg UpdateSpotParams) error
+	UpdateSpotRating(ctx context.Context, arg UpdateSpotRatingParams) error
+	
+	// Review operations
+	CreateReview(ctx context.Context, arg CreateReviewParams) error
+	DeleteReview(ctx context.Context, id string) error
+	GetReviewByID(ctx context.Context, id string) (Review, error)
+	GetReviewByUserAndSpot(ctx context.Context, arg GetReviewByUserAndSpotParams) (Review, error)
+	ListReviewsBySpot(ctx context.Context, arg ListReviewsBySpotParams) ([]ListReviewsBySpotRow, error)
+	CountReviewsBySpot(ctx context.Context, spotID string) (int64, error)
+	ListReviewsByUser(ctx context.Context, arg ListReviewsByUserParams) ([]ListReviewsByUserRow, error)
+	CountReviewsByUser(ctx context.Context, userID string) (int64, error)
+	GetSpotRatingStats(ctx context.Context, spotID string) (GetSpotRatingStatsRow, error)
+	UpdateReview(ctx context.Context, arg UpdateReviewParams) error
 }
 
 var _ Querier = (*Queries)(nil)
