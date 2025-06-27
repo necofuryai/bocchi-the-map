@@ -10,6 +10,7 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 )
 
+
 // UserConverter handles conversions between different user representations
 type UserConverter struct{}
 
@@ -29,9 +30,9 @@ func (c *UserConverter) ConvertDatabaseToEntity(dbUser database.User) (*entities
 	} else {
 		// Default preferences
 		prefs = entities.UserPreferences{
-			Language: "ja",
-			DarkMode: false,
-			Timezone: "Asia/Tokyo",
+			Language: DefaultLanguage,
+			DarkMode: DefaultDarkMode,
+			Timezone: DefaultTimezone,
 		}
 	}
 
@@ -68,12 +69,13 @@ func (c *UserConverter) ConvertDatabaseToEntity(dbUser database.User) (*entities
 	}, nil
 }
 
-// ConvertEntityToDatabase converts domain entity to database parameters
-func (c *UserConverter) ConvertEntityToDatabase(user *entities.User) (database.CreateUserParams, error) {
+// convertCommonFields performs common conversions for user entity fields
+// Returns JSON preferences, database auth provider enum, avatar URL as sql.NullString, and any error
+func (c *UserConverter) convertCommonFields(user *entities.User) ([]byte, database.UsersAuthProvider, sql.NullString, error) {
 	// Convert preferences to JSON
 	prefsJSON, err := json.Marshal(user.Preferences)
 	if err != nil {
-		return database.CreateUserParams{}, errors.Wrap(err, errors.ErrTypeInternal, "failed to marshal user preferences").
+		return nil, "", sql.NullString{}, errors.Wrap(err, errors.ErrTypeInternal, "failed to marshal user preferences").
 			WithField("user_id", user.ID)
 	}
 
@@ -85,7 +87,7 @@ func (c *UserConverter) ConvertEntityToDatabase(user *entities.User) (database.C
 	case entities.AuthProviderX:
 		dbAuthProvider = database.UsersAuthProviderTwitter
 	default:
-		return database.CreateUserParams{}, errors.InvalidInput("auth_provider", "unsupported provider").
+		return nil, "", sql.NullString{}, errors.InvalidInput("auth_provider", "unsupported provider").
 			WithField("provider", string(user.AuthProvider)).
 			WithField("user_id", user.ID)
 	}
@@ -94,6 +96,16 @@ func (c *UserConverter) ConvertEntityToDatabase(user *entities.User) (database.C
 	var avatarURL sql.NullString
 	if user.AvatarURL != "" {
 		avatarURL = sql.NullString{String: user.AvatarURL, Valid: true}
+	}
+
+	return prefsJSON, dbAuthProvider, avatarURL, nil
+}
+
+// ConvertEntityToDatabase converts domain entity to database parameters
+func (c *UserConverter) ConvertEntityToDatabase(user *entities.User) (database.CreateUserParams, error) {
+	prefsJSON, dbAuthProvider, avatarURL, err := c.convertCommonFields(user)
+	if err != nil {
+		return database.CreateUserParams{}, err
 	}
 
 	return database.CreateUserParams{
@@ -110,30 +122,9 @@ func (c *UserConverter) ConvertEntityToDatabase(user *entities.User) (database.C
 
 // ConvertEntityToUpsertDatabase converts domain entity to database upsert parameters
 func (c *UserConverter) ConvertEntityToUpsertDatabase(user *entities.User) (database.UpsertUserParams, error) {
-	// Convert preferences to JSON
-	prefsJSON, err := json.Marshal(user.Preferences)
+	prefsJSON, dbAuthProvider, avatarURL, err := c.convertCommonFields(user)
 	if err != nil {
-		return database.UpsertUserParams{}, errors.Wrap(err, errors.ErrTypeInternal, "failed to marshal user preferences").
-			WithField("user_id", user.ID)
-	}
-
-	// Convert domain auth provider to database enum
-	var dbAuthProvider database.UsersAuthProvider
-	switch user.AuthProvider {
-	case entities.AuthProviderGoogle:
-		dbAuthProvider = database.UsersAuthProviderGoogle
-	case entities.AuthProviderX:
-		dbAuthProvider = database.UsersAuthProviderTwitter
-	default:
-		return database.UpsertUserParams{}, errors.InvalidInput("auth_provider", "unsupported provider").
-			WithField("provider", string(user.AuthProvider)).
-			WithField("user_id", user.ID)
-	}
-
-	// Convert avatar URL to sql.NullString
-	var avatarURL sql.NullString
-	if user.AvatarURL != "" {
-		avatarURL = sql.NullString{String: user.AvatarURL, Valid: true}
+		return database.UpsertUserParams{}, err
 	}
 
 	return database.UpsertUserParams{
@@ -176,9 +167,9 @@ func (c *UserConverter) AuthProviderFromDatabase(provider database.UsersAuthProv
 // ConvertHTTPPreferencesToEntity converts HTTP preferences map to domain entity
 func (c *UserConverter) ConvertHTTPPreferencesToEntity(prefsMap map[string]interface{}) entities.UserPreferences {
 	prefs := entities.UserPreferences{
-		Language: "ja",       // Default
-		DarkMode: false,      // Default
-		Timezone: "Asia/Tokyo", // Default
+		Language: DefaultLanguage,
+		DarkMode: DefaultDarkMode,
+		Timezone: DefaultTimezone,
 	}
 
 	if prefsMap != nil {

@@ -6,7 +6,10 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"github.com/necofuryai/bocchi-the-map/api/application/clients"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
 )
 
@@ -19,6 +22,43 @@ type ReviewHandler struct {
 func NewReviewHandler(reviewClient *clients.ReviewClient) *ReviewHandler {
 	return &ReviewHandler{
 		reviewClient: reviewClient,
+	}
+}
+
+// grpcToHTTPError converts gRPC errors to appropriate HTTP error responses
+func grpcToHTTPError(err error, defaultMessage string) error {
+	if err == nil {
+		return nil
+	}
+
+	st, ok := status.FromError(err)
+	if !ok {
+		return huma.Error500InternalServerError(defaultMessage)
+	}
+
+	switch st.Code() {
+	case codes.NotFound:
+		return huma.Error404NotFound(st.Message())
+	case codes.InvalidArgument:
+		return huma.Error400BadRequest(st.Message())
+	case codes.AlreadyExists:
+		return huma.Error409Conflict(st.Message())
+	case codes.PermissionDenied:
+		return huma.Error403Forbidden(st.Message())
+	case codes.Unauthenticated:
+		return huma.Error401Unauthorized(st.Message())
+	case codes.FailedPrecondition:
+		return huma.Error412PreconditionFailed(st.Message())
+	case codes.OutOfRange:
+		return huma.Error400BadRequest(st.Message())
+	case codes.Unimplemented:
+		return huma.Error501NotImplemented(st.Message())
+	case codes.Unavailable:
+		return huma.Error503ServiceUnavailable(st.Message())
+	case codes.DeadlineExceeded:
+		return huma.Error408RequestTimeout(st.Message())
+	default:
+		return huma.Error500InternalServerError(defaultMessage)
 	}
 }
 
@@ -139,10 +179,13 @@ func (h *ReviewHandler) RegisterRoutes(api huma.API) {
 
 // CreateReview creates a new review
 func (h *ReviewHandler) CreateReview(ctx context.Context, input *CreateReviewInput) (*CreateReviewOutput, error) {
-	// TODO: CRITICAL - Implement authentication context extraction
-	// This endpoint is currently INSECURE and should not be used in production
+	// Extract user ID from authentication context
+	userID := errors.GetUserID(ctx)
+	if userID == "" {
+		return nil, huma.Error401Unauthorized("authentication required to create review")
+	}
 
-	// Call gRPC service via client
+	// Call gRPC service via client with authenticated user context
 	resp, err := h.reviewClient.CreateReview(ctx, &grpcSvc.CreateReviewRequest{
 		SpotID:        input.Body.SpotID,
 		Rating:        input.Body.Rating,
@@ -150,7 +193,7 @@ func (h *ReviewHandler) CreateReview(ctx context.Context, input *CreateReviewInp
 		RatingAspects: input.Body.RatingAspects,
 	})
 	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to create review")
+		return nil, grpcToHTTPError(err, "failed to create review")
 	}
 
 	// Convert gRPC response to HTTP response
@@ -179,7 +222,7 @@ func (h *ReviewHandler) GetSpotReviews(ctx context.Context, input *GetSpotReview
 		},
 	})
 	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to get spot reviews")
+		return nil, grpcToHTTPError(err, "failed to get spot reviews")
 	}
 
 	// Convert gRPC reviews to HTTP format
@@ -235,7 +278,7 @@ func (h *ReviewHandler) GetUserReviews(ctx context.Context, input *GetUserReview
 		},
 	})
 	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to get user reviews")
+		return nil, grpcToHTTPError(err, "failed to get user reviews")
 	}
 
 	// Convert gRPC reviews to HTTP format

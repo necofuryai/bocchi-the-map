@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -167,7 +168,7 @@ func (e *DomainError) ToHTTPStatus() int {
 	}
 }
 
-// ToGRPCStatus converts DomainError to gRPC status
+// ToGRPCStatus converts DomainError to gRPC status with detailed error information
 func (e *DomainError) ToGRPCStatus() *status.Status {
 	var code codes.Code
 	switch e.Type {
@@ -190,7 +191,48 @@ func (e *DomainError) ToGRPCStatus() *status.Status {
 	default:
 		code = codes.Internal
 	}
-	return status.New(code, e.Message)
+
+	// Create base status
+	st := status.New(code, e.Message)
+
+	// Add error details if Fields or Resource are present
+	var details []interface{}
+
+	// Add resource info if present
+	if e.Resource != "" {
+		resourceInfo := &errdetails.ResourceInfo{
+			ResourceType: string(e.Type),
+			ResourceName: e.Resource,
+		}
+		details = append(details, resourceInfo)
+	}
+
+	// Add field violations if present
+	if len(e.Fields) > 0 {
+		fieldViolations := make([]*errdetails.BadRequest_FieldViolation, 0, len(e.Fields))
+		for field, message := range e.Fields {
+			fieldViolations = append(fieldViolations, &errdetails.BadRequest_FieldViolation{
+				Field:       field,
+				Description: message,
+			})
+		}
+		badRequest := &errdetails.BadRequest{
+			FieldViolations: fieldViolations,
+		}
+		details = append(details, badRequest)
+	}
+
+	// Add details to status if any exist
+	if len(details) > 0 {
+		st, err := st.WithDetails(details...)
+		if err != nil {
+			// If adding details fails, return the basic status
+			return status.New(code, e.Message)
+		}
+		return st
+	}
+
+	return st
 }
 
 // ToGRPCError converts DomainError to gRPC error

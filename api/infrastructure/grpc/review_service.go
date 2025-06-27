@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -87,9 +88,8 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 		return nil, status.Error(codes.InvalidArgument, "rating must be between 1 and 5")
 	}
 
-	// TODO: CRITICAL - Extract user ID from context/authentication
-	// This is currently hardcoded for development purposes
-	userID := "user_123"
+	// Extract user ID from authentication context
+	userID := errors.GetUserID(ctx)
 	if userID == "" {
 		return nil, status.Error(codes.Unauthenticated, "user not authenticated")
 	}
@@ -138,7 +138,15 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 	}
 
 	// Update spot rating statistics
-	go s.updateSpotRating(context.Background(), req.SpotID)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		
+		if err := s.updateSpotRating(ctx, req.SpotID); err != nil {
+			// Log error but don't fail the main operation
+			log.Printf("failed to update spot rating for spot %s: %v", req.SpotID, err)
+		}
+	}()
 
 	// Retrieve the created review to get accurate timestamps
 	dbReview, err := s.queries.GetReviewByID(ctx, reviewID)
@@ -274,13 +282,12 @@ func (s *ReviewService) GetUserReviews(ctx context.Context, req *GetUserReviewsR
 	}, nil
 }
 
-// convertDatabaseReviewToGRPC converts database review model to gRPC review struct
-func (s *ReviewService) convertDatabaseReviewToGRPC(dbReview database.Review) *Review {
-	// Parse rating aspects from JSON
+// parseRatingAspects converts JSON rating aspects to map[string]int32
+func parseRatingAspects(rawData json.RawMessage) map[string]int32 {
 	var ratingAspects map[string]int32
-	if len(dbReview.RatingAspects) > 0 {
+	if len(rawData) > 0 {
 		var aspectsMap map[string]interface{}
-		if err := json.Unmarshal(dbReview.RatingAspects, &aspectsMap); err == nil {
+		if err := json.Unmarshal(rawData, &aspectsMap); err == nil {
 			ratingAspects = make(map[string]int32)
 			for key, value := range aspectsMap {
 				if intVal, ok := value.(float64); ok {
@@ -289,14 +296,18 @@ func (s *ReviewService) convertDatabaseReviewToGRPC(dbReview database.Review) *R
 			}
 		}
 	}
+	return ratingAspects
+}
 
+// convertDatabaseReviewToGRPC converts database review model to gRPC review struct
+func (s *ReviewService) convertDatabaseReviewToGRPC(dbReview database.Review) *Review {
 	return &Review{
 		ID:            dbReview.ID,
 		SpotID:        dbReview.SpotID,
 		UserID:        dbReview.UserID,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
-		RatingAspects: ratingAspects,
+		RatingAspects: parseRatingAspects(dbReview.RatingAspects),
 		CreatedAt:     dbReview.CreatedAt,
 		UpdatedAt:     dbReview.UpdatedAt,
 	}
@@ -304,27 +315,13 @@ func (s *ReviewService) convertDatabaseReviewToGRPC(dbReview database.Review) *R
 
 // convertDatabaseReviewRowToGRPC converts database review row (with user info) to gRPC review struct
 func (s *ReviewService) convertDatabaseReviewRowToGRPC(dbReview database.ListReviewsBySpotRow) *Review {
-	// Parse rating aspects from JSON
-	var ratingAspects map[string]int32
-	if len(dbReview.RatingAspects) > 0 {
-		var aspectsMap map[string]interface{}
-		if err := json.Unmarshal(dbReview.RatingAspects, &aspectsMap); err == nil {
-			ratingAspects = make(map[string]int32)
-			for key, value := range aspectsMap {
-				if intVal, ok := value.(float64); ok {
-					ratingAspects[key] = int32(intVal)
-				}
-			}
-		}
-	}
-
 	return &Review{
 		ID:            dbReview.ID,
 		SpotID:        dbReview.SpotID,
 		UserID:        dbReview.UserID,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
-		RatingAspects: ratingAspects,
+		RatingAspects: parseRatingAspects(dbReview.RatingAspects),
 		CreatedAt:     dbReview.CreatedAt,
 		UpdatedAt:     dbReview.UpdatedAt,
 	}
@@ -332,27 +329,13 @@ func (s *ReviewService) convertDatabaseReviewRowToGRPC(dbReview database.ListRev
 
 // convertDatabaseUserReviewRowToGRPC converts database user review row (with spot info) to gRPC review struct
 func (s *ReviewService) convertDatabaseUserReviewRowToGRPC(dbReview database.ListReviewsByUserRow) *Review {
-	// Parse rating aspects from JSON
-	var ratingAspects map[string]int32
-	if len(dbReview.RatingAspects) > 0 {
-		var aspectsMap map[string]interface{}
-		if err := json.Unmarshal(dbReview.RatingAspects, &aspectsMap); err == nil {
-			ratingAspects = make(map[string]int32)
-			for key, value := range aspectsMap {
-				if intVal, ok := value.(float64); ok {
-					ratingAspects[key] = int32(intVal)
-				}
-			}
-		}
-	}
-
 	return &Review{
 		ID:            dbReview.ID,
 		SpotID:        dbReview.SpotID,
 		UserID:        dbReview.UserID,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
-		RatingAspects: ratingAspects,
+		RatingAspects: parseRatingAspects(dbReview.RatingAspects),
 		CreatedAt:     dbReview.CreatedAt,
 		UpdatedAt:     dbReview.UpdatedAt,
 	}
@@ -387,7 +370,8 @@ func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*
 func (s *ReviewService) updateSpotRating(ctx context.Context, spotID string) {
 	stats, err := s.queries.GetSpotRatingStats(ctx, spotID)
 	if err != nil {
-		return // Silent failure for background update
+		log.Printf("Failed to get spot rating stats for spot %s: %v", spotID, err)
+		return
 	}
 
 	averageRating := "0.0"
@@ -396,9 +380,12 @@ func (s *ReviewService) updateSpotRating(ctx context.Context, spotID string) {
 	}
 
 	// Update spot table with new rating statistics
-	s.queries.UpdateSpotRating(ctx, database.UpdateSpotRatingParams{
+	err = s.queries.UpdateSpotRating(ctx, database.UpdateSpotRatingParams{
 		ID:            spotID,
 		AverageRating: averageRating,
 		ReviewCount:   int32(stats.ReviewCount),
 	})
+	if err != nil {
+		log.Printf("Failed to update spot rating for spot %s: %v", spotID, err)
+	}
 }

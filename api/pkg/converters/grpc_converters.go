@@ -10,6 +10,13 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 )
 
+// Default user preference values
+const (
+	DefaultLanguage = "ja"
+	DefaultTimezone = "Asia/Tokyo"
+	DefaultDarkMode = false
+)
+
 // Temporary gRPC structs until protobuf generates them
 // These will be replaced once protobuf code generation is working
 type GRPCAuthProvider int32
@@ -101,9 +108,9 @@ func (c *GRPCConverter) ConvertGRPCToEntity(grpcUser *GRPCUser) (*entities.User,
 	} else {
 		// Default preferences
 		prefs = entities.UserPreferences{
-			Language: "ja",
-			DarkMode: false,
-			Timezone: "Asia/Tokyo",
+			Language: DefaultLanguage,
+			DarkMode: DefaultDarkMode,
+			Timezone: DefaultTimezone,
 		}
 	}
 
@@ -138,9 +145,9 @@ func (c *GRPCConverter) ConvertDatabaseToGRPC(dbUser database.User) (*GRPCUser, 
 	} else {
 		// Default preferences
 		prefs = GRPCUserPreferences{
-			Language: "ja",
-			DarkMode: false,
-			Timezone: "Asia/Tokyo",
+			Language: DefaultLanguage,
+			DarkMode: DefaultDarkMode,
+			Timezone: DefaultTimezone,
 		}
 	}
 
@@ -206,9 +213,9 @@ func (c *GRPCConverter) ConvertEntityAuthProviderToGRPC(provider entities.AuthPr
 func (c *GRPCConverter) ConvertGRPCPreferencesToEntity(grpcPrefs *GRPCUserPreferences) entities.UserPreferences {
 	if grpcPrefs == nil {
 		return entities.UserPreferences{
-			Language: "ja",
-			DarkMode: false,
-			Timezone: "Asia/Tokyo",
+			Language: DefaultLanguage,
+			DarkMode: DefaultDarkMode,
+			Timezone: DefaultTimezone,
 		}
 	}
 

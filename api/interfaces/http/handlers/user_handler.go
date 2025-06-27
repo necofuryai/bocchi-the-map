@@ -8,6 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/necofuryai/bocchi-the-map/api/application/clients"
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/converters"
 )
@@ -181,11 +182,14 @@ func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserI
 	// Add operation context for error tracking
 	ctx = errors.WithOperation(ctx, "get_current_user_http")
 
-	// TODO: CRITICAL - Implement authentication context extraction
-	// This endpoint is currently INSECURE and should not be used in production
-	// For now, using gRPC service which has the same TODO
-	
-	// Get user via gRPC client
+	// Extract authenticated user ID from context
+	userID := errors.GetUserID(ctx)
+	if userID == "" {
+		return nil, huma.Error401Unauthorized("authentication required to get current user")
+	}
+
+	// Get user via gRPC client with authenticated user ID
+	ctx = errors.WithUserID(ctx, userID)
 	user, err := h.userClient.GetCurrentUserFromGRPC(ctx)
 	if err != nil {
 		return nil, errors.HandleHTTPError(ctx, err, "get_current_user", "failed to get current user")
@@ -212,10 +216,12 @@ func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePrefer
 	// Add operation context for error tracking
 	ctx = errors.WithOperation(ctx, "update_user_preferences_http")
 
-	// TODO: CRITICAL - Implement authentication context extraction
-	// This endpoint is currently INSECURE and should not be used in production
-	// For now, using gRPC service which has the same TODO
-	
+	// Extract authenticated user ID from context
+	userID := errors.GetUserID(ctx)
+	if userID == "" {
+		return nil, huma.Error401Unauthorized("authentication required to update preferences")
+	}
+
 	// Convert HTTP preferences to domain preferences using standardized converter
 	prefs := h.userConverter.ConvertHTTPPreferencesToEntity(input.Body.Preferences)
 
@@ -238,4 +244,39 @@ func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePrefer
 	resp.Body.UpdatedAt = user.UpdatedAt
 
 	return resp, nil
+}
+
+// RegisterRoutesWithAuth registers user routes with authentication middleware for secure endpoints
+func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.AuthMiddleware) {
+	// Public endpoint - user creation/OAuth doesn't require authentication
+	huma.Register(api, huma.Operation{
+		OperationID: "create-user",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/users",
+		Summary:     "Create or update a user",
+		Description: "Create a new user or update existing user information",
+		Tags:        []string{"Users"},
+	}, h.CreateUser)
+
+	// Protected endpoint - get current user requires authentication
+	huma.Register(api, huma.Operation{
+		OperationID: "get-current-user",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/users/me",
+		Summary:     "Get current user",
+		Description: "Get the current authenticated user's information",
+		Tags:        []string{"Users"},
+		Middlewares: huma.Middlewares{authMiddleware.Middleware},
+	}, h.GetCurrentUser)
+
+	// Protected endpoint - update preferences requires authentication
+	huma.Register(api, huma.Operation{
+		OperationID: "update-user-preferences",
+		Method:      http.MethodPatch,
+		Path:        "/api/v1/users/me/preferences",
+		Summary:     "Update user preferences",
+		Description: "Update the current user's preferences",
+		Tags:        []string{"Users"},
+		Middlewares: huma.Middlewares{authMiddleware.Middleware},
+	}, h.UpdatePreferences)
 }

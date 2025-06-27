@@ -14,6 +14,7 @@ type Config struct {
 	Database   DatabaseConfig
 	Monitoring MonitoringConfig
 	App        AppConfig
+	Auth       AuthConfig
 }
 
 // ServerConfig holds server-related configuration
@@ -44,6 +45,11 @@ type AppConfig struct {
 	Version     string
 }
 
+// AuthConfig holds authentication-related configuration
+type AuthConfig struct {
+	JWTSecret string
+}
+
 // Load loads configuration from environment variables
 func Load() (*Config, error) {
 	cfg := &Config{
@@ -67,6 +73,9 @@ func Load() (*Config, error) {
 			LogLevel:    getEnvWithDefault("LOG_LEVEL", "INFO"),
 			Version:     getEnvWithDefault("APP_VERSION", "1.0.0"),
 		},
+		Auth: AuthConfig{
+			JWTSecret: os.Getenv("JWT_SECRET"),
+		},
 	}
 
 	// Validate configuration
@@ -81,6 +90,9 @@ func Load() (*Config, error) {
 func (c *Config) Validate() error {
 	if c.Database.Password == "" {
 		return errors.New("TIDB_PASSWORD is required")
+	}
+	if c.Auth.JWTSecret == "" {
+		return errors.New("JWT_SECRET is required")
 	}
 	return nil
 }

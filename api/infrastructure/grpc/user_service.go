@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
@@ -10,6 +11,8 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/converters"
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // UserService implements the gRPC UserService
@@ -94,9 +97,8 @@ type GetUserByAuthProviderResponse struct {
 
 // GetCurrentUser retrieves the current authenticated user
 func (s *UserService) GetCurrentUser(ctx context.Context, req *GetCurrentUserRequest) (*GetCurrentUserResponse, error) {
-	// TODO: CRITICAL - Extract user ID from context/authentication
-	// This is currently hardcoded for development purposes
-	userID := "user_123"
+	// Extract user ID from authentication context
+	userID := errors.GetUserID(ctx)
 	if userID == "" {
 		return nil, errors.GRPCUnauthenticated(ctx, "user not authenticated")
 	}
@@ -111,11 +113,8 @@ func (s *UserService) GetCurrentUser(ctx context.Context, req *GetCurrentUserReq
 		return nil, errors.HandleDatabaseError(ctx, err, "get_user_by_id")
 	}
 
-	// Convert database user to gRPC response using standardized converter
-	user, err := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
-	if err != nil {
-		return nil, errors.HandleGRPCError(ctx, err, "convert_database_to_grpc")
-	}
+	// Convert database user to gRPC response
+	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
 	return &GetCurrentUserResponse{User: user}, nil
 }
 
@@ -239,87 +238,17 @@ func (s *UserService) convertDatabaseUserToEntity(dbUser database.User) *entitie
 	return user
 }
 
-// convertDatabaseUserToGRPCUser converts database user model to gRPC user struct
-func (s *UserService) convertDatabaseUserToGRPCUser(dbUser database.User) *User {
-	// Parse preferences from JSON
-	var prefs UserPreferences
-	if len(dbUser.Preferences) > 0 {
-		var prefsMap map[string]interface{}
-		if err := json.Unmarshal(dbUser.Preferences, &prefsMap); err == nil {
-			if lang, ok := prefsMap["language"].(string); ok {
-				prefs.Language = lang
-			} else {
-				prefs.Language = "ja"
-			}
-			if darkMode, ok := prefsMap["dark_mode"].(bool); ok {
-				prefs.DarkMode = darkMode
-			}
-			if timezone, ok := prefsMap["timezone"].(string); ok {
-				prefs.Timezone = timezone
-			} else {
-				prefs.Timezone = "Asia/Tokyo"
-			}
-		} else {
-			// Default preferences if parsing fails
-			prefs = UserPreferences{
-				Language: "ja",
-				DarkMode: false,
-				Timezone: "Asia/Tokyo",
-			}
-		}
-	} else {
-		// Default preferences if no preferences exist
-		prefs = UserPreferences{
-			Language: "ja",
-			DarkMode: false,
-			Timezone: "Asia/Tokyo",
-		}
-	}
-
-	// Convert database auth provider to gRPC enum
-	var authProvider AuthProvider
-	switch dbUser.AuthProvider {
-	case database.UsersAuthProviderGoogle:
-		authProvider = AuthProviderGoogle
-	case database.UsersAuthProviderTwitter:
-		authProvider = AuthProviderX
-	default:
-		authProvider = AuthProviderUnspecified
-	}
-
-	user := &User{
-		ID:             dbUser.ID,
-		Email:          dbUser.Email,
-		DisplayName:    dbUser.DisplayName,
-		AuthProvider:   authProvider,
-		AuthProviderID: dbUser.AuthProviderID,
-		Preferences:    &prefs,
-		CreatedAt:      dbUser.CreatedAt,
-		UpdatedAt:      dbUser.UpdatedAt,
-	}
-
-	if dbUser.AnonymousID.Valid {
-		user.AnonymousID = dbUser.AnonymousID.String
-	}
-
-	if dbUser.AvatarUrl.Valid {
-		user.AvatarURL = dbUser.AvatarUrl.String
-	}
-
-	return user
-}
 
 // UpdateUserPreferences updates user preferences
 func (s *UserService) UpdateUserPreferences(ctx context.Context, req *UpdateUserPreferencesRequest) (*UpdateUserPreferencesResponse, error) {
 	if req.Preferences == nil {
-		return nil, status.Error(codes.InvalidArgument, "preferences are required")
+		return nil, errors.GRPCInvalidArgument(ctx, "preferences are required")
 	}
 
-	// TODO: CRITICAL - Extract user ID from context/authentication
-	// This is currently hardcoded for development purposes
-	userID := "user_123"
+	// Extract user ID from authentication context
+	userID := errors.GetUserID(ctx)
 	if userID == "" {
-		return nil, status.Error(codes.Unauthenticated, "user not authenticated")
+		return nil, errors.GRPCUnauthenticated(ctx, "user not authenticated")
 	}
 
 	// Convert gRPC preferences to JSON
@@ -329,7 +258,7 @@ func (s *UserService) UpdateUserPreferences(ctx context.Context, req *UpdateUser
 		"timezone":  req.Preferences.Timezone,
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to marshal preferences")
+		return nil, errors.GRPCInternal(ctx, "failed to marshal preferences")
 	}
 
 	// Update preferences in database
@@ -338,30 +267,30 @@ func (s *UserService) UpdateUserPreferences(ctx context.Context, req *UpdateUser
 		Preferences: prefsJSON,
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to update preferences")
+		return nil, errors.GRPCInternal(ctx, "failed to update preferences")
 	}
 
 	// Get updated user from database
 	dbUser, err := s.queries.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to get updated user")
+		return nil, errors.GRPCInternal(ctx, "failed to get updated user")
 	}
 
 	// Convert database user to gRPC response
-	user := s.convertDatabaseUserToGRPCUser(dbUser)
+	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
 	return &UpdateUserPreferencesResponse{User: user}, nil
 }
 
 // CreateUserGRPC creates a new user via gRPC interface
 func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest) (*CreateUserResponse, error) {
 	if req.Email == "" {
-		return nil, status.Error(codes.InvalidArgument, "email is required")
+		return nil, errors.InvalidInput("email", "is required").ToGRPCError()
 	}
 	if req.DisplayName == "" {
-		return nil, status.Error(codes.InvalidArgument, "display name is required")
+		return nil, errors.InvalidInput("display_name", "is required").ToGRPCError()
 	}
 	if req.AuthProviderID == "" {
-		return nil, status.Error(codes.InvalidArgument, "auth provider ID is required")
+		return nil, errors.InvalidInput("auth_provider_id", "is required").ToGRPCError()
 	}
 
 	// Generate UUID for new user
@@ -375,7 +304,7 @@ func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest
 	case AuthProviderX:
 		dbAuthProvider = database.UsersAuthProviderTwitter
 	default:
-		return nil, status.Error(codes.InvalidArgument, "invalid auth provider")
+		return nil, errors.InvalidInput("auth_provider", "unsupported provider type").ToGRPCError()
 	}
 
 	// Create default preferences
@@ -386,7 +315,7 @@ func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest
 	}
 	prefsJSON, err := json.Marshal(defaultPrefs)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to marshal preferences")
+		return nil, errors.Internal("failed to marshal default preferences").ToGRPCError()
 	}
 
 	// Convert avatar URL to sql.NullString
@@ -406,17 +335,17 @@ func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest
 		Preferences:    prefsJSON,
 	})
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to create user")
+		return nil, errors.Database("create user", err).ToGRPCError()
 	}
 
 	// Get created user from database to get accurate timestamps
 	dbUser, err := s.queries.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to get created user")
+		return nil, errors.Database("get created user", err).ToGRPCError()
 	}
 
 	// Convert to gRPC response
-	user := s.convertDatabaseUserToGRPCUser(dbUser)
+	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
 	return &CreateUserResponse{User: user}, nil
 }
 
@@ -476,7 +405,7 @@ func (s *UserService) UpdateUserGRPC(ctx context.Context, req *UpdateUserRequest
 	}
 
 	// Convert to gRPC response
-	user := s.convertDatabaseUserToGRPCUser(dbUser)
+	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
 	return &UpdateUserResponse{User: user}, nil
 }
 
@@ -510,6 +439,6 @@ func (s *UserService) GetUserByAuthProviderGRPC(ctx context.Context, req *GetUse
 	}
 
 	// Convert to gRPC response
-	user := s.convertDatabaseUserToGRPCUser(dbUser)
+	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
 	return &GetUserByAuthProviderResponse{User: user}, nil
 }

@@ -21,26 +21,29 @@ SET average_rating = ?, review_count = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
 
 -- name: ListSpotsByLocation :many
-SELECT * FROM spots 
-WHERE (6371 * acos(
-    cos(radians(?)) * cos(radians(latitude)) * 
-    cos(radians(longitude) - radians(?)) + 
-    sin(radians(?)) * sin(radians(latitude))
-)) <= ?
-ORDER BY (6371 * acos(
-    cos(radians(?)) * cos(radians(latitude)) * 
-    cos(radians(longitude) - radians(?)) + 
-    sin(radians(?)) * sin(radians(latitude))
-))
+SELECT * FROM (
+    SELECT *, 
+           (6371 * acos(
+               cos(radians(?)) * cos(radians(latitude)) * 
+               cos(radians(longitude) - radians(?)) + 
+               sin(radians(?)) * sin(radians(latitude))
+           )) AS distance
+    FROM spots
+) AS spots_with_distance
+WHERE distance <= ?
+ORDER BY distance
 LIMIT ? OFFSET ?;
 
 -- name: CountSpotsByLocation :one
-SELECT COUNT(*) FROM spots 
-WHERE (6371 * acos(
-    cos(radians(?)) * cos(radians(latitude)) * 
-    cos(radians(longitude) - radians(?)) + 
-    sin(radians(?)) * sin(radians(latitude))
-)) <= ?;
+SELECT COUNT(*) FROM (
+    SELECT (6371 * acos(
+        cos(radians(?)) * cos(radians(latitude)) * 
+        cos(radians(longitude) - radians(?)) + 
+        sin(radians(?)) * sin(radians(latitude))
+    )) AS distance
+    FROM spots
+) AS spots_with_distance
+WHERE distance <= ?;
 
 -- name: ListSpotsByCategory :many
 SELECT * FROM spots 
@@ -63,15 +66,19 @@ SELECT COUNT(*) FROM spots
 WHERE country_code = ?;
 
 -- name: SearchSpots :many
-SELECT * FROM spots 
-WHERE (name LIKE ? OR address LIKE ?)
-  AND (? = '' OR category = ?)
-  AND (? = '' OR country_code = ?)
-  AND (? = 0 OR (6371 * acos(
-      cos(radians(?)) * cos(radians(latitude)) * 
-      cos(radians(longitude) - radians(?)) + 
-      sin(radians(?)) * sin(radians(latitude))
-  )) <= ?)
+SELECT * FROM (
+    SELECT *, 
+           (6371 * acos(
+               cos(radians(?)) * cos(radians(latitude)) * 
+               cos(radians(longitude) - radians(?)) + 
+               sin(radians(?)) * sin(radians(latitude))
+           )) AS distance
+    FROM spots
+    WHERE (name LIKE ? OR address LIKE ?)
+      AND (? = '' OR category = ?)
+      AND (? = '' OR country_code = ?)
+) AS spots_with_distance
+WHERE (? = 0 OR distance <= ?)
 ORDER BY 
   CASE WHEN name LIKE ? THEN 1 ELSE 2 END,
   average_rating DESC,
@@ -79,15 +86,18 @@ ORDER BY
 LIMIT ? OFFSET ?;
 
 -- name: CountSearchSpots :one
-SELECT COUNT(*) FROM spots 
-WHERE (name LIKE ? OR address LIKE ?)
-  AND (? = '' OR category = ?)
-  AND (? = '' OR country_code = ?)
-  AND (? = 0 OR (6371 * acos(
-      cos(radians(?)) * cos(radians(latitude)) * 
-      cos(radians(longitude) - radians(?)) + 
-      sin(radians(?)) * sin(radians(latitude))
-  )) <= ?);
+SELECT COUNT(*) FROM (
+    SELECT (6371 * acos(
+        cos(radians(?)) * cos(radians(latitude)) * 
+        cos(radians(longitude) - radians(?)) + 
+        sin(radians(?)) * sin(radians(latitude))
+    )) AS distance
+    FROM spots
+    WHERE (name LIKE ? OR address LIKE ?)
+      AND (? = '' OR category = ?)
+      AND (? = '' OR country_code = ?)
+) AS spots_with_distance
+WHERE (? = 0 OR distance <= ?);
 
 -- name: DeleteSpot :exec
 DELETE FROM spots 

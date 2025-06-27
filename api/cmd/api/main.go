@@ -22,6 +22,7 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/application/clients"
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
 	"github.com/necofuryai/bocchi-the-map/api/interfaces/http/handlers"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/monitoring"
@@ -142,11 +143,14 @@ func main() {
 		router.Use(monitoring.MonitoringMiddleware())
 		router.Use(monitoring.PerformanceMiddleware())
 
+		// Initialize authentication middleware
+		authMiddleware := auth.NewAuthMiddleware(cfg.Auth.JWTSecret)
+
 		// Create Huma API
 		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", cfg.App.Version))
 
 		// Register routes with gRPC clients and database queries
-		registerRoutes(api, spotClient, userClient, reviewClient, queries, cfg)
+		registerRoutes(api, spotClient, userClient, reviewClient, queries, cfg, authMiddleware)
 
 		// Start gRPC server in a goroutine
 		errChan := make(chan error, 1)
@@ -228,7 +232,7 @@ func startGRPCServer(port string) error {
 }
 
 // registerRoutes registers all API routes
-func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *clients.UserClient, reviewClient *clients.ReviewClient, queries *database.Queries, cfg *config.Config) {
+func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *clients.UserClient, reviewClient *clients.ReviewClient, queries *database.Queries, cfg *config.Config, authMiddleware *auth.AuthMiddleware) {
 	// Health check endpoint
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
@@ -251,7 +255,7 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 	registerReviewRoutes(api, reviewClient)
 
 	// User routes
-	registerUserRoutes(api, userClient, queries)
+	registerUserRoutes(api, userClient, queries, authMiddleware)
 	
 	// Auth.js compatible routes removed - using unified /api/v1/users endpoint
 }
@@ -271,12 +275,12 @@ func registerReviewRoutes(api huma.API, reviewClient *clients.ReviewClient) {
 	logger.Info("Review routes registered")
 }
 
-func registerUserRoutes(api huma.API, userClient *clients.UserClient, queries *database.Queries) {
+func registerUserRoutes(api huma.API, userClient *clients.UserClient, queries *database.Queries, authMiddleware *auth.AuthMiddleware) {
 	userHandler := handlers.NewUserHandler(userClient)
 	
-	// Register standard API routes (under /api/v1/users)
-	userHandler.RegisterRoutes(api)
-	logger.Info("User routes registered")
+	// Register standard API routes (under /api/v1/users) with authentication middleware
+	userHandler.RegisterRoutesWithAuth(api, authMiddleware)
+	logger.Info("User routes registered with authentication")
 }
 
 // registerAuthRoutes removed - using unified /api/v1/users endpoint for all user operations

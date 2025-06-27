@@ -50,17 +50,24 @@ func (c *UserClient) UpdateUserPreferences(ctx context.Context, req *grpcSvc.Upd
 	return c.service.UpdateUserPreferences(ctx, req)
 }
 
+// convertAuthProviderToGRPC converts domain AuthProvider to gRPC AuthProvider
+func (c *UserClient) convertAuthProviderToGRPC(authProvider entities.AuthProvider) (grpcSvc.AuthProvider, error) {
+	switch authProvider {
+	case entities.AuthProviderGoogle:
+		return grpcSvc.AuthProviderGoogle, nil
+	case entities.AuthProviderX:
+		return grpcSvc.AuthProviderX, nil
+	default:
+		return grpcSvc.AuthProviderUnspecified, fmt.Errorf("invalid auth provider")
+	}
+}
+
 // GetUserByAuthProvider retrieves a user by authentication provider and provider ID
 func (c *UserClient) GetUserByAuthProvider(ctx context.Context, authProvider entities.AuthProvider, providerID string) (*entities.User, error) {
 	// Convert domain auth provider to gRPC enum
-	var grpcAuthProvider grpcSvc.AuthProvider
-	switch authProvider {
-	case entities.AuthProviderGoogle:
-		grpcAuthProvider = grpcSvc.AuthProviderGoogle
-	case entities.AuthProviderX:
-		grpcAuthProvider = grpcSvc.AuthProviderX
-	default:
-		return nil, fmt.Errorf("invalid auth provider")
+	grpcAuthProvider, err := c.convertAuthProviderToGRPC(authProvider)
+	if err != nil {
+		return nil, err
 	}
 
 	// Call gRPC service method
@@ -79,14 +86,9 @@ func (c *UserClient) GetUserByAuthProvider(ctx context.Context, authProvider ent
 // CreateUser creates a new user
 func (c *UserClient) CreateUser(ctx context.Context, user *entities.User) (*entities.User, error) {
 	// Convert domain auth provider to gRPC enum
-	var grpcAuthProvider grpcSvc.AuthProvider
-	switch user.AuthProvider {
-	case entities.AuthProviderGoogle:
-		grpcAuthProvider = grpcSvc.AuthProviderGoogle
-	case entities.AuthProviderX:
-		grpcAuthProvider = grpcSvc.AuthProviderX
-	default:
-		return nil, fmt.Errorf("invalid auth provider")
+	grpcAuthProvider, err := c.convertAuthProviderToGRPC(user.AuthProvider)
+	if err != nil {
+		return nil, err
 	}
 
 	// Call gRPC service method

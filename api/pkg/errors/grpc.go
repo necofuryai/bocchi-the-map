@@ -114,7 +114,7 @@ func HandleBackgroundError(ctx context.Context, err error, operation string) {
 	
 	var domainErr *DomainError
 	if !As(err, &domainErr) {
-		domainErr = Wrap(err, ErrTypeInternal, fmt.Sprintf("background operation failed: %s", operation))
+		domainErr = Wrap(err, ErrTypeInternal, fmt.Sprintf("background operation failed: %s: %s", operation, err.Error()))
 	}
 
 	LogError(bgCtx, domainErr, operation)

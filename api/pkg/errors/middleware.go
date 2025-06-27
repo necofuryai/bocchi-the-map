@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sakai/bocchi-the-map/api/pkg/logger"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
 )
 
 // ContextKey represents keys for context values
