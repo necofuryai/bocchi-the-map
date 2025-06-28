@@ -2,25 +2,29 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/google/uuid"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
+	"github.com/necofuryai/bocchi-the-map/api/application/clients"
+	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/converters"
 )
 
 // UserHandler handles user-related HTTP requests
 type UserHandler struct {
-	queries *database.Queries
+	userClient    *clients.UserClient
+	userConverter *converters.UserConverter
 }
 
 // NewUserHandler creates a new user handler
-func NewUserHandler(queries *database.Queries) *UserHandler {
+func NewUserHandler(userClient *clients.UserClient) *UserHandler {
 	return &UserHandler{
-		queries: queries,
+		userClient:    userClient,
+		userConverter: converters.NewUserConverter(),
 	}
 }
 
@@ -117,85 +121,57 @@ func (h *UserHandler) RegisterRoutes(api huma.API) {
 
 // CreateUser creates or updates a user (upsert for OAuth flow)
 func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*CreateUserOutput, error) {
-	// Convert provider string to enum
-	var authProvider database.UsersAuthProvider
-	switch input.Body.AuthProvider {
-	case "google":
-		authProvider = database.UsersAuthProviderGoogle
-	case "twitter":
-		authProvider = database.UsersAuthProviderTwitter
-	case "x":
-		authProvider = database.UsersAuthProviderX
-	default:
-		return nil, huma.Error400BadRequest("invalid auth provider")
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "create_user_http")
+
+	// Convert provider string to domain enum using standardized converter
+	authProvider, err := h.userConverter.ConvertHTTPAuthProviderToEntity(input.Body.AuthProvider)
+	if err != nil {
+		return nil, errors.HandleHTTPError(ctx, err, "convert_auth_provider", "invalid auth provider")
 	}
 
-	// Check if user already exists to avoid ID conflicts and preserve preferences
-	existingUser, err := h.queries.GetUserByProviderID(ctx, database.GetUserByProviderIDParams{
-		AuthProvider:   authProvider,
-		AuthProviderID: input.Body.AuthProviderID,
-	})
-	
-	var userID string
-	var prefsJSON []byte
-	
-	if err == sql.ErrNoRows {
-		// New user - generate UUID and use default preferences
-		userID = uuid.New().String()
-		defaultPrefs := map[string]interface{}{
-			"language":  "ja",
-			"dark_mode": false,
-			"timezone":  "Asia/Tokyo",
-		}
-		prefsJSON, err = json.Marshal(defaultPrefs)
+	// Check if user already exists
+	existingUser, err := h.userClient.GetUserByAuthProvider(ctx, authProvider, input.Body.AuthProviderID)
+	if err != nil && !errors.Is(err, errors.ErrTypeNotFound) {
+		return nil, errors.HandleHTTPError(ctx, err, "check_existing_user", "failed to check existing user")
+	}
+
+	var user *entities.User
+	if existingUser != nil {
+		// Update existing user
+		existingUser.Email = input.Body.Email
+		existingUser.DisplayName = input.Body.DisplayName
+		existingUser.AvatarURL = input.Body.AvatarURL
+		user, err = h.userClient.UpdateUser(ctx, existingUser)
 		if err != nil {
-			return nil, huma.Error500InternalServerError("failed to marshal preferences")
+			return nil, errors.HandleHTTPError(ctx, err, "update_user", "failed to update user")
 		}
-	} else if err != nil {
-		return nil, huma.Error500InternalServerError("failed to check existing user")
 	} else {
-		// Existing user - preserve ID and existing preferences
-		userID = existingUser.ID
-		prefsJSON = existingUser.Preferences
+		// Create new user
+		newUser := &entities.User{
+			Email:          input.Body.Email,
+			DisplayName:    input.Body.DisplayName,
+			AvatarURL:      input.Body.AvatarURL,
+			AuthProvider:   authProvider,
+			AuthProviderID: input.Body.AuthProviderID,
+			Preferences: entities.UserPreferences{
+				Language: "ja",
+				DarkMode: false,
+				Timezone: "Asia/Tokyo",
+			},
+		}
+		user, err = h.userClient.CreateUser(ctx, newUser)
+		if err != nil {
+			return nil, errors.HandleHTTPError(ctx, err, "create_user", "failed to create user")
+		}
 	}
 
-	// Convert avatar URL to nullable string
-	var avatarURL sql.NullString
-	if input.Body.AvatarURL != "" {
-		avatarURL = sql.NullString{String: input.Body.AvatarURL, Valid: true}
-	}
-
-	// Upsert user in database
-	err = h.queries.UpsertUser(ctx, database.UpsertUserParams{
-		ID:             userID,
-		Email:          input.Body.Email,
-		DisplayName:    input.Body.DisplayName,
-		AvatarUrl:      avatarURL,
-		AuthProvider:   authProvider,
-		AuthProviderID: input.Body.AuthProviderID,
-		Preferences:    prefsJSON,
-	})
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to create/update user")
-	}
-
-	// Retrieve the created/updated user to get accurate timestamps
-	user, err := h.queries.GetUserByProviderID(ctx, database.GetUserByProviderIDParams{
-		AuthProvider:   authProvider,
-		AuthProviderID: input.Body.AuthProviderID,
-	})
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to retrieve user")
-	}
-
-	// Convert response
+	// Convert domain entity to HTTP response
 	resp := &CreateUserOutput{}
 	resp.Body.ID = user.ID
 	resp.Body.Email = user.Email
 	resp.Body.DisplayName = user.DisplayName
-	if user.AvatarUrl.Valid {
-		resp.Body.AvatarURL = user.AvatarUrl.String
-	}
+	resp.Body.AvatarURL = user.AvatarURL
 	resp.Body.CreatedAt = user.CreatedAt
 	resp.Body.UpdatedAt = user.UpdatedAt
 
@@ -204,48 +180,30 @@ func (h *UserHandler) CreateUser(ctx context.Context, input *CreateUserInput) (*
 
 // GetCurrentUser gets the current authenticated user
 func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserInput) (*GetCurrentUserOutput, error) {
-	// TODO: CRITICAL - Implement authentication context extraction
-	// This endpoint is currently INSECURE and should not be used in production
-	// Required implementation:
-	// 1. Add authentication middleware to extract user ID from JWT/session
-	// 2. Add user ID to request context in middleware
-	// 3. Extract user ID from context here using: userID, ok := ctx.Value("user_id").(string)
-	// 4. Return 401 Unauthorized if user ID is not found in context
-	
-	// SECURITY WARNING: This hardcoded user ID is for development only
-	userID := "user_123"
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "get_current_user_http")
+
+	// Extract authenticated user ID from context
+	userID := errors.GetUserID(ctx)
 	if userID == "" {
-		return nil, huma.Error401Unauthorized("user not authenticated")
+		return nil, huma.Error401Unauthorized("authentication required to get current user")
 	}
-	user, err := h.queries.GetUserByID(ctx, userID)
+
+	// Get user via gRPC client with authenticated user ID
+	user, err := h.userClient.GetCurrentUserFromGRPC(ctx)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, huma.Error404NotFound("user not found")
-		}
-		return nil, huma.Error500InternalServerError("failed to get user")
+		return nil, errors.HandleHTTPError(ctx, err, "get_current_user", "failed to get current user")
 	}
 
-	// Parse preferences JSON
-	var preferences map[string]interface{}
-	if len(user.Preferences) > 0 {
-		if err := json.Unmarshal(user.Preferences, &preferences); err != nil {
-			// If preferences are malformed, use defaults
-			preferences = map[string]interface{}{
-				"language":  "ja",
-				"dark_mode": false,
-				"timezone":  "Asia/Tokyo",
-			}
-		}
-	}
+	// Convert preferences to map format for HTTP response using standardized converter
+	preferences := h.userConverter.ConvertEntityPreferencesToHTTP(user.Preferences)
 
-	// Convert response
+	// Convert domain entity to HTTP response
 	resp := &GetCurrentUserOutput{}
 	resp.Body.ID = user.ID
 	resp.Body.Email = user.Email
 	resp.Body.DisplayName = user.DisplayName
-	if user.AvatarUrl.Valid {
-		resp.Body.AvatarURL = user.AvatarUrl.String
-	}
+	resp.Body.AvatarURL = user.AvatarURL
 	resp.Body.Preferences = preferences
 	resp.Body.CreatedAt = user.CreatedAt
 	resp.Body.UpdatedAt = user.UpdatedAt
@@ -255,57 +213,121 @@ func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserI
 
 // UpdatePreferences updates user preferences
 func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePreferencesInput) (*UpdatePreferencesOutput, error) {
-	// TODO: CRITICAL - Implement authentication context extraction
-	// This endpoint is currently INSECURE and should not be used in production
-	// Required implementation:
-	// 1. Add authentication middleware to extract user ID from JWT/session
-	// 2. Add user ID to request context in middleware
-	// 3. Extract user ID from context here using: userID, ok := ctx.Value("user_id").(string)
-	// 4. Return 401 Unauthorized if user ID is not found in context
-	
-	// SECURITY WARNING: This hardcoded user ID is for development only
-	userID := "user_123"
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "update_user_preferences_http")
+
+	// Extract authenticated user ID from context
+	userID := errors.GetUserID(ctx)
 	if userID == "" {
-		return nil, huma.Error401Unauthorized("user not authenticated")
+		return nil, huma.Error401Unauthorized("authentication required to update preferences")
 	}
 
-	// Convert preferences to JSON
-	prefsJSON, err := json.Marshal(input.Body.Preferences)
+	// Convert HTTP preferences to domain preferences using standardized converter
+	prefs := h.userConverter.ConvertHTTPPreferencesToEntity(input.Body.Preferences)
+
+	// Update preferences via gRPC client
+	user, err := h.userClient.UpdateUserPreferencesFromGRPC(ctx, userID, prefs)
 	if err != nil {
-		return nil, huma.Error400BadRequest("invalid preferences format")
+		return nil, errors.HandleHTTPError(ctx, err, "update_user_preferences", "failed to update preferences")
 	}
 
-	// Update preferences in database
-	err = h.queries.UpdateUserPreferences(ctx, database.UpdateUserPreferencesParams{
-		ID:          userID,
-		Preferences: prefsJSON,
-	})
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to update preferences")
-	}
+	// Convert preferences to map format for HTTP response using standardized converter
+	preferences := h.userConverter.ConvertEntityPreferencesToHTTP(user.Preferences)
 
-	// Retrieve updated user
-	user, err := h.queries.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, huma.Error500InternalServerError("failed to retrieve updated user")
-	}
-
-	// Parse updated preferences
-	var preferences map[string]interface{}
-	if len(user.Preferences) > 0 {
-		json.Unmarshal(user.Preferences, &preferences)
-	}
-
-	// Convert response
+	// Convert domain entity to HTTP response
 	resp := &UpdatePreferencesOutput{}
 	resp.Body.ID = user.ID
 	resp.Body.Email = user.Email
 	resp.Body.DisplayName = user.DisplayName
-	if user.AvatarUrl.Valid {
-		resp.Body.AvatarURL = user.AvatarUrl.String
-	}
+	resp.Body.AvatarURL = user.AvatarURL
 	resp.Body.Preferences = preferences
 	resp.Body.UpdatedAt = user.UpdatedAt
 
 	return resp, nil
+}
+
+// CreateHumaAuthMiddleware creates a reusable Huma-compatible authentication middleware
+// NOTE: This implementation uses deprecated Huma v1 methods (SetStatus, SetBody, SetContext)
+// that don't exist in Huma v2. This needs to be updated to use proper Huma v2 middleware patterns.
+// For now, this is commented out to prevent compilation errors.
+func CreateHumaAuthMiddleware(authMiddleware *auth.AuthMiddleware) func(huma.Context, func(huma.Context)) {
+	return func(ctx huma.Context, next func(huma.Context)) {
+		// TODO: Update this to use Huma v2 middleware API
+		// The following methods don't exist in Huma v2:
+		// - ctx.SetStatus()
+		// - ctx.SetBody()  
+		// - ctx.SetContext()
+		//
+		// Huma v2 middleware should handle errors differently.
+		// Please refer to Huma v2 documentation for proper implementation.
+		
+		// Extract JWT token from request and validate it
+		claims, err := authMiddleware.ExtractAndValidateTokenFromContext(ctx)
+		if err != nil {
+			// FIXME: Replace with proper Huma v2 error handling
+			/*
+			if strings.Contains(err.Error(), "no token found") {
+				ctx.SetStatus(http.StatusUnauthorized)
+				ctx.SetBody(map[string]string{"error": "Authentication required - no valid token found"})
+			} else if strings.Contains(err.Error(), "authentication service error") {
+				ctx.SetStatus(http.StatusInternalServerError)
+				ctx.SetBody(map[string]string{"error": "Authentication service error"})
+			} else {
+				ctx.SetStatus(http.StatusUnauthorized)
+				ctx.SetBody(map[string]string{"error": "Invalid token"})
+			}
+			*/
+			return
+		}
+
+		// FIXME: Replace with proper Huma v2 context handling
+		/*
+		// Add user context to request
+		requestCtx := ctx.Context()
+		requestCtx = errors.WithUserID(requestCtx, claims.UserID)
+		requestCtx = errors.WithRequestID(requestCtx, ctx.Header("X-Request-ID"))
+		ctx.SetContext(requestCtx)
+		*/
+
+		// Continue to next middleware/handler
+		next(ctx)
+	}
+}
+
+// RegisterRoutesWithAuth registers user routes with authentication middleware for secure endpoints
+func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.AuthMiddleware) {
+	// Create Huma-compatible authentication middleware
+	authHumaMiddleware := CreateHumaAuthMiddleware(authMiddleware)
+
+	// Public endpoint - user creation/OAuth doesn't require authentication
+	huma.Register(api, huma.Operation{
+		OperationID: "create-user",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/users",
+		Summary:     "Create or update a user",
+		Description: "Create a new user or update existing user information",
+		Tags:        []string{"Users"},
+	}, h.CreateUser)
+
+	// Protected endpoint - get current user requires authentication
+	huma.Register(api, huma.Operation{
+		OperationID: "get-current-user",
+		Method:      http.MethodGet,
+		Path:        "/api/v1/users/me",
+		Summary:     "Get current user",
+		Description: "Get the current authenticated user's information",
+		Tags:        []string{"Users"},
+		Middlewares: huma.Middlewares{authHumaMiddleware},
+	}, h.GetCurrentUser)
+
+	// Protected endpoint - update preferences requires authentication
+	huma.Register(api, huma.Operation{
+		OperationID: "update-user-preferences",
+		Method:      http.MethodPatch,
+		Path:        "/api/v1/users/me/preferences",
+		Summary:     "Update user preferences",
+		Description: "Update the current user's preferences",
+		Tags:        []string{"Users"},
+		Middlewares: huma.Middlewares{authHumaMiddleware},
+	}, h.UpdatePreferences)
 }

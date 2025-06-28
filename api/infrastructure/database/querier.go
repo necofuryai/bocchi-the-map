@@ -9,10 +9,27 @@ import (
 )
 
 type Querier interface {
+	AddToBlacklist(ctx context.Context, arg AddToBlacklistParams) error
+	BlacklistAccessToken(ctx context.Context, arg BlacklistAccessTokenParams) error
+	BlacklistRefreshToken(ctx context.Context, arg BlacklistRefreshTokenParams) error
+	CleanupExpiredTokens(ctx context.Context) error
+	CountReviewsBySpot(ctx context.Context, spotID string) (int64, error)
+	CountReviewsByUser(ctx context.Context, userID string) (int64, error)
+	CountTopRatedSpots(ctx context.Context, id string) (int64, error)
+	CreateReview(ctx context.Context, arg CreateReviewParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
+	DeleteReview(ctx context.Context, id string) error
+	GetReviewByID(ctx context.Context, id string) (Review, error)
+	GetReviewByUserAndSpot(ctx context.Context, arg GetReviewByUserAndSpotParams) (Review, error)
+	GetSpotRatingStats(ctx context.Context, spotID string) (GetSpotRatingStatsRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (User, error)
+	IsTokenBlacklisted(ctx context.Context, jti string) (bool, error)
+	ListReviewsBySpot(ctx context.Context, arg ListReviewsBySpotParams) ([]ListReviewsBySpotRow, error)
+	ListReviewsByUser(ctx context.Context, arg ListReviewsByUserParams) ([]ListReviewsByUserRow, error)
+	ListTopRatedSpots(ctx context.Context, arg ListTopRatedSpotsParams) ([]ListTopRatedSpotsRow, error)
+	UpdateReview(ctx context.Context, arg UpdateReviewParams) error
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error

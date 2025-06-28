@@ -11,7 +11,7 @@ import (
 type Review struct {
 	ID            string         `json:"id"`
 	SpotID        string         `json:"spot_id"`
-	UserID        string         `json:"user_id"` // Anonymous ID
+	UserID        string         `json:"user_id"`
 	Rating        int            `json:"rating"`  // 1-5 stars
 	Comment       string         `json:"comment,omitempty"`
 	RatingAspects map[string]int `json:"rating_aspects,omitempty"`

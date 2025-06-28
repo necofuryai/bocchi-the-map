@@ -22,7 +22,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 - 🎯 **Solo-optimized discovery** - Purpose-built for individual experiences
 - 🌏 **Global scalability** - Multi-country support with i18n-first design  
 - ⚡ **Real-time performance** - Sub-200ms API responses with edge caching
-- 🔐 **Privacy-first** - Anonymous reviews with OAuth authentication
+- 🔐 **Privacy-first** - Secure user authentication with OAuth integration
 - 📱 **Progressive Web App** - Native-like experience across all devices
 - 🌙 **Accessible design** - Dark mode, screen reader support, WCAG compliance
 

@@ -8,7 +8,6 @@ import (
 // User represents an authenticated user
 type User struct {
 	ID             string          `json:"id"`
-	AnonymousID    string          `json:"anonymous_id"`
 	Email          string          `json:"email"`
 	DisplayName    string          `json:"display_name"`
 	AvatarURL      string          `json:"avatar_url,omitempty"`
@@ -23,14 +22,15 @@ type User struct {
 type AuthProvider string
 
 const (
-	AuthProviderGoogle AuthProvider = "google"
-	AuthProviderX      AuthProvider = "x"
+	AuthProviderUnspecified AuthProvider = ""
+	AuthProviderGoogle      AuthProvider = "google"
+	AuthProviderX           AuthProvider = "x"
 )
 
 // IsValidAuthProvider checks if the given provider is valid
 func IsValidAuthProvider(provider AuthProvider) bool {
 	switch provider {
-	case AuthProviderGoogle, AuthProviderX:
+	case AuthProviderUnspecified, AuthProviderGoogle, AuthProviderX:
 		return true
 	default:
 		return false
@@ -75,8 +75,3 @@ func (u *User) UpdatePreferences(prefs UserPreferences) error {
 	return nil
 }
 
-// SetAnonymousID sets the anonymous ID for the user
-func (u *User) SetAnonymousID(id string) {
-	u.AnonymousID = id
-	u.UpdatedAt = time.Now()
-}

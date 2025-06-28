@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"google.golang.org/grpc"
@@ -16,12 +17,12 @@ type SpotClient struct {
 }
 
 // NewSpotClient creates a new spot client
-func NewSpotClient(serviceAddr string) (*SpotClient, error) {
+func NewSpotClient(serviceAddr string, db *sql.DB) (*SpotClient, error) {
 	// For internal communication in monolith, we can use direct service calls
 	// In a true microservice setup, this would connect to remote gRPC service
 	if serviceAddr == "internal" {
 		return &SpotClient{
-			service: grpcSvc.NewSpotService(),
+			service: grpcSvc.NewSpotService(db),
 		}, nil
 	}
 

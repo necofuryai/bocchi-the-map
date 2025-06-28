@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"google.golang.org/grpc"
@@ -16,12 +17,12 @@ type ReviewClient struct {
 }
 
 // NewReviewClient creates a new review client
-func NewReviewClient(serviceAddr string) (*ReviewClient, error) {
+func NewReviewClient(serviceAddr string, db *sql.DB) (*ReviewClient, error) {
 	// For internal communication in monolith, we can use direct service calls
 	// In a true microservice setup, this would connect to remote gRPC service
 	if serviceAddr == "internal" {
 		return &ReviewClient{
-			service: grpcSvc.NewReviewService(),
+			service: grpcSvc.NewReviewService(db),
 		}, nil
 	}
 

@@ -12,6 +12,48 @@ import (
 	"time"
 )
 
+type TokenBlacklistTokenType string
+
+const (
+	TokenBlacklistTokenTypeAccess  TokenBlacklistTokenType = "access"
+	TokenBlacklistTokenTypeRefresh TokenBlacklistTokenType = "refresh"
+)
+
+func (e *TokenBlacklistTokenType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TokenBlacklistTokenType(s)
+	case string:
+		*e = TokenBlacklistTokenType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TokenBlacklistTokenType: %T", src)
+	}
+	return nil
+}
+
+type NullTokenBlacklistTokenType struct {
+	TokenBlacklistTokenType TokenBlacklistTokenType `json:"token_blacklist_token_type"`
+	Valid                   bool                    `json:"valid"` // Valid is true if TokenBlacklistTokenType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTokenBlacklistTokenType) Scan(value interface{}) error {
+	if value == nil {
+		ns.TokenBlacklistTokenType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TokenBlacklistTokenType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTokenBlacklistTokenType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TokenBlacklistTokenType), nil
+}
+
 type UsersAuthProvider string
 
 const (
@@ -82,9 +124,18 @@ type Spot struct {
 	UpdatedAt     time.Time       `json:"updated_at"`
 }
 
+type TokenBlacklist struct {
+	ID        int64                   `json:"id"`
+	Jti       string                  `json:"jti"`
+	UserID    string                  `json:"user_id"`
+	TokenType TokenBlacklistTokenType `json:"token_type"`
+	ExpiresAt time.Time               `json:"expires_at"`
+	RevokedAt sql.NullTime            `json:"revoked_at"`
+	Reason    sql.NullString          `json:"reason"`
+}
+
 type User struct {
 	ID             string            `json:"id"`
-	AnonymousID    sql.NullString    `json:"anonymous_id"`
 	Email          string            `json:"email"`
 	DisplayName    string            `json:"display_name"`
 	AvatarUrl      sql.NullString    `json:"avatar_url"`

@@ -116,6 +116,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (process.env.NODE_ENV === 'development') {
               console.log('User created/updated successfully:', user.email)
             }
+            
+            // After successful user creation, generate API token
+            await generateAPIToken(userData, apiUrl)
           }
         } catch (error) {
           if (process.env.NODE_ENV !== 'production') {
@@ -174,3 +177,112 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
 })
+
+// Generate API token for authenticated user
+async function generateAPIToken(userData: {
+  email: string
+  name?: string | null
+  image?: string | null
+  provider: string
+  provider_id: string
+}, apiUrl: string): Promise<void> {
+  try {
+    const abortController = new AbortController()
+    const timeoutId = setTimeout(() => abortController.abort(), 15000)
+    
+    let response: Response
+    try {
+      response = await fetch(`${apiUrl}/api/v1/auth/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          provider: userData.provider,
+          provider_id: userData.provider_id,
+        }),
+        credentials: 'include',
+        signal: abortController.signal,
+      })
+    } finally {
+      clearTimeout(timeoutId)
+    }
+    
+    if (response.ok) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API token authentication successful')
+      }
+    } else {
+      const errorText = await response.text()
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to generate API token:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          email: userData.email,
+        })
+      }
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error generating API token:', {
+        message: error instanceof Error ? error.message : String(error),
+        email: userData.email,
+      })
+    }
+  }
+}
+
+// Clear API tokens (logout)
+export function clearAPITokens(): void {
+  // Token clearing now handled by server-side logout endpoint
+  // HttpOnly cookies will be cleared by the server
+  
+  // Clear any client-side auth state if needed
+  // For example, clear localStorage, sessionStorage, or app state
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Token clearing handled by server-side logout')
+  }
+}
+
+// Refresh API token using HttpOnly cookies with retry logic
+export async function refreshAPIToken(maxRetries: number = 3): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const apiUrl = process.env.API_URL || 'http://localhost:8080'
+      
+      const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
+      
+      if (response.ok) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('API token refresh successful')
+        }
+        return true
+      }
+      
+      // Don't retry on 4xx errors (client errors)
+      if (response.status >= 400 && response.status < 500) {
+        break
+      }
+    } catch (error) {
+      if (attempt === maxRetries) {
+        // Final attempt failed
+        break
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000))
+    }
+  }
+  
+  // All retries failed
+  clearAPITokens()
+  return false
+}

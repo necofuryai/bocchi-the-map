@@ -15,7 +15,9 @@ This is a full-stack monorepo application built with modern technologies: Go bac
 
 ## Bocchi The Map - おひとりさま向けスポットレビューアプリ (Solo Spot Review App)
 
-This project systematically manages knowledge through the following files:
+This project systematically manages knowledge through the following files in the hidden `.claude/` directory:
+
+**Important**: The `.claude/` directory is a hidden directory. Use `bash ls -la .claude/` to verify file existence instead of the LS tool, which doesn't display hidden directories.
 
 ### `.claude/context.md`
 - Project background, purpose, and constraints

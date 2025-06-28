@@ -10,15 +10,14 @@ import "common.proto";
 // User represents an authenticated user
 message User {
   string id = 1;
-  string anonymous_id = 2; // For anonymous reviews
-  string email = 3;
-  string display_name = 4;
-  string avatar_url = 5;
-  AuthProvider auth_provider = 6;
-  string auth_provider_id = 7;
-  UserPreferences preferences = 8;
-  google.protobuf.Timestamp created_at = 9;
-  google.protobuf.Timestamp updated_at = 10;
+  string email = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+  AuthProvider auth_provider = 5;
+  string auth_provider_id = 6;
+  UserPreferences preferences = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
 }
 
 // Authentication provider enum
