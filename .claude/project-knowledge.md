@@ -409,7 +409,8 @@ The project has been successfully refactored to use a **unified gRPC architectur
 #### 1. **Consistent Service Layer Pattern**
 
 All services now follow the same pattern:
-```
+
+```text
 HTTP Handler → gRPC Client (internal) → gRPC Service → Database Layer
 ```
 
@@ -497,21 +498,25 @@ func (c *UserClient) convertGRPCUserToEntity(grpcUser *grpcSvc.User) *entities.U
 ### Benefits Achieved
 
 #### 1. **Architectural Consistency**
+
 - All handlers use identical gRPC client patterns
 - Uniform error handling and response formatting
 - Predictable code structure across all modules
 
 #### 2. **Microservice Readiness**
+
 - Internal mode: `service := grpcSvc.NewUserService(db)`
 - External mode: `conn, err := grpc.Dial("user-service:9090")`
 - Zero code changes required for microservice migration
 
 #### 3. **Type Safety**
+
 - Protocol Buffers ensure contract consistency
 - sqlc generates type-safe database operations
 - Compile-time verification of all service calls
 
 #### 4. **Scalability Preparation**
+
 - Each service can be extracted independently
 - Database operations properly abstracted
 - Load balancing and service discovery ready
@@ -519,6 +524,7 @@ func (c *UserClient) convertGRPCUserToEntity(grpcUser *grpcSvc.User) *entities.U
 ### Implementation Patterns
 
 #### Service Creation Pattern
+
 ```go
 // main.go - Dependency injection
 userClient, err := clients.NewUserClient("internal", db)
@@ -568,11 +574,13 @@ if err != nil {
 ### Database Schema Utilization
 
 **Complete Table Coverage:**
+
 - `users` - OAuth authentication, preferences, profile data
 - `spots` - Location data with i18n, ratings, geographic indexing
 - `reviews` - User reviews with rating aspects, foreign key constraints
 
 **Advanced Query Features:**
+
 - Geographic distance calculations using Haversine formula
 - Full-text search with relevance ranking
 - Pagination with count optimization
@@ -581,16 +589,19 @@ if err != nil {
 ### Future Microservice Migration Path
 
 **Phase 1: Internal gRPC (Current)**
+
 ```go
 userClient := NewUserClient("internal", db)
 ```
 
 **Phase 2: Service Extraction**
+
 ```go
 userClient := NewUserClient("user-service:9090", nil)
 ```
 
 **Phase 3: Service Mesh**
+
 ```go
 userClient := NewUserClient("user-service.default.svc.cluster.local:9090", nil)
 ```
