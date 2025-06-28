@@ -54,15 +54,8 @@ func (c *UserConverter) ConvertDatabaseToEntity(dbUser database.User) (*entities
 		avatarURL = dbUser.AvatarUrl.String
 	}
 
-	// Handle nullable anonymous ID
-	var anonymousID string
-	if dbUser.AnonymousID.Valid {
-		anonymousID = dbUser.AnonymousID.String
-	}
-
 	return &entities.User{
 		ID:             dbUser.ID,
-		AnonymousID:    anonymousID,
 		Email:          dbUser.Email,
 		DisplayName:    dbUser.DisplayName,
 		AvatarURL:      avatarURL,

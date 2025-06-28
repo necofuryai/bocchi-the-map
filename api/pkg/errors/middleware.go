@@ -3,6 +3,7 @@ package errors
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
 )
@@ -19,6 +20,25 @@ const (
 	OperationKey ContextKey = "operation"
 )
 
+// isSensitiveField checks if a field contains sensitive information
+func isSensitiveField(fieldKey string) bool {
+	sensitiveFields := []string{
+		"password", "pass", "pwd", "secret", "key", "token", "auth",
+		"credential", "cert", "private", "api_key", "access_token",
+		"refresh_token", "session", "cookie", "authorization",
+		"email", "phone", "ssn", "credit_card", "card_number",
+		"cvv", "pin", "address", "location", "gps", "coordinates",
+	}
+	
+	fieldLower := strings.ToLower(fieldKey)
+	for _, sensitive := range sensitiveFields {
+		if strings.Contains(fieldLower, sensitive) {
+			return true
+		}
+	}
+	return false
+}
+
 // LogError logs an error with context information
 func LogError(ctx context.Context, err error, operation string) {
 	fields := map[string]interface{}{
@@ -27,10 +47,14 @@ func LogError(ctx context.Context, err error, operation string) {
 
 	// Add request context if available
 	if requestID := ctx.Value(RequestIDKey); requestID != nil {
-		fields["request_id"] = requestID
+		if id, ok := requestID.(string); ok {
+			fields["request_id"] = id
+		}
 	}
 	if userID := ctx.Value(UserIDKey); userID != nil {
-		fields["user_id"] = userID
+		if id, ok := userID.(string); ok {
+			fields["user_id"] = id
+		}
 	}
 
 	// Add error-specific fields
@@ -39,9 +63,13 @@ func LogError(ctx context.Context, err error, operation string) {
 		fields["error_code"] = domainErr.Code
 		fields["resource"] = domainErr.Resource
 		
-		// Merge error fields
+		// Merge error fields with sensitive data redaction
 		for k, v := range domainErr.Fields {
-			fields[fmt.Sprintf("error_%s", k)] = v
+			if isSensitiveField(k) {
+				fields[fmt.Sprintf("error_%s", k)] = "[REDACTED]"
+			} else {
+				fields[fmt.Sprintf("error_%s", k)] = v
+			}
 		}
 	}
 
@@ -54,13 +82,19 @@ func LogErrorWithMessage(ctx context.Context, err error, message string) {
 
 	// Add request context if available
 	if requestID := ctx.Value(RequestIDKey); requestID != nil {
-		fields["request_id"] = requestID
+		if id, ok := requestID.(string); ok {
+			fields["request_id"] = id
+		}
 	}
 	if userID := ctx.Value(UserIDKey); userID != nil {
-		fields["user_id"] = userID
+		if id, ok := userID.(string); ok {
+			fields["user_id"] = id
+		}
 	}
 	if operation := ctx.Value(OperationKey); operation != nil {
-		fields["operation"] = operation
+		if op, ok := operation.(string); ok {
+			fields["operation"] = op
+		}
 	}
 
 	// Add error-specific fields
@@ -69,9 +103,13 @@ func LogErrorWithMessage(ctx context.Context, err error, message string) {
 		fields["error_code"] = domainErr.Code
 		fields["resource"] = domainErr.Resource
 		
-		// Merge error fields
+		// Merge error fields with sensitive data redaction
 		for k, v := range domainErr.Fields {
-			fields[fmt.Sprintf("error_%s", k)] = v
+			if isSensitiveField(k) {
+				fields[fmt.Sprintf("error_%s", k)] = "[REDACTED]"
+			} else {
+				fields[fmt.Sprintf("error_%s", k)] = v
+			}
 		}
 	}
 

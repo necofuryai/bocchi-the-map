@@ -34,7 +34,6 @@ type GRPCUserPreferences struct {
 
 type GRPCUser struct {
 	ID             string
-	AnonymousID    string
 	Email          string
 	DisplayName    string
 	AvatarURL      string
@@ -67,7 +66,6 @@ func (c *GRPCConverter) ConvertEntityToGRPC(entity *entities.User) *GRPCUser {
 
 	return &GRPCUser{
 		ID:             entity.ID,
-		AnonymousID:    entity.AnonymousID,
 		Email:          entity.Email,
 		DisplayName:    entity.DisplayName,
 		AvatarURL:      entity.AvatarURL,
@@ -115,7 +113,6 @@ func (c *GRPCConverter) ConvertGRPCToEntity(grpcUser *GRPCUser) (*entities.User,
 
 	return &entities.User{
 		ID:             grpcUser.ID,
-		AnonymousID:    grpcUser.AnonymousID,
 		Email:          grpcUser.Email,
 		DisplayName:    grpcUser.DisplayName,
 		AvatarURL:      grpcUser.AvatarURL,
@@ -169,15 +166,8 @@ func (c *GRPCConverter) ConvertDatabaseToGRPC(dbUser database.User) (*GRPCUser, 
 		avatarURL = dbUser.AvatarUrl.String
 	}
 
-	// Handle nullable anonymous ID
-	var anonymousID string
-	if dbUser.AnonymousID.Valid {
-		anonymousID = dbUser.AnonymousID.String
-	}
-
 	return &GRPCUser{
 		ID:             dbUser.ID,
-		AnonymousID:    anonymousID,
 		Email:          dbUser.Email,
 		DisplayName:    dbUser.DisplayName,
 		AvatarURL:      avatarURL,

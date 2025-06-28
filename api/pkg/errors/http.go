@@ -66,6 +66,10 @@ func ToHumaError(ctx context.Context, err error, operation string) error {
 		return huma.Error404NotFound(message, detail)
 	case 409:
 		return huma.Error409Conflict(message, detail)
+	case 410:
+		return huma.Error410Gone(message, detail)
+	case 422:
+		return huma.Error422UnprocessableEntity(message, detail)
 	case 429:
 		return huma.Error429TooManyRequests(message, detail)
 	case 500:
@@ -90,9 +94,11 @@ func HandleHTTPError(ctx context.Context, err error, operation, fallbackMessage 
 	}
 
 	// Convert domain error to HTTP error
-	if Is(err, ErrTypeNotFound) || Is(err, ErrTypeInvalidInput) || 
-	   Is(err, ErrTypeUnauthorized) || Is(err, ErrTypeForbidden) || 
-	   Is(err, ErrTypeConflict) {
+	if Is(err, ErrTypeNotFound) ||
+		Is(err, ErrTypeInvalidInput) ||
+		Is(err, ErrTypeUnauthorized) ||
+		Is(err, ErrTypeForbidden) ||
+		Is(err, ErrTypeConflict) {
 		return ToHumaError(ctx, err, operation)
 	}
 

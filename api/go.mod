@@ -12,7 +12,14 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/newrelic/go-agent/v3 v3.35.0
 	github.com/rs/zerolog v1.33.0
+	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.65.0
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (

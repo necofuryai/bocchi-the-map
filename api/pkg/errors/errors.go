@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/protoadapt"
 )
 
 // ErrorType represents the type of error that occurred
@@ -228,9 +229,22 @@ func (e *DomainError) ToGRPCStatus() *status.Status {
 		details = append(details, badRequest)
 	}
 
-	// For now, return basic status without details to avoid protobuf compatibility issues
-	// TODO: Implement proper protobuf message conversion for error details
-	_ = details // Suppress unused variable warning
+	// Attach error details if any were collected
+	if len(details) > 0 {
+		// Convert proto.Message to protoadapt.MessageV1
+		detailsV1 := make([]protoadapt.MessageV1, len(details))
+		for i, detail := range details {
+			detailsV1[i] = protoadapt.MessageV1Of(detail)
+		}
+		
+		detailedSt, err := st.WithDetails(detailsV1...)
+		if err != nil {
+			// If WithDetails fails, return the basic status with a warning
+			// This ensures we don't lose the primary error information
+			return status.New(code, fmt.Sprintf("%s (warning: failed to attach error details)", e.Message))
+		}
+		return detailedSt
+	}
 
 	return st
 }
