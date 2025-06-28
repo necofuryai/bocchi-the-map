@@ -202,6 +202,7 @@ async function generateAPIToken(userData: {
           provider: userData.provider,
           provider_id: userData.provider_id,
         }),
+        credentials: 'include',
         signal: abortController.signal,
       })
     } finally {
@@ -209,17 +210,8 @@ async function generateAPIToken(userData: {
     }
     
     if (response.ok) {
-      const tokenData = await response.json()
-      
-      // Store API tokens in localStorage for use in API calls
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('bocchi_access_token', tokenData.access_token)
-        localStorage.setItem('bocchi_refresh_token', tokenData.refresh_token)
-        localStorage.setItem('bocchi_token_expires_at', tokenData.expires_at)
-        
-        if (process.env.NODE_ENV === 'development') {
-          console.log('API tokens stored successfully')
-        }
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API token authentication successful')
       }
     } else {
       const errorText = await response.text()
@@ -242,42 +234,17 @@ async function generateAPIToken(userData: {
   }
 }
 
-// Get stored API access token
-export function getAPIToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('bocchi_access_token')
-}
-
-// Get stored refresh token
-export function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null
-  return localStorage.getItem('bocchi_refresh_token')
-}
-
-// Check if token is expired
-export function isTokenExpired(): boolean {
-  if (typeof window === 'undefined') return true
-  
-  const expiresAt = localStorage.getItem('bocchi_token_expires_at')
-  if (!expiresAt) return true
-  
-  return new Date() >= new Date(expiresAt)
-}
-
-// Clear stored tokens
+// Clear API tokens (logout)
 export function clearAPITokens(): void {
-  if (typeof window === 'undefined') return
-  
-  localStorage.removeItem('bocchi_access_token')
-  localStorage.removeItem('bocchi_refresh_token')
-  localStorage.removeItem('bocchi_token_expires_at')
+  // Token clearing now handled by server-side logout endpoint
+  // HttpOnly cookies will be cleared by the server
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Token clearing handled by server-side logout')
+  }
 }
 
-// Refresh API token using refresh token
+// Refresh API token using HttpOnly cookies
 export async function refreshAPIToken(): Promise<boolean> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return false
-  
   try {
     const apiUrl = process.env.API_URL || 'http://localhost:8080'
     
@@ -286,21 +253,13 @@ export async function refreshAPIToken(): Promise<boolean> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        refresh_token: refreshToken,
-      }),
+      credentials: 'include',
     })
     
     if (response.ok) {
-      const tokenData = await response.json()
-      
-      // Update stored tokens
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('bocchi_access_token', tokenData.access_token)
-        localStorage.setItem('bocchi_refresh_token', tokenData.refresh_token)
-        localStorage.setItem('bocchi_token_expires_at', tokenData.expires_at)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API token refresh successful')
       }
-      
       return true
     } else {
       // If refresh fails, clear tokens

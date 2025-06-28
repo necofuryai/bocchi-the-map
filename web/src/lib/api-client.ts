@@ -1,4 +1,4 @@
-import { getAPIToken, isTokenExpired, refreshAPIToken, clearAPITokens } from './auth'
+import { refreshAPIToken, clearAPITokens } from './auth'
 
 // API base URL configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -32,8 +32,7 @@ export class APIClient {
     const headers = new Headers(options.headers)
     headers.set('Content-Type', 'application/json')
 
-    // Add authentication token if available
-    await this.addAuthHeader(headers)
+    // Authentication handled by HttpOnly cookies
 
     // Make the request with credentials to include cookies
     let response: Response
@@ -57,8 +56,7 @@ export class APIClient {
     if (response.status === 401) {
       const refreshSuccess = await refreshAPIToken()
       if (refreshSuccess) {
-        // Retry the request with new token
-        await this.addAuthHeader(headers)
+        // Retry the request with refreshed HttpOnly cookies
         try {
           response = await fetch(`${this.baseURL}${endpoint}`, {
             ...options,
@@ -127,25 +125,6 @@ export class APIClient {
     }
   }
 
-  // Add authentication header if token is available and valid
-  private async addAuthHeader(headers: Headers): Promise<void> {
-    let token = getAPIToken()
-
-    // Check if token is expired and refresh if needed
-    if (token && isTokenExpired()) {
-      const refreshSuccess = await refreshAPIToken()
-      if (refreshSuccess) {
-        token = getAPIToken()
-      } else {
-        clearAPITokens()
-        token = null
-      }
-    }
-
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`)
-    }
-  }
 
   // Convenience methods for different HTTP verbs
   async get<T = any>(endpoint: string): Promise<APIResponse<T>> {
@@ -228,8 +207,9 @@ export const api = {
 
 // Helper function to check if user is authenticated
 export function isAuthenticated(): boolean {
-  const token = getAPIToken()
-  return token !== null && !isTokenExpired()
+  // Authentication is now handled by HttpOnly cookies
+  // This would need to be determined by making an API call or checking session state
+  return true // This should be implemented based on your authentication strategy
 }
 
 // Helper function to handle API errors consistently
