@@ -1,6 +1,8 @@
 module github.com/necofuryai/bocchi-the-map/api
 
-go 1.21
+go 1.21.0
+
+toolchain go1.24.4
 
 require (
 	github.com/danielgtaylor/huma/v2 v2.19.0
