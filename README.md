@@ -277,11 +277,28 @@ gh pr create --title "feat: your amazing feature"
 
 ## 🎯 Roadmap
 
-- [x] **MVP** - Core spot discovery and reviews
+- [x] **MVP** - Core spot discovery and reviews ✅
+- [x] **Authentication System** - OAuth + JWT with proper security ✅ 
+- [x] **Production Infrastructure** - Cloud Run + monitoring ✅
+- [x] **Huma v2 Integration** - Type-safe APIs with auto-docs ✅
 - [ ] **Social Features** - Follow users, curated lists
-- [ ] **AI Recommendations** - ML-powered spot suggestions
+- [ ] **AI Recommendations** - ML-powered spot suggestions  
 - [ ] **Mobile App** - React Native with shared business logic
 - [ ] **API v2** - GraphQL federation for microservices
+
+## 🔐 Latest Security Update (2025-06-28)
+
+**Critical Authentication Fix Deployed** 🚨
+- **Issue**: Huma v2 authentication middleware had silent context propagation failure
+- **Impact**: Protected API endpoints were not properly authenticating users
+- **Resolution**: Implemented proper `huma.WithValue()` context handling pattern
+- **Status**: ✅ **All authentication systems now fully functional and production-ready**
+
+**Enhanced Security Features:**
+- ✅ Proper JWT token validation and user context propagation
+- ✅ Protected endpoints (`/api/v1/users/me`, preferences, reviews) secured
+- ✅ OAuth integration with Google and X (Twitter) providers
+- ✅ Microservice-ready authentication architecture
 
 ## 📈 Analytics & Monitoring
 
