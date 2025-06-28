@@ -3,12 +3,17 @@ package helpers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
 	. "github.com/onsi/gomega"
+)
+
+var (
+	FixedTestTime = time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 )
 
 // FixtureManager manages test data fixtures
@@ -50,31 +55,30 @@ type UserFixture struct {
 
 // ReviewFixture represents a test review fixture
 type ReviewFixture struct {
-	ID         string
-	SpotID     string
-	UserID     string
-	Rating     int
-	Comment    string
-	SoloRating int
+	ID            string
+	SpotID        string
+	UserID        string
+	Rating        int
+	Comment       string
+	RatingAspects map[string]int
 }
 
 // CreateSpotFixture creates a spot fixture in the database
-func (fm *FixtureManager) CreateSpotFixture(fixture SpotFixture) *entities.Spot {
-	ctx := context.Background()
+func (fm *FixtureManager) CreateSpotFixture(ctx context.Context, fixture SpotFixture) *entities.Spot {
 	
 	// Create spot in database
 	params := database.CreateSpotParams{
 		ID:          fixture.ID,
 		Name:        fixture.Name,
-		Latitude:    fmt.Sprintf("%.6f", fixture.Latitude),
-		Longitude:   fmt.Sprintf("%.6f", fixture.Longitude),
+		Latitude:    fmt.Sprintf("%.8f", fixture.Latitude),
+		Longitude:   fmt.Sprintf("%.8f", fixture.Longitude),
 		Category:    fixture.Category,
 		Address:     fixture.Address,
 		CountryCode: fixture.CountryCode,
 	}
 	
 	err := fm.db.Queries.CreateSpot(ctx, params)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create spot fixture")
+	Expect(err).NotTo(HaveOccurred(), "Failed to create spot fixture: %v", err)
 	
 	return &entities.Spot{
 		ID:          fixture.ID,
@@ -86,14 +90,13 @@ func (fm *FixtureManager) CreateSpotFixture(fixture SpotFixture) *entities.Spot 
 		Address:     fixture.Address,
 		AddressI18n: fixture.AddressI18n,
 		CountryCode: fixture.CountryCode,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		CreatedAt:   FixedTestTime,
+		UpdatedAt:   FixedTestTime,
 	}
 }
 
 // CreateUserFixture creates a user fixture in the database
-func (fm *FixtureManager) CreateUserFixture(fixture UserFixture) *entities.User {
-	ctx := context.Background()
+func (fm *FixtureManager) CreateUserFixture(ctx context.Context, fixture UserFixture) *entities.User {
 	
 	params := database.CreateUserParams{
 		ID:             fixture.ID,
@@ -104,7 +107,7 @@ func (fm *FixtureManager) CreateUserFixture(fixture UserFixture) *entities.User 
 	}
 	
 	err := fm.db.Queries.CreateUser(ctx, params)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create user fixture")
+	Expect(err).NotTo(HaveOccurred(), "Failed to create user fixture: %v", err)
 	
 	return &entities.User{
 		ID:             fixture.ID,
@@ -113,34 +116,42 @@ func (fm *FixtureManager) CreateUserFixture(fixture UserFixture) *entities.User 
 		AuthProvider:   entities.AuthProvider(fixture.AuthProvider),
 		AuthProviderID: fixture.AuthProviderID,
 		Preferences:    fixture.Preferences,
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		CreatedAt:      FixedTestTime,
+		UpdatedAt:      FixedTestTime,
 	}
 }
 
 // CreateReviewFixture creates a review fixture in the database
-func (fm *FixtureManager) CreateReviewFixture(fixture ReviewFixture) *entities.Review {
-	ctx := context.Background()
+func (fm *FixtureManager) CreateReviewFixture(ctx context.Context, fixture ReviewFixture) *entities.Review {
+	
+	var ratingAspectsJSON []byte
+	if fixture.RatingAspects != nil {
+		var err error
+		ratingAspectsJSON, err = json.Marshal(fixture.RatingAspects)
+		Expect(err).NotTo(HaveOccurred(), "Failed to marshal rating aspects")
+	}
 	
 	params := database.CreateReviewParams{
-		ID:      fixture.ID,
-		SpotID:  fixture.SpotID,
-		UserID:  fixture.UserID,
-		Rating:  int32(fixture.Rating),
-		Comment: sql.NullString{String: fixture.Comment, Valid: fixture.Comment != ""},
+		ID:            fixture.ID,
+		SpotID:        fixture.SpotID,
+		UserID:        fixture.UserID,
+		Rating:        int32(fixture.Rating),
+		Comment:       sql.NullString{String: fixture.Comment, Valid: fixture.Comment != ""},
+		RatingAspects: ratingAspectsJSON,
 	}
 	
 	err := fm.db.Queries.CreateReview(ctx, params)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create review fixture")
+	Expect(err).NotTo(HaveOccurred(), "Failed to create review fixture: %v", err)
 	
 	return &entities.Review{
-		ID:        fixture.ID,
-		SpotID:    fixture.SpotID,
-		UserID:    fixture.UserID,
-		Rating:    fixture.Rating,
-		Comment:   fixture.Comment,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:            fixture.ID,
+		SpotID:        fixture.SpotID,
+		UserID:        fixture.UserID,
+		Rating:        fixture.Rating,
+		Comment:       fixture.Comment,
+		RatingAspects: fixture.RatingAspects,
+		CreatedAt:     FixedTestTime,
+		UpdatedAt:     FixedTestTime,
 	}
 }
 
@@ -210,13 +221,33 @@ func (fm *FixtureManager) DefaultUserFixtures() []UserFixture {
 func (fm *FixtureManager) SetupStandardFixtures() {
 	// Create users first (for foreign key constraints)
 	for _, userFixture := range fm.DefaultUserFixtures() {
-		fm.CreateUserFixture(userFixture)
+		fm.CreateUserFixture(context.Background(), userFixture)
 	}
 	
 	// Create spots
 	for _, spotFixture := range fm.DefaultSpotFixtures() {
-		fm.CreateSpotFixture(spotFixture)
+		fm.CreateSpotFixture(context.Background(), spotFixture)
 	}
+}
+
+// SetupStandardFixturesWithReturn creates a standard set of test data and returns the created entities
+func (fm *FixtureManager) SetupStandardFixturesWithReturn() ([]*entities.User, []*entities.Spot) {
+	var users []*entities.User
+	var spots []*entities.Spot
+	
+	// Create users first (for foreign key constraints)
+	for _, userFixture := range fm.DefaultUserFixtures() {
+		user := fm.CreateUserFixture(context.Background(), userFixture)
+		users = append(users, user)
+	}
+	
+	// Create spots
+	for _, spotFixture := range fm.DefaultSpotFixtures() {
+		spot := fm.CreateSpotFixture(context.Background(), spotFixture)
+		spots = append(spots, spot)
+	}
+	
+	return users, spots
 }
 
 // CleanupFixtures removes all fixture data

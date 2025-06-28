@@ -78,10 +78,16 @@ func (ah *AuthHelper) CreateInvalidJWTToken() string {
 	return "invalid.jwt.token"
 }
 
+// contextKey is a private type for context keys to avoid collisions
+type contextKey string
+
+// userIDKey is the context key for user ID
+const userIDKey contextKey = "user_id"
+
 // CreateAuthenticatedContext creates a context with user authentication
 func (ah *AuthHelper) CreateAuthenticatedContext(userID string) context.Context {
 	ctx := context.Background()
-	return context.WithValue(ctx, "user_id", userID)
+	return context.WithValue(ctx, userIDKey, userID)
 }
 
 // CreateUnauthenticatedContext creates a context without authentication
@@ -116,5 +122,5 @@ func (ah *AuthHelper) NewAuthTestData() *AuthTestData {
 
 // generateRandomID generates a random ID for testing
 func generateRandomID() string {
-	return time.Now().Format("20060102150405")
+	return time.Now().Format("20060102150405.000000")
 }

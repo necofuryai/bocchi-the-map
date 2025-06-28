@@ -20,14 +20,19 @@ type TestDatabase struct {
 }
 
 // NewTestDatabase creates a new test database connection with proper isolation
-func NewTestDatabase() *TestDatabase {
+func NewTestDatabase() (*TestDatabase, error) {
 	dsn := getTestDSN()
 	
 	db, err := sql.Open("mysql", dsn)
-	Expect(err).NotTo(HaveOccurred(), "Failed to connect to test database")
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to test database: %w", err)
+	}
 	
 	err = db.Ping()
-	Expect(err).NotTo(HaveOccurred(), "Failed to ping test database")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to ping test database: %w", err)
+	}
 	
 	// Set connection pool settings for tests
 	db.SetMaxOpenConns(5)
@@ -37,7 +42,7 @@ func NewTestDatabase() *TestDatabase {
 	return &TestDatabase{
 		DB:      db,
 		Queries: database.New(db),
-	}
+	}, nil
 }
 
 // CleanDatabase removes all test data while preserving schema
@@ -53,7 +58,7 @@ func (td *TestDatabase) CleanDatabase() {
 	}
 	
 	for _, table := range tables {
-		_, err := td.DB.ExecContext(ctx, fmt.Sprintf("DELETE FROM %s", table))
+		_, err := td.DB.ExecContext(ctx, fmt.Sprintf("DELETE FROM `%s`", table))
 		if err != nil {
 			// Log warning but don't fail - table might not exist in test
 			GinkgoWriter.Printf("Warning: Failed to clean table %s: %v\n", table, err)

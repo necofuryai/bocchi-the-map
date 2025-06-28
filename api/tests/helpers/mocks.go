@@ -113,17 +113,21 @@ func (m *MockSpotRepository) SetDeleteSpotFunc(fn func(ctx context.Context, id s
 
 // MockUserRepository provides a mock implementation for user testing
 type MockUserRepository struct {
-	users           map[string]*entities.User
-	createUserFunc  func(ctx context.Context, user *entities.User) error
-	getUserFunc     func(ctx context.Context, id string) (*entities.User, error)
-	updateUserFunc  func(ctx context.Context, user *entities.User) error
-	deleteUserFunc  func(ctx context.Context, id string) error
+	users               map[string]*entities.User
+	usersByEmail        map[string]*entities.User
+	usersByAuthProvider map[string]*entities.User
+	createUserFunc      func(ctx context.Context, user *entities.User) error
+	getUserFunc         func(ctx context.Context, id string) (*entities.User, error)
+	updateUserFunc      func(ctx context.Context, user *entities.User) error
+	deleteUserFunc      func(ctx context.Context, id string) error
 }
 
 // NewMockUserRepository creates a new mock user repository
 func NewMockUserRepository() *MockUserRepository {
 	return &MockUserRepository{
-		users: make(map[string]*entities.User),
+		users:               make(map[string]*entities.User),
+		usersByEmail:        make(map[string]*entities.User),
+		usersByAuthProvider: make(map[string]*entities.User),
 	}
 }
 
@@ -138,6 +142,11 @@ func (m *MockUserRepository) Create(ctx context.Context, user *entities.User) er
 	}
 	
 	m.users[user.ID] = user
+	m.usersByEmail[user.Email] = user
+	
+	authKey := string(user.AuthProvider) + ":" + user.AuthProviderID
+	m.usersByAuthProvider[authKey] = user
+	
 	return nil
 }
 
@@ -155,21 +164,20 @@ func (m *MockUserRepository) GetByID(ctx context.Context, id string) (*entities.
 }
 
 func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
-	for _, user := range m.users {
-		if user.Email == email {
-			return user, nil
-		}
+	user, exists := m.usersByEmail[email]
+	if !exists {
+		return nil, errors.New("user not found")
 	}
-	return nil, errors.New("user not found")
+	return user, nil
 }
 
 func (m *MockUserRepository) GetByAuthProvider(ctx context.Context, provider, providerID string) (*entities.User, error) {
-	for _, user := range m.users {
-		if string(user.AuthProvider) == provider && user.AuthProviderID == providerID {
-			return user, nil
-		}
+	authKey := provider + ":" + providerID
+	user, exists := m.usersByAuthProvider[authKey]
+	if !exists {
+		return nil, errors.New("user not found")
 	}
-	return nil, errors.New("user not found")
+	return user, nil
 }
 
 func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) error {
@@ -177,11 +185,21 @@ func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) er
 		return m.updateUserFunc(ctx, user)
 	}
 	
-	if _, exists := m.users[user.ID]; !exists {
+	oldUser, exists := m.users[user.ID]
+	if !exists {
 		return errors.New("user not found")
 	}
 	
+	delete(m.usersByEmail, oldUser.Email)
+	oldAuthKey := string(oldUser.AuthProvider) + ":" + oldUser.AuthProviderID
+	delete(m.usersByAuthProvider, oldAuthKey)
+	
 	m.users[user.ID] = user
+	m.usersByEmail[user.Email] = user
+	
+	authKey := string(user.AuthProvider) + ":" + user.AuthProviderID
+	m.usersByAuthProvider[authKey] = user
+	
 	return nil
 }
 
@@ -190,11 +208,17 @@ func (m *MockUserRepository) Delete(ctx context.Context, id string) error {
 		return m.deleteUserFunc(ctx, id)
 	}
 	
-	if _, exists := m.users[id]; !exists {
+	user, exists := m.users[id]
+	if !exists {
 		return errors.New("user not found")
 	}
 	
 	delete(m.users, id)
+	delete(m.usersByEmail, user.Email)
+	
+	authKey := string(user.AuthProvider) + ":" + user.AuthProviderID
+	delete(m.usersByAuthProvider, authKey)
+	
 	return nil
 }
 
