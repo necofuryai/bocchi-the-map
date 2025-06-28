@@ -116,6 +116,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (process.env.NODE_ENV === 'development') {
               console.log('User created/updated successfully:', user.email)
             }
+            
+            // After successful user creation, generate API token
+            await generateAPIToken(userData, apiUrl)
           }
         } catch (error) {
           if (process.env.NODE_ENV !== 'production') {
@@ -174,3 +177,141 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: "jwt",
   },
 })
+
+// Generate API token for authenticated user
+async function generateAPIToken(userData: {
+  email: string
+  name?: string | null
+  image?: string | null
+  provider: string
+  provider_id: string
+}, apiUrl: string): Promise<void> {
+  try {
+    const abortController = new AbortController()
+    const timeoutId = setTimeout(() => abortController.abort(), 15000)
+    
+    let response: Response
+    try {
+      response = await fetch(`${apiUrl}/api/v1/auth/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          provider: userData.provider,
+          provider_id: userData.provider_id,
+        }),
+        signal: abortController.signal,
+      })
+    } finally {
+      clearTimeout(timeoutId)
+    }
+    
+    if (response.ok) {
+      const tokenData = await response.json()
+      
+      // Store API tokens in localStorage for use in API calls
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bocchi_access_token', tokenData.access_token)
+        localStorage.setItem('bocchi_refresh_token', tokenData.refresh_token)
+        localStorage.setItem('bocchi_token_expires_at', tokenData.expires_at)
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('API tokens stored successfully')
+        }
+      }
+    } else {
+      const errorText = await response.text()
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('Failed to generate API token:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          email: userData.email,
+        })
+      }
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error generating API token:', {
+        message: error instanceof Error ? error.message : String(error),
+        email: userData.email,
+      })
+    }
+  }
+}
+
+// Get stored API access token
+export function getAPIToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('bocchi_access_token')
+}
+
+// Get stored refresh token
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('bocchi_refresh_token')
+}
+
+// Check if token is expired
+export function isTokenExpired(): boolean {
+  if (typeof window === 'undefined') return true
+  
+  const expiresAt = localStorage.getItem('bocchi_token_expires_at')
+  if (!expiresAt) return true
+  
+  return new Date() >= new Date(expiresAt)
+}
+
+// Clear stored tokens
+export function clearAPITokens(): void {
+  if (typeof window === 'undefined') return
+  
+  localStorage.removeItem('bocchi_access_token')
+  localStorage.removeItem('bocchi_refresh_token')
+  localStorage.removeItem('bocchi_token_expires_at')
+}
+
+// Refresh API token using refresh token
+export async function refreshAPIToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return false
+  
+  try {
+    const apiUrl = process.env.API_URL || 'http://localhost:8080'
+    
+    const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken,
+      }),
+    })
+    
+    if (response.ok) {
+      const tokenData = await response.json()
+      
+      // Update stored tokens
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('bocchi_access_token', tokenData.access_token)
+        localStorage.setItem('bocchi_refresh_token', tokenData.refresh_token)
+        localStorage.setItem('bocchi_token_expires_at', tokenData.expires_at)
+      }
+      
+      return true
+    } else {
+      // If refresh fails, clear tokens
+      clearAPITokens()
+      return false
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Error refreshing API token:', error)
+    }
+    clearAPITokens()
+    return false
+  }
+}
