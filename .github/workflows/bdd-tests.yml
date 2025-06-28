@@ -208,7 +208,7 @@ jobs:
         TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
         CGO_ENABLED: 1
       run: |
-        ginkgo -r tests/integration/ -v --label-filter="integration"
+        go test -tags=integration -v ./tests/integration/... ./interfaces/http/handlers/... 2>&1 | tee test_output.log
 
     - name: Comment PR with test results
       if: github.event_name == 'pull_request'
@@ -217,13 +217,50 @@ jobs:
         script: |
           const fs = require('fs');
           
+          // Read test output to extract executed test suites
+          let testOutput = '';
+          try {
+            testOutput = fs.readFileSync('api/test_output.log', 'utf8');
+          } catch (error) {
+            console.log('Could not read test output file:', error.message);
+          }
+          
+          // Extract test suite names from the output
+          const extractTestSuites = (output) => {
+            const suites = [];
+            const lines = output.split('\n');
+            
+            for (const line of lines) {
+              // Look for "Running Suite:" lines which indicate Ginkgo test suites
+              const suiteMatch = line.match(/Running Suite: (.+) -/);
+              if (suiteMatch) {
+                suites.push(suiteMatch[1].trim());
+              }
+              
+              // Also look for package test runs
+              const packageMatch = line.match(/=== RUN\s+Test(\w+)/);
+              if (packageMatch) {
+                const testName = packageMatch[1];
+                if (!suites.some(suite => suite.includes(testName))) {
+                  suites.push(`${testName} BDD Tests`);
+                }
+              }
+            }
+            
+            return suites.length > 0 ? suites : ['HTTP Handlers Integration Test Suite'];
+          };
+          
+          const executedSuites = extractTestSuites(testOutput);
+          
           let comment = '## 🧪 BDD Integration Test Results\n\n';
           comment += '✅ All integration tests passed!\n\n';
           comment += 'The following test suites were executed:\n';
-          comment += '- SpotHandler BDD Tests\n';
-          comment += '- AuthHandler BDD Tests\n';
-          comment += '- UserHandler BDD Tests\n\n';
-          comment += '**Test Environment:**\n';
+          
+          for (const suite of executedSuites) {
+            comment += `- ${suite}\n`;
+          }
+          
+          comment += '\n**Test Environment:**\n';
           comment += `- Go Version: ${{ env.GO_VERSION }}\n`;
           comment += `- MySQL Version: ${{ env.MYSQL_VERSION }}\n`;
           comment += '- Framework: Ginkgo v2 with Gomega\n';

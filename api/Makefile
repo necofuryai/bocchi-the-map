@@ -50,12 +50,15 @@ test-bdd-coverage:
 	@echo "Running BDD tests with coverage..."
 	@go test -tags=integration -cover -coverprofile=integration_coverage.out -v ./interfaces/http/handlers ./pkg/auth
 	@go test -tags=e2e -cover -coverprofile=e2e_coverage.out -v ./tests/e2e
+	@echo "Merging coverage files..."
+	@gocovmerge integration_coverage.out e2e_coverage.out > combined_coverage.out
+	@echo "Combined coverage report generated: combined_coverage.out"
 
 # Run specific BDD test suite
 test-bdd-suite:
 	@echo "Running specific BDD test suite..."
 	@if [ -z "$(SUITE)" ]; then \
-		echo "Usage: make test-bdd-suite SUITE=integration/spot_handler_test.go"; \
+		echo "Usage: make test-bdd-suite SUITE=interfaces/http/handlers/spot_handler_test.go"; \
 		exit 1; \
 	fi
 	@if command -v ginkgo >/dev/null 2>&1; then \
@@ -110,7 +113,7 @@ migrate-up:
 		echo "Example: export DATABASE_URL='mysql://user:password@host:port/database'"; \
 		exit 1; \
 	fi
-	@migrate -path migrations_new -database "$(DATABASE_URL)" up
+	@migrate -path migrations -database "$(DATABASE_URL)" up
 
 migrate-down:
 	@echo "Rolling back database migration..."
@@ -119,7 +122,7 @@ migrate-down:
 		echo "Example: export DATABASE_URL='mysql://user:password@host:port/database'"; \
 		exit 1; \
 	fi
-	@migrate -path migrations_new -database "$(DATABASE_URL)" down
+	@migrate -path migrations -database "$(DATABASE_URL)" down
 
 migrate-create:
 	@echo "Creating new migration..."
@@ -128,7 +131,7 @@ migrate-create:
 		echo "Usage: make migrate-create NAME=migration_name"; \
 		exit 1; \
 	fi
-	@migrate create -ext sql -dir migrations_new -seq $(NAME)
+	@migrate create -ext sql -dir migrations -seq $(NAME)
 
 # Generate OpenAPI documentation
 docs:
