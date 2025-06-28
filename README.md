@@ -282,7 +282,7 @@ gh pr create --title "feat: your amazing feature"
 - [x] **Production Infrastructure** - Cloud Run + monitoring ✅
 - [x] **Huma v2 Integration** - Type-safe APIs with auto-docs ✅
 - [ ] **Social Features** - Follow users, curated lists
-- [ ] **AI Recommendations** - ML-powered spot suggestions  
+- [ ] **AI Recommendations** - ML-powered spot suggestions
 - [ ] **Mobile App** - React Native with shared business logic
 - [ ] **API v2** - GraphQL federation for microservices
 

@@ -1096,6 +1096,7 @@ The authentication system now provides **enterprise-grade security** with seamle
 The Huma v2 authentication middleware had a critical flaw where user context was not being properly propagated to handlers, causing authentication to fail silently.
 
 **❌ Previous Broken Implementation:**
+
 ```go
 // user_handler.go - BROKEN CODE (Fixed)
 requestCtx := ctx.Context()
@@ -1116,7 +1117,7 @@ next(authorizedCtx)  // ✅ Properly passing modified context!
 #### **Root Cause Analysis:**
 1. **Context Modification Issue**: Go's `context.Context` modifications were not being propagated through Huma v2's middleware chain
 2. **Framework Incompatibility**: Standard Go context patterns don't work with Huma v2's router-agnostic design
-3. **Silent Failure**: Authentication appeared to work but user context was never available in handlers
+3. **Silent Failure**: Authentication appeared to work, but user context was never available in handlers
 
 #### **Solution Implementation:**
 1. **Huma v2 Native Context**: Used `huma.WithValue()` instead of Go's `context.WithValue()`
