@@ -182,11 +182,14 @@ func (h *ReviewHandler) RegisterRoutes(api huma.API) {
 
 // CreateReview creates a new review
 func (h *ReviewHandler) CreateReview(ctx context.Context, input *CreateReviewInput) (*CreateReviewOutput, error) {
-	// Extract user ID from authentication context
-	userID := errors.GetUserID(ctx)
-	if userID == "" {
+	// Extract user ID from Huma v2 authentication context
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
 		return nil, huma.Error401Unauthorized("authentication required to create review")
 	}
+
+	// Add user ID to context for gRPC service access
+	ctx = errors.WithUserID(ctx, userID)
 
 	// Call gRPC service via client with authenticated user context
 	resp, err := h.reviewClient.CreateReview(ctx, &grpcSvc.CreateReviewRequest{
