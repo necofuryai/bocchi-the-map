@@ -1,9 +1,10 @@
-// +build integration
+//go:build integration
 
 package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -60,7 +61,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			AuthProviderID: authData.TestUser.AuthProviderID,
 			Preferences:    authData.TestUser.Preferences,
 		}
-		fixtureManager.CreateUserFixture(*userFixture)
+		fixtureManager.CreateUserFixture(context.Background(), *userFixture)
 		
 		// Create test spot for reviews
 		spotFixture = &helpers.SpotFixture{
@@ -72,7 +73,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			Address:     "Test Address",
 			CountryCode: "JP",
 		}
-		fixtureManager.CreateSpotFixture(*spotFixture)
+		fixtureManager.CreateSpotFixture(context.Background(), *spotFixture)
 	})
 
 	Describe("Review Creation", func() {
@@ -257,7 +258,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		Context("Given a duplicate review attempt", func() {
 			BeforeEach(func() {
 				By("Creating an existing review first")
-				fixtureManager.CreateReviewFixture(helpers.ReviewFixture{
+				fixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
 					ID:     "existing-review-123",
 					SpotID: spotFixture.ID,
 					UserID: authData.ValidUserID,
@@ -293,7 +294,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					err = json.Unmarshal(resp.Body.Bytes(), &errorResponse)
 					Expect(err).NotTo(HaveOccurred())
 					
-					Expect(errorResponse["title"]).To(ContainSubstring("duplicate"), "Should indicate duplicate review")
+					Expect(errorResponse["title"]).To(ContainSubstring("already reviewed"), "Should indicate user already reviewed this spot")
 				})
 			})
 		})
@@ -305,7 +306,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			// Create additional users for diverse reviews
 			for i := 1; i <= 15; i++ {
 				userID := fmt.Sprintf("review-user-%d", i)
-				fixtureManager.CreateUserFixture(helpers.UserFixture{
+				fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 					ID:             userID,
 					Email:          fmt.Sprintf("reviewer%d@example.com", i),
 					DisplayName:    fmt.Sprintf("Reviewer %d", i),
@@ -315,7 +316,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 				
 				// Create reviews with varying ratings
 				rating := (i % 5) + 1 // Ratings from 1-5
-				fixtureManager.CreateReviewFixture(helpers.ReviewFixture{
+				fixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
 					ID:      fmt.Sprintf("review-%d", i),
 					SpotID:  spotFixture.ID,
 					UserID:  userID,
@@ -463,7 +464,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		Context("Given a spot with no reviews", func() {
 			BeforeEach(func() {
 				By("Creating a spot without reviews")
-				fixtureManager.CreateSpotFixture(helpers.SpotFixture{
+				fixtureManager.CreateSpotFixture(context.Background(), helpers.SpotFixture{
 					ID:          "empty-spot",
 					Name:        "Spot Without Reviews",
 					Latitude:    35.6762,
@@ -516,7 +517,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		BeforeEach(func() {
 			By("Creating a user with multiple reviews")
 			reviewerUserID = "multi-reviewer-user"
-			fixtureManager.CreateUserFixture(helpers.UserFixture{
+			fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 				ID:             reviewerUserID,
 				Email:          "multireviewer@example.com",
 				DisplayName:    "Multi Reviewer",
@@ -527,7 +528,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			// Create multiple spots and reviews for this user
 			for i := 1; i <= 8; i++ {
 				spotID := fmt.Sprintf("user-spot-%d", i)
-				fixtureManager.CreateSpotFixture(helpers.SpotFixture{
+				fixtureManager.CreateSpotFixture(context.Background(), helpers.SpotFixture{
 					ID:          spotID,
 					Name:        fmt.Sprintf("User Spot %d", i),
 					Latitude:    35.6762 + float64(i)*0.001,
@@ -537,7 +538,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					CountryCode: "JP",
 				})
 				
-				fixtureManager.CreateReviewFixture(helpers.ReviewFixture{
+				fixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
 					ID:      fmt.Sprintf("user-review-%d", i),
 					SpotID:  spotID,
 					UserID:  reviewerUserID,
@@ -613,7 +614,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		Context("Given a user with no reviews", func() {
 			BeforeEach(func() {
 				By("Creating a user without reviews")
-				fixtureManager.CreateUserFixture(helpers.UserFixture{
+				fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 					ID:             "empty-reviewer",
 					Email:          "empty@example.com",
 					DisplayName:    "Empty Reviewer",

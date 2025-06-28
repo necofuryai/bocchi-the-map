@@ -1,4 +1,4 @@
-// +build e2e
+//go:build e2e
 
 package e2e
 
@@ -330,7 +330,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				Expect(resp.Code).To(Equal(http.StatusCreated))
 				
 				var user1Response map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &user1Response)
+				err = json.Unmarshal(resp.Body.Bytes(), &user1Response)
+				Expect(err).NotTo(HaveOccurred())
 				user1ID = user1Response["id"].(string)
 				
 				// Generate token for User 1
@@ -370,7 +371,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var user2Response map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &user2Response)
+				err = json.Unmarshal(resp.Body.Bytes(), &user2Response)
+				Expect(err).NotTo(HaveOccurred())
 				user2ID = user2Response["id"].(string)
 				Expect(user2ID).To(Not(BeEmpty()), "User 2 ID should be generated")
 				

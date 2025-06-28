@@ -4,6 +4,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -109,7 +110,7 @@ var _ = Describe("UserHandler BDD Tests", func() {
 		Context("Given an existing user with OAuth provider ID", func() {
 			BeforeEach(func() {
 				By("Creating an existing user in the database")
-				fixtureManager.CreateUserFixture(helpers.UserFixture{
+				fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 					ID:             "existing-user-123",
 					Email:          "existing@example.com",
 					DisplayName:    "Existing User",
@@ -238,7 +239,7 @@ var _ = Describe("UserHandler BDD Tests", func() {
 	Describe("Current User Retrieval", func() {
 		BeforeEach(func() {
 			By("Creating test user for authentication testing")
-			fixtureManager.CreateUserFixture(helpers.UserFixture{
+			fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 				ID:             authData.ValidUserID,
 				Email:          authData.TestUser.Email,
 				DisplayName:    authData.TestUser.DisplayName,
@@ -342,7 +343,7 @@ var _ = Describe("UserHandler BDD Tests", func() {
 	Describe("User Preference Updates", func() {
 		BeforeEach(func() {
 			By("Creating test user for preference testing")
-			fixtureManager.CreateUserFixture(helpers.UserFixture{
+			fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 				ID:             authData.ValidUserID,
 				Email:          authData.TestUser.Email,
 				DisplayName:    authData.TestUser.DisplayName,
