@@ -43,7 +43,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, anonymous_id, email, display_name, avatar_url, auth_provider, auth_provider_id, preferences, created_at, updated_at FROM users 
+SELECT id, email, display_name, avatar_url, auth_provider, auth_provider_id, preferences, created_at, updated_at FROM users 
 WHERE email = ?
 `
 
@@ -52,7 +52,6 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.AnonymousID,
 		&i.Email,
 		&i.DisplayName,
 		&i.AvatarUrl,
@@ -66,7 +65,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, anonymous_id, email, display_name, avatar_url, auth_provider, auth_provider_id, preferences, created_at, updated_at FROM users 
+SELECT id, email, display_name, avatar_url, auth_provider, auth_provider_id, preferences, created_at, updated_at FROM users 
 WHERE id = ?
 `
 
@@ -75,7 +74,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.AnonymousID,
 		&i.Email,
 		&i.DisplayName,
 		&i.AvatarUrl,
@@ -89,7 +87,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
 }
 
 const getUserByProviderID = `-- name: GetUserByProviderID :one
-SELECT id, anonymous_id, email, display_name, avatar_url, auth_provider, auth_provider_id, preferences, created_at, updated_at FROM users 
+SELECT id, email, display_name, avatar_url, auth_provider, auth_provider_id, preferences, created_at, updated_at FROM users 
 WHERE auth_provider = ? AND auth_provider_id = ?
 `
 
@@ -103,7 +101,6 @@ func (q *Queries) GetUserByProviderID(ctx context.Context, arg GetUserByProvider
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.AnonymousID,
 		&i.Email,
 		&i.DisplayName,
 		&i.AvatarUrl,

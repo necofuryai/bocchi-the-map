@@ -136,7 +136,6 @@ type TokenBlacklist struct {
 
 type User struct {
 	ID             string            `json:"id"`
-	AnonymousID    sql.NullString    `json:"anonymous_id"`
 	Email          string            `json:"email"`
 	DisplayName    string            `json:"display_name"`
 	AvatarUrl      sql.NullString    `json:"avatar_url"`
