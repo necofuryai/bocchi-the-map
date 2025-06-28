@@ -157,12 +157,13 @@ func (c *UserClient) GetCurrentUserFromGRPC(ctx context.Context) (*entities.User
 }
 
 // UpdateUserPreferencesFromGRPC updates user preferences via gRPC service
-func (c *UserClient) UpdateUserPreferencesFromGRPC(ctx context.Context, prefs entities.UserPreferences) (*entities.User, error) {
+func (c *UserClient) UpdateUserPreferencesFromGRPC(ctx context.Context, userID string, prefs entities.UserPreferences) (*entities.User, error) {
 	// Convert domain preferences to gRPC preferences using converter
 	grpcPrefs := c.grpcConverter.ConvertEntityPreferencesToGRPC(prefs)
 
 	// Call gRPC service method
 	resp, err := c.service.UpdateUserPreferences(ctx, &grpcSvc.UpdateUserPreferencesRequest{
+		UserID:      userID,
 		Preferences: grpcPrefs,
 	})
 	if err != nil {

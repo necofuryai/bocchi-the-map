@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -225,7 +226,7 @@ func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePrefer
 	prefs := h.userConverter.ConvertHTTPPreferencesToEntity(input.Body.Preferences)
 
 	// Update preferences via gRPC client
-	user, err := h.userClient.UpdateUserPreferencesFromGRPC(ctx, prefs)
+	user, err := h.userClient.UpdateUserPreferencesFromGRPC(ctx, userID, prefs)
 	if err != nil {
 		return nil, errors.HandleHTTPError(ctx, err, "update_user_preferences", "failed to update preferences")
 	}
@@ -245,8 +246,41 @@ func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePrefer
 	return resp, nil
 }
 
+// CreateHumaAuthMiddleware creates a reusable Huma-compatible authentication middleware
+func CreateHumaAuthMiddleware(authMiddleware *auth.AuthMiddleware) func(huma.Context, func(huma.Context)) {
+	return func(ctx huma.Context, next func(huma.Context)) {
+		// Extract JWT token from request and validate it
+		claims, err := authMiddleware.ExtractAndValidateTokenFromContext(ctx)
+		if err != nil {
+			if strings.Contains(err.Error(), "no token found") {
+				ctx.SetStatus(http.StatusUnauthorized)
+				ctx.SetBody(map[string]string{"error": "Authentication required - no valid token found"})
+			} else if strings.Contains(err.Error(), "authentication service error") {
+				ctx.SetStatus(http.StatusInternalServerError)
+				ctx.SetBody(map[string]string{"error": "Authentication service error"})
+			} else {
+				ctx.SetStatus(http.StatusUnauthorized)
+				ctx.SetBody(map[string]string{"error": "Invalid token"})
+			}
+			return
+		}
+
+		// Add user context to request
+		requestCtx := ctx.Context()
+		requestCtx = errors.WithUserID(requestCtx, claims.UserID)
+		requestCtx = errors.WithRequestID(requestCtx, ctx.Header("X-Request-ID"))
+		ctx.SetContext(requestCtx)
+
+		// Continue to next middleware/handler
+		next(ctx)
+	}
+}
+
 // RegisterRoutesWithAuth registers user routes with authentication middleware for secure endpoints
 func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.AuthMiddleware) {
+	// Create Huma-compatible authentication middleware
+	authHumaMiddleware := CreateHumaAuthMiddleware(authMiddleware)
+
 	// Public endpoint - user creation/OAuth doesn't require authentication
 	huma.Register(api, huma.Operation{
 		OperationID: "create-user",
@@ -265,6 +299,7 @@ func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.
 		Summary:     "Get current user",
 		Description: "Get the current authenticated user's information",
 		Tags:        []string{"Users"},
+		Middlewares: huma.Middlewares{authHumaMiddleware},
 	}, h.GetCurrentUser)
 
 	// Protected endpoint - update preferences requires authentication
@@ -275,5 +310,6 @@ func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.
 		Summary:     "Update user preferences",
 		Description: "Update the current user's preferences",
 		Tags:        []string{"Users"},
+		Middlewares: huma.Middlewares{authHumaMiddleware},
 	}, h.UpdatePreferences)
 }

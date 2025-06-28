@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
@@ -91,6 +92,74 @@ func (am *AuthMiddleware) extractAndValidateToken(r *http.Request) (*JWTClaims, 
 	if am.queries != nil && claims.ID != "" {
 		ctx := r.Context()
 		isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, claims.ID)
+		if err != nil {
+			return nil, fmt.Errorf("authentication service error: %w", err)
+		}
+		if isBlacklisted {
+			return nil, fmt.Errorf("token has been revoked")
+		}
+	}
+
+	return claims, nil
+}
+
+// ExtractAndValidateTokenFromContext extracts JWT token from Huma context and validates it
+func (am *AuthMiddleware) ExtractAndValidateTokenFromContext(ctx huma.Context) (*JWTClaims, error) {
+	// Extract token from Authorization header or cookie
+	var tokenString string
+	
+	// First try Authorization header (Bearer token)
+	authHeader := ctx.Header("Authorization")
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			tokenString = parts[1]
+		}
+	}
+	
+	// If no Bearer token, try cookie
+	if tokenString == "" {
+		if cookie := ctx.Header("Cookie"); cookie != "" {
+			// Parse cookies manually since Huma doesn't provide direct cookie access
+			cookies := strings.Split(cookie, ";")
+			for _, c := range cookies {
+				parts := strings.SplitN(strings.TrimSpace(c), "=", 2)
+				if len(parts) == 2 && parts[0] == "bocchi_access_token" {
+					tokenString = parts[1]
+					break
+				}
+			}
+		}
+	}
+	
+	// If still no token found, return error
+	if tokenString == "" {
+		return nil, fmt.Errorf("no token found")
+	}
+
+	// Parse and validate JWT token
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Verify signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return am.jwtSecret, nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid token: %w", err)
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(*JWTClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	// Check if token is blacklisted (if blacklist querier is available)
+	if am.queries != nil && claims.ID != "" {
+		requestCtx := ctx.Context()
+		isBlacklisted, err := am.queries.IsTokenBlacklisted(requestCtx, claims.ID)
 		if err != nil {
 			return nil, fmt.Errorf("authentication service error: %w", err)
 		}

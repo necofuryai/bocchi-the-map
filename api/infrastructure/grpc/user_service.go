@@ -207,43 +207,6 @@ func (s *UserService) UpdateUser(ctx context.Context, user *entities.User) (*ent
 	return user, nil
 }
 
-// convertDatabaseUserToEntity converts database user model to domain entity
-func (s *UserService) convertDatabaseUserToEntity(dbUser database.User) *entities.User {
-	var prefs entities.UserPreferences
-	if err := json.Unmarshal(dbUser.Preferences, &prefs); err != nil {
-		// Set default preferences if JSON unmarshal fails
-		prefs = entities.UserPreferences{
-			Language: "ja",
-			DarkMode: false,
-			Timezone: "Asia/Tokyo",
-		}
-	}
-
-	var authProvider entities.AuthProvider
-	switch dbUser.AuthProvider {
-	case database.UsersAuthProviderGoogle:
-		authProvider = entities.AuthProviderGoogle
-	case database.UsersAuthProviderTwitter:
-		authProvider = entities.AuthProviderX
-	}
-
-	user := &entities.User{
-		ID:             dbUser.ID,
-		Email:          dbUser.Email,
-		DisplayName:    dbUser.DisplayName,
-		AuthProvider:   authProvider,
-		AuthProviderID: dbUser.AuthProviderID,
-		Preferences:    prefs,
-		CreatedAt:      dbUser.CreatedAt,
-		UpdatedAt:      dbUser.UpdatedAt,
-	}
-
-	if dbUser.AvatarUrl.Valid {
-		user.AvatarURL = dbUser.AvatarUrl.String
-	}
-
-	return user
-}
 
 
 // UpdateUserPreferences updates user preferences
@@ -293,14 +256,17 @@ func (s *UserService) UpdateUserPreferences(ctx context.Context, req *UpdateUser
 
 // CreateUserGRPC creates a new user via gRPC interface
 func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest) (*CreateUserResponse, error) {
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "create_user_grpc")
+
 	if req.Email == "" {
-		return nil, errors.InvalidInput("email", "is required").ToGRPCError()
+		return nil, errors.GRPCInvalidArgument(ctx, "email", "is required")
 	}
 	if req.DisplayName == "" {
-		return nil, errors.InvalidInput("display_name", "is required").ToGRPCError()
+		return nil, errors.GRPCInvalidArgument(ctx, "display_name", "is required")
 	}
 	if req.AuthProviderID == "" {
-		return nil, errors.InvalidInput("auth_provider_id", "is required").ToGRPCError()
+		return nil, errors.GRPCInvalidArgument(ctx, "auth_provider_id", "is required")
 	}
 
 	// Generate UUID for new user
@@ -314,7 +280,7 @@ func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest
 	case AuthProviderX:
 		dbAuthProvider = database.UsersAuthProviderTwitter
 	default:
-		return nil, errors.InvalidInput("auth_provider", "unsupported provider type").ToGRPCError()
+		return nil, errors.GRPCInvalidArgument(ctx, "auth_provider", "unsupported provider type")
 	}
 
 	// Create default preferences
@@ -325,7 +291,7 @@ func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest
 	}
 	prefsJSON, err := json.Marshal(defaultPrefs)
 	if err != nil {
-		return nil, errors.Internal("failed to marshal default preferences").ToGRPCError()
+		return nil, errors.GRPCInternal(ctx, "failed to marshal default preferences")
 	}
 
 	// Convert avatar URL to sql.NullString
@@ -345,13 +311,13 @@ func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest
 		Preferences:    prefsJSON,
 	})
 	if err != nil {
-		return nil, errors.Database("create user", err).ToGRPCError()
+		return nil, errors.HandleDatabaseError(ctx, err, "create_user")
 	}
 
 	// Get created user from database to get accurate timestamps
 	dbUser, err := s.queries.GetUserByID(ctx, userID)
 	if err != nil {
-		return nil, errors.Database("get created user", err).ToGRPCError()
+		return nil, errors.HandleDatabaseError(ctx, err, "get_created_user")
 	}
 
 	// Convert to gRPC response
@@ -364,23 +330,20 @@ func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest
 
 // UpdateUserGRPC updates an existing user via gRPC interface
 func (s *UserService) UpdateUserGRPC(ctx context.Context, req *UpdateUserRequest) (*UpdateUserResponse, error) {
-	if req.ID == "" {
-		return nil, status.Error(codes.InvalidArgument, "user ID is required")
-	}
-	if req.Email == "" {
-		return nil, status.Error(codes.InvalidArgument, "email is required")
-	}
-
 	// Add operation context for error tracking
 	ctx = errors.WithOperation(ctx, "update_user_grpc")
 	ctx = errors.WithUserID(ctx, req.ID)
 
+	if req.ID == "" {
+		return nil, errors.GRPCInvalidArgument(ctx, "id", "is required")
+	}
+	if req.Email == "" {
+		return nil, errors.GRPCInvalidArgument(ctx, "email", "is required")
+	}
+
 	// Get existing user to verify it exists and get auth provider info
 	existingUser, err := s.queries.GetUserByID(ctx, req.ID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
 		return nil, errors.HandleDatabaseError(ctx, err, "get_user_by_id")
 	}
 
@@ -437,8 +400,11 @@ func (s *UserService) UpdateUserGRPC(ctx context.Context, req *UpdateUserRequest
 
 // GetUserByAuthProviderGRPC retrieves a user by authentication provider via gRPC interface
 func (s *UserService) GetUserByAuthProviderGRPC(ctx context.Context, req *GetUserByAuthProviderRequest) (*GetUserByAuthProviderResponse, error) {
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "get_user_by_auth_provider_grpc")
+
 	if req.AuthProviderID == "" {
-		return nil, status.Error(codes.InvalidArgument, "auth provider ID is required")
+		return nil, errors.GRPCInvalidArgument(ctx, "auth_provider_id", "is required")
 	}
 
 	// Convert gRPC auth provider to database enum
@@ -449,7 +415,7 @@ func (s *UserService) GetUserByAuthProviderGRPC(ctx context.Context, req *GetUse
 	case AuthProviderX:
 		dbAuthProvider = database.UsersAuthProviderTwitter
 	default:
-		return nil, status.Error(codes.InvalidArgument, "invalid auth provider")
+		return nil, errors.GRPCInvalidArgument(ctx, "auth_provider", "invalid provider type")
 	}
 
 	// Get user from database
@@ -458,10 +424,7 @@ func (s *UserService) GetUserByAuthProviderGRPC(ctx context.Context, req *GetUse
 		AuthProviderID: req.AuthProviderID,
 	})
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
-		return nil, status.Error(codes.Internal, "failed to get user")
+		return nil, errors.HandleDatabaseError(ctx, err, "get_user_by_provider_id")
 	}
 
 	// Convert to gRPC response
@@ -474,20 +437,17 @@ func (s *UserService) GetUserByAuthProviderGRPC(ctx context.Context, req *GetUse
 
 // GetUserByID retrieves a user by ID via gRPC interface
 func (s *UserService) GetUserByID(ctx context.Context, req *GetUserByIDRequest) (*GetUserByIDResponse, error) {
-	if req.ID == "" {
-		return nil, status.Error(codes.InvalidArgument, "user ID is required")
-	}
-
 	// Add operation context for error tracking
 	ctx = errors.WithOperation(ctx, "get_user_by_id_grpc")
 	ctx = errors.WithUserID(ctx, req.ID)
 
+	if req.ID == "" {
+		return nil, errors.GRPCInvalidArgument(ctx, "id", "is required")
+	}
+
 	// Get user from database
 	dbUser, err := s.queries.GetUserByID(ctx, req.ID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
 		return nil, errors.HandleDatabaseError(ctx, err, "get_user_by_id")
 	}
 

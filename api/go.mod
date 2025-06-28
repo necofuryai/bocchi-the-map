@@ -7,8 +7,8 @@ require (
 	github.com/getsentry/sentry-go v0.28.1
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/go-chi/cors v1.2.1
-	github.com/go-sql-driver/mysql v1.8.1
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/go-sql-driver/mysql v1.9.3
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/uuid v1.6.0
 	github.com/newrelic/go-agent/v3 v3.35.0
 	github.com/rs/zerolog v1.33.0

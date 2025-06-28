@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -11,7 +12,11 @@ import (
 func TestSpotService_CreateSpot(t *testing.T) {
 	// Create test database connection (using test database)
 	// Note: For actual testing, you would use a test database or mock
-	db, err := sql.Open("mysql", "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true")
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true"
+	}
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		t.Skip("Skipping test: test database not available")
 	}
@@ -89,7 +94,11 @@ func TestSpotService_CreateSpot(t *testing.T) {
 func TestSpotService_GetSpot(t *testing.T) {
 	// Create test database connection (using test database)
 	// Note: For actual testing, you would use a test database or mock
-	db, err := sql.Open("mysql", "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true")
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true"
+	}
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		t.Skip("Skipping test: test database not available")
 	}
@@ -142,7 +151,11 @@ func TestSpotService_GetSpot(t *testing.T) {
 func TestSpotService_ListSpots(t *testing.T) {
 	// Create test database connection (using test database)
 	// Note: For actual testing, you would use a test database or mock
-	db, err := sql.Open("mysql", "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true")
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true"
+	}
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		t.Skip("Skipping test: test database not available")
 	}
@@ -185,7 +198,11 @@ func TestSpotService_ListSpots(t *testing.T) {
 func TestSpotService_SearchSpots(t *testing.T) {
 	// Create test database connection (using test database)
 	// Note: For actual testing, you would use a test database or mock
-	db, err := sql.Open("mysql", "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true")
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true"
+	}
+	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		t.Skip("Skipping test: test database not available")
 	}
