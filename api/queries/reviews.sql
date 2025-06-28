@@ -50,11 +50,11 @@ WHERE user_id = ?;
 SELECT 
     AVG(rating) as average_rating,
     COUNT(*) as review_count,
-    COUNT(CASE WHEN rating = 5 THEN 1 END) as five_star_count,
-    COUNT(CASE WHEN rating = 4 THEN 1 END) as four_star_count,
-    COUNT(CASE WHEN rating = 3 THEN 1 END) as three_star_count,
-    COUNT(CASE WHEN rating = 2 THEN 1 END) as two_star_count,
-    COUNT(CASE WHEN rating = 1 THEN 1 END) as one_star_count
+    SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as five_star_count,
+    SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as four_star_count,
+    SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as three_star_count,
+    SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as two_star_count,
+    SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one_star_count
 FROM reviews 
 WHERE spot_id = ?;
 

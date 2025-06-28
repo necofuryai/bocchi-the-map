@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -14,6 +15,8 @@ import (
 
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/monitoring"
 )
 
 // ReviewService implements the gRPC ReviewService
@@ -137,16 +140,50 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 		return nil, status.Error(codes.Internal, "failed to create review")
 	}
 
-	// Update spot rating statistics
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
+	// Update spot rating statistics asynchronously with retry logic
+	go func(parentCtx context.Context) {
+		const maxRetries = 3
+		const baseDelay = time.Second
 		
-		if err := s.updateSpotRating(ctx, req.SpotID); err != nil {
-			// Log error but don't fail the main operation
-			log.Printf("failed to update spot rating for spot %s: %v", req.SpotID, err)
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			// Create timeout context for each attempt
+			ctx, cancel := context.WithTimeout(parentCtx, 30*time.Second)
+			
+			err := s.updateSpotRating(ctx, req.SpotID)
+			cancel()
+			
+			if err == nil {
+				// Success - exit retry loop
+				break
+			}
+			
+			// Check if parent context was cancelled
+			if parentCtx.Err() != nil {
+				log.Printf("spot rating update cancelled for spot %s: %v", req.SpotID, parentCtx.Err())
+				return
+			}
+			
+			// Log the error
+			log.Printf("failed to update spot rating for spot %s (attempt %d/%d): %v", req.SpotID, attempt+1, maxRetries, err)
+			
+			// If this was the last attempt, we're done
+			if attempt == maxRetries-1 {
+				log.Printf("exhausted all retry attempts for spot rating update for spot %s", req.SpotID)
+				return
+			}
+			
+			// Exponential backoff with jitter
+			delay := baseDelay * time.Duration(1<<attempt)
+			jitter := time.Duration(rand.Int63n(int64(delay / 2)))
+			select {
+			case <-time.After(delay + jitter):
+				// Continue to next retry
+			case <-parentCtx.Done():
+				log.Printf("spot rating update cancelled during backoff for spot %s: %v", req.SpotID, parentCtx.Err())
+				return
+			}
 		}
-	}()
+	}(ctx)
 
 	// Retrieve the created review to get accurate timestamps
 	dbReview, err := s.queries.GetReviewByID(ctx, reviewID)
@@ -282,6 +319,22 @@ func (s *ReviewService) GetUserReviews(ctx context.Context, req *GetUserReviewsR
 	}, nil
 }
 
+// convertToInt32 safely converts interface{} to int32
+func convertToInt32(val interface{}) int32 {
+	switch v := val.(type) {
+	case int64:
+		return int32(v)
+	case int32:
+		return v
+	case int:
+		return int32(v)
+	case float64:
+		return int32(v)
+	default:
+		return 0
+	}
+}
+
 // parseRatingAspects converts JSON rating aspects to map[string]int32
 func parseRatingAspects(rawData json.RawMessage) map[string]int32 {
 	var ratingAspects map[string]int32
@@ -349,19 +402,19 @@ func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*
 	}
 
 	averageRating := 0.0
-	if stats.AverageRating.Valid {
-		averageRating = stats.AverageRating.Float64
+	if avgRating, ok := stats.AverageRating.(float64); ok {
+		averageRating = avgRating
 	}
 
 	return &ReviewStatistics{
 		AverageRating: averageRating,
 		TotalCount:    int32(stats.ReviewCount),
 		RatingDistribution: map[int32]int32{
-			1: int32(stats.OneStarCount),
-			2: int32(stats.TwoStarCount),
-			3: int32(stats.ThreeStarCount),
-			4: int32(stats.FourStarCount),
-			5: int32(stats.FiveStarCount),
+			1: convertToInt32(stats.OneStarCount),
+			2: convertToInt32(stats.TwoStarCount),
+			3: convertToInt32(stats.ThreeStarCount),
+			4: convertToInt32(stats.FourStarCount),
+			5: convertToInt32(stats.FiveStarCount),
 		},
 	}, nil
 }
@@ -370,13 +423,16 @@ func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*
 func (s *ReviewService) updateSpotRating(ctx context.Context, spotID string) error {
 	stats, err := s.queries.GetSpotRatingStats(ctx, spotID)
 	if err != nil {
-		log.Printf("Failed to get spot rating stats for spot %s: %v", spotID, err)
+		logger.ErrorWithContextAndFields(ctx, "Failed to get spot rating stats", err, map[string]interface{}{
+			"spot_id": spotID,
+		})
+		monitoring.CaptureError(ctx, err)
 		return err
 	}
 
 	averageRating := "0.0"
-	if stats.AverageRating.Valid {
-		averageRating = strconv.FormatFloat(stats.AverageRating.Float64, 'f', 1, 64)
+	if avgRating, ok := stats.AverageRating.(float64); ok {
+		averageRating = strconv.FormatFloat(avgRating, 'f', 1, 64)
 	}
 
 	// Update spot table with new rating statistics
@@ -386,7 +442,10 @@ func (s *ReviewService) updateSpotRating(ctx context.Context, spotID string) err
 		ReviewCount:   int32(stats.ReviewCount),
 	})
 	if err != nil {
-		log.Printf("Failed to update spot rating for spot %s: %v", spotID, err)
+		logger.ErrorWithContextAndFields(ctx, "Failed to update spot rating", err, map[string]interface{}{
+			"spot_id": spotID,
+		})
+		monitoring.CaptureError(ctx, err)
 		return err
 	}
 	return nil
