@@ -1,0 +1,236 @@
+name: BDD Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'api/**'
+      - '.github/workflows/bdd-tests.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'api/**'
+      - '.github/workflows/bdd-tests.yml'
+
+env:
+  GO_VERSION: '1.21'
+  MYSQL_VERSION: '8.0'
+
+jobs:
+  bdd-tests:
+    name: BDD Tests with Ginkgo
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: bocchi_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      working-directory: api
+      run: |
+        go mod download
+        go mod tidy
+
+    - name: Install Ginkgo CLI
+      run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
+
+    - name: Install sqlc
+      run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+    - name: Install protoc
+      uses: arduino/setup-protoc@v2
+      with:
+        version: '3.21.12'
+
+    - name: Install protoc-gen-go
+      run: |
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+    - name: Generate code
+      working-directory: api
+      run: |
+        make proto
+        make sqlc
+
+    - name: Wait for MySQL to be ready
+      run: |
+        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" --silent; do
+          echo 'Waiting for MySQL...'
+          sleep 1
+        done
+
+    - name: Run database migrations
+      working-directory: api
+      env:
+        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+      run: |
+        # Install migrate tool
+        go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+        
+        # Run migrations on test database
+        migrate -path migrations -database "mysql://root:password@tcp(localhost:3306)/bocchi_test" up
+
+    - name: Run BDD Tests
+      working-directory: api
+      env:
+        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+        CGO_ENABLED: 1
+      run: |
+        make test-bdd-coverage
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: bdd-test-results
+        path: |
+          api/coverage.out
+          api/tests/
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: api/coverage.out
+        flags: bdd-tests
+        name: bdd-coverage
+        fail_ci_if_error: false
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: bdd-tests
+    if: github.event_name == 'pull_request'
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: bocchi_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install dependencies
+      working-directory: api
+      run: |
+        go mod download
+        go install github.com/onsi/ginkgo/v2/ginkgo@latest
+        go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+    - name: Install protoc
+      uses: arduino/setup-protoc@v2
+      with:
+        version: '3.21.12'
+
+    - name: Install protoc-gen-go
+      run: |
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+    - name: Generate code
+      working-directory: api
+      run: |
+        make proto
+        make sqlc
+
+    - name: Wait for MySQL to be ready
+      run: |
+        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" --silent; do
+          echo 'Waiting for MySQL...'
+          sleep 1
+        done
+
+    - name: Run database migrations
+      working-directory: api
+      env:
+        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+      run: |
+        go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+        migrate -path migrations -database "mysql://root:password@tcp(localhost:3306)/bocchi_test" up
+
+    - name: Run Integration Tests Only
+      working-directory: api
+      env:
+        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+        CGO_ENABLED: 1
+      run: |
+        ginkgo -r tests/integration/ -v --label-filter="integration"
+
+    - name: Comment PR with test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let comment = '## 🧪 BDD Integration Test Results\n\n';
+          comment += '✅ All integration tests passed!\n\n';
+          comment += 'The following test suites were executed:\n';
+          comment += '- SpotHandler BDD Tests\n';
+          comment += '- AuthHandler BDD Tests\n';
+          comment += '- UserHandler BDD Tests\n\n';
+          comment += '**Test Environment:**\n';
+          comment += `- Go Version: ${{ env.GO_VERSION }}\n`;
+          comment += `- MySQL Version: ${{ env.MYSQL_VERSION }}\n`;
+          comment += '- Framework: Ginkgo v2 with Gomega\n';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
