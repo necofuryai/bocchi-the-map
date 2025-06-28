@@ -238,39 +238,51 @@ async function generateAPIToken(userData: {
 export function clearAPITokens(): void {
   // Token clearing now handled by server-side logout endpoint
   // HttpOnly cookies will be cleared by the server
+  
+  // Clear any client-side auth state if needed
+  // For example, clear localStorage, sessionStorage, or app state
+  
   if (process.env.NODE_ENV === 'development') {
     console.log('Token clearing handled by server-side logout')
   }
 }
 
-// Refresh API token using HttpOnly cookies
-export async function refreshAPIToken(): Promise<boolean> {
-  try {
-    const apiUrl = process.env.API_URL || 'http://localhost:8080'
-    
-    const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    })
-    
-    if (response.ok) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('API token refresh successful')
+// Refresh API token using HttpOnly cookies with retry logic
+export async function refreshAPIToken(maxRetries: number = 3): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const apiUrl = process.env.API_URL || 'http://localhost:8080'
+      
+      const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
+      
+      if (response.ok) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('API token refresh successful')
+        }
+        return true
       }
-      return true
-    } else {
-      // If refresh fails, clear tokens
-      clearAPITokens()
-      return false
+      
+      // Don't retry on 4xx errors (client errors)
+      if (response.status >= 400 && response.status < 500) {
+        break
+      }
+    } catch (error) {
+      if (attempt === maxRetries) {
+        // Final attempt failed
+        break
+      }
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000))
     }
-  } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('Error refreshing API token:', error)
-    }
-    clearAPITokens()
-    return false
   }
+  
+  // All retries failed
+  clearAPITokens()
+  return false
 }
