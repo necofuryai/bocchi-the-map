@@ -54,6 +54,19 @@ export class APIClient {
 
     // Handle 401 Unauthorized - try to refresh token
     if (response.status === 401) {
+      // Prevent infinite refresh loops
+      const isRefreshRequest = endpoint.includes('/refresh')
+      if (isRefreshRequest) {
+        clearAPITokens()
+        return {
+          error: {
+            message: 'Token refresh failed',
+            details: 'Refresh token is invalid or expired',
+          },
+          status: 401,
+        }
+      }
+
       const refreshSuccess = await refreshAPIToken()
       if (refreshSuccess) {
         // Retry the request with refreshed HttpOnly cookies
@@ -206,10 +219,15 @@ export const api = {
 }
 
 // Helper function to check if user is authenticated
-export function isAuthenticated(): boolean {
-  // Authentication is now handled by HttpOnly cookies
-  // This would need to be determined by making an API call or checking session state
-  return true // This should be implemented based on your authentication strategy
+export async function isAuthenticated(): Promise<boolean> {
+  try {
+    // Check authentication by calling a protected endpoint
+    const result = await apiClient.get('/api/v1/users/me')
+    return !result.error
+  } catch (error) {
+    // Any error means not authenticated
+    return false
+  }
 }
 
 // Helper function to handle API errors consistently
