@@ -5,20 +5,32 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 )
+
+// TokenBlacklistQuerier interface for token blacklist operations
+type TokenBlacklistQuerier interface {
+	IsTokenBlacklisted(ctx context.Context, jti string) (int64, error)
+	BlacklistAccessToken(ctx context.Context, arg database.BlacklistAccessTokenParams) error
+	BlacklistRefreshToken(ctx context.Context, arg database.BlacklistRefreshTokenParams) error
+}
 
 // AuthMiddleware validates JWT tokens and extracts user context
 type AuthMiddleware struct {
 	jwtSecret []byte
+	queries   TokenBlacklistQuerier
 }
 
 // NewAuthMiddleware creates a new authentication middleware
-func NewAuthMiddleware(jwtSecret string) *AuthMiddleware {
+func NewAuthMiddleware(jwtSecret string, queries TokenBlacklistQuerier) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtSecret: []byte(jwtSecret),
+		queries:   queries,
 	}
 }
 
@@ -32,21 +44,30 @@ type JWTClaims struct {
 // Middleware returns the HTTP middleware function
 func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract token from Authorization header
+		// Extract token from Authorization header or cookie
+		var tokenString string
+		
+		// First try Authorization header (Bearer token)
 		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Authorization header required", http.StatusUnauthorized)
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		}
+		
+		// If no Bearer token, try cookie
+		if tokenString == "" {
+			if cookie, err := r.Cookie("bocchi_access_token"); err == nil {
+				tokenString = cookie.Value
+			}
+		}
+		
+		// If still no token found, return error
+		if tokenString == "" {
+			http.Error(w, "Authentication required - no valid token found", http.StatusUnauthorized)
 			return
 		}
-
-		// Check Bearer token format
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
-			return
-		}
-
-		tokenString := parts[1]
 
 		// Parse and validate JWT token
 		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
@@ -69,6 +90,20 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Check if token is blacklisted (if blacklist querier is available)
+		if am.queries != nil && claims.ID != "" {
+			ctx := r.Context()
+			isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, claims.ID)
+			if err != nil {
+				http.Error(w, "Authentication service error", http.StatusInternalServerError)
+				return
+			}
+			if isBlacklisted > 0 {
+				http.Error(w, "Token has been revoked", http.StatusUnauthorized)
+				return
+			}
+		}
+
 		// Add user context to request
 		ctx := r.Context()
 		ctx = errors.WithUserID(ctx, claims.UserID)
@@ -82,23 +117,30 @@ func (am *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 // OptionalMiddleware allows requests without authentication but adds user context if present
 func (am *AuthMiddleware) OptionalMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract token from Authorization header
+		// Extract token from Authorization header or cookie
+		var tokenString string
+		
+		// First try Authorization header (Bearer token)
 		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			// No auth header, continue without user context
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		}
+		
+		// If no Bearer token, try cookie
+		if tokenString == "" {
+			if cookie, err := r.Cookie("bocchi_access_token"); err == nil {
+				tokenString = cookie.Value
+			}
+		}
+		
+		// If still no token, continue without user context
+		if tokenString == "" {
 			next.ServeHTTP(w, r)
 			return
 		}
-
-		// Check Bearer token format
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			// Invalid format, continue without user context
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		tokenString := parts[1]
 
 		// Parse and validate JWT token
 		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
@@ -123,6 +165,17 @@ func (am *AuthMiddleware) OptionalMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Check if token is blacklisted (if blacklist querier is available)
+		if am.queries != nil && claims.ID != "" {
+			ctx := r.Context()
+			isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, claims.ID)
+			if err != nil || isBlacklisted > 0 {
+				// Token is blacklisted or error occurred, continue without user context
+				next.ServeHTTP(w, r)
+				return
+			}
+		}
+
 		// Add user context to request
 		ctx := r.Context()
 		ctx = errors.WithUserID(ctx, claims.UserID)
@@ -131,4 +184,128 @@ func (am *AuthMiddleware) OptionalMiddleware(next http.Handler) http.Handler {
 		// Call next handler with user context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// GenerateToken generates a JWT token for authenticated users
+func (am *AuthMiddleware) GenerateToken(userID, email string) (string, error) {
+	// Generate unique JWT ID for token tracking and revocation
+	jti := uuid.New().String()
+	
+	// Create token claims with user information
+	claims := &JWTClaims{
+		UserID: userID,
+		Email:  email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        jti,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)), // 24 hour expiration
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "bocchi-the-map-api",
+			Subject:   userID,
+		},
+	}
+
+	// Create token with claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Sign token with secret
+	tokenString, err := token.SignedString(am.jwtSecret)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign JWT token: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+// GenerateRefreshToken generates a longer-lived refresh token for token renewal
+func (am *AuthMiddleware) GenerateRefreshToken(userID, email string) (string, error) {
+	// Generate unique JWT ID for refresh token tracking and revocation
+	jti := uuid.New().String()
+	
+	// Create refresh token claims with extended expiration
+	claims := &JWTClaims{
+		UserID: userID,
+		Email:  email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        jti,
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)), // 7 days expiration
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "bocchi-the-map-api",
+			Subject:   userID,
+		},
+	}
+
+	// Create token with claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Sign token with secret
+	tokenString, err := token.SignedString(am.jwtSecret)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign refresh JWT token: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+// BlacklistToken adds a token to the blacklist for revocation
+func (am *AuthMiddleware) BlacklistToken(ctx context.Context, tokenString string, reason string) error {
+	if am.queries == nil {
+		return fmt.Errorf("token blacklist not configured")
+	}
+
+	// Parse token to extract claims
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return am.jwtSecret, nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	claims, ok := token.Claims.(*JWTClaims)
+	if !ok || claims.ID == "" {
+		return fmt.Errorf("invalid token claims or missing JWT ID")
+	}
+
+	// Determine token type and add to blacklist
+	expiresAt := claims.ExpiresAt.Time
+	if expiresAt.Sub(time.Now()) > 25*time.Hour {
+		// Likely a refresh token (7 days)
+		return am.queries.BlacklistRefreshToken(ctx, database.BlacklistRefreshTokenParams{
+			Jti:       claims.ID,
+			UserID:    claims.UserID,
+			ExpiresAt: expiresAt,
+		})
+	} else {
+		// Likely an access token (24 hours)
+		return am.queries.BlacklistAccessToken(ctx, database.BlacklistAccessTokenParams{
+			Jti:       claims.ID,
+			UserID:    claims.UserID,
+			ExpiresAt: expiresAt,
+		})
+	}
+}
+
+// ValidateToken validates a JWT token and returns the claims
+func (am *AuthMiddleware) ValidateToken(tokenString string) (*JWTClaims, error) {
+	// Parse and validate JWT token
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		// Verify signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return am.jwtSecret, nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JWT token: %w", err)
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(*JWTClaims)
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	return claims, nil
 }

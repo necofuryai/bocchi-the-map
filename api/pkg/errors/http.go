@@ -2,6 +2,7 @@ package errors
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -15,13 +16,21 @@ type HTTPErrorDetail struct {
 	Fields   map[string]interface{} `json:"fields,omitempty"`
 }
 
+// Error implements the error interface for HTTPErrorDetail
+func (h *HTTPErrorDetail) Error() string {
+	if h.Resource != "" {
+		return fmt.Sprintf("%s error for resource %s", h.Type, h.Resource)
+	}
+	return fmt.Sprintf("%s error", h.Type)
+}
+
 // ToHumaError converts a DomainError to a Huma error with proper status code and details
 func ToHumaError(ctx context.Context, err error, operation string) error {
 	// Log the error with context
 	LogError(ctx, err, operation)
 
 	var domainErr *DomainError
-	if !As(err, &domainErr) {
+	if !stderrors.As(err, &domainErr) {
 		// Handle non-domain errors
 		return huma.Error500InternalServerError("internal server error")
 	}
@@ -76,7 +85,7 @@ func HandleHTTPError(ctx context.Context, err error, operation, fallbackMessage 
 
 	// If it's already a Huma error, return as-is
 	if humaErr, ok := err.(huma.StatusError); ok {
-		LogErrorWithMessage(ctx, err, fmt.Sprintf("%s: %s", operation, humaErr.GetMessage()))
+		LogErrorWithMessage(ctx, err, fmt.Sprintf("%s: %s", operation, humaErr.Error()))
 		return err
 	}
 

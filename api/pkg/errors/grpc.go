@@ -3,6 +3,7 @@ package errors
 import (
 	"context"
 	"database/sql"
+	stderrors "errors"
 	"fmt"
 
 	"google.golang.org/grpc/codes"
@@ -15,7 +16,7 @@ func ToGRPCError(ctx context.Context, err error, operation string) error {
 	LogError(ctx, err, operation)
 
 	var domainErr *DomainError
-	if !As(err, &domainErr) {
+	if !stderrors.As(err, &domainErr) {
 		// Handle common standard errors
 		if err == sql.ErrNoRows {
 			return status.Error(codes.NotFound, "resource not found")
@@ -113,7 +114,7 @@ func HandleBackgroundError(ctx context.Context, err error, operation string) {
 	bgCtx := WithOperation(ctx, fmt.Sprintf("background_%s", operation))
 	
 	var domainErr *DomainError
-	if !As(err, &domainErr) {
+	if !stderrors.As(err, &domainErr) {
 		domainErr = Wrap(err, ErrTypeInternal, fmt.Sprintf("background operation failed: %s: %s", operation, err.Error()))
 	}
 

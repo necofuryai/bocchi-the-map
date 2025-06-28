@@ -23,8 +23,9 @@ type User struct {
 type AuthProvider string
 
 const (
-	AuthProviderGoogle AuthProvider = "google"
-	AuthProviderX      AuthProvider = "x"
+	AuthProviderUnspecified AuthProvider = ""
+	AuthProviderGoogle      AuthProvider = "google"
+	AuthProviderX           AuthProvider = "x"
 )
 
 // IsValidAuthProvider checks if the given provider is valid

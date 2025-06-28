@@ -3,7 +3,6 @@ package converters
 import (
 	"encoding/json"
 	"database/sql"
-	"time"
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
@@ -55,9 +54,15 @@ func (c *UserConverter) ConvertDatabaseToEntity(dbUser database.User) (*entities
 		avatarURL = dbUser.AvatarUrl.String
 	}
 
+	// Handle nullable anonymous ID
+	var anonymousID string
+	if dbUser.AnonymousID.Valid {
+		anonymousID = dbUser.AnonymousID.String
+	}
+
 	return &entities.User{
 		ID:             dbUser.ID,
-		AnonymousID:    dbUser.AnonymousID,
+		AnonymousID:    anonymousID,
 		Email:          dbUser.Email,
 		DisplayName:    dbUser.DisplayName,
 		AvatarURL:      avatarURL,
@@ -110,7 +115,6 @@ func (c *UserConverter) ConvertEntityToDatabase(user *entities.User) (database.C
 
 	return database.CreateUserParams{
 		ID:             user.ID,
-		AnonymousID:    user.AnonymousID,
 		Email:          user.Email,
 		DisplayName:    user.DisplayName,
 		AvatarUrl:      avatarURL,

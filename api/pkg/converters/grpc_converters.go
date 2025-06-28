@@ -2,7 +2,6 @@ package converters
 
 import (
 	"encoding/json"
-	"database/sql"
 	"time"
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
@@ -170,9 +169,15 @@ func (c *GRPCConverter) ConvertDatabaseToGRPC(dbUser database.User) (*GRPCUser, 
 		avatarURL = dbUser.AvatarUrl.String
 	}
 
+	// Handle nullable anonymous ID
+	var anonymousID string
+	if dbUser.AnonymousID.Valid {
+		anonymousID = dbUser.AnonymousID.String
+	}
+
 	return &GRPCUser{
 		ID:             dbUser.ID,
-		AnonymousID:    dbUser.AnonymousID,
+		AnonymousID:    anonymousID,
 		Email:          dbUser.Email,
 		DisplayName:    dbUser.DisplayName,
 		AvatarURL:      avatarURL,

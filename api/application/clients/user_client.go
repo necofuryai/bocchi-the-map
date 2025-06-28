@@ -9,12 +9,14 @@ import (
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
 	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/converters"
 )
 
 // UserClient wraps gRPC client calls for user operations
 type UserClient struct {
-	service *grpcSvc.UserService
-	conn    *grpc.ClientConn
+	service   *grpcSvc.UserService
+	conn      *grpc.ClientConn
+	converter *converters.UserConverter
 }
 
 // NewUserClient creates a new user client
@@ -23,7 +25,8 @@ func NewUserClient(serviceAddr string, db *sql.DB) (*UserClient, error) {
 	// In a true microservice setup, this would connect to remote gRPC service
 	if serviceAddr == "internal" {
 		return &UserClient{
-			service: grpcSvc.NewUserService(db),
+			service:   grpcSvc.NewUserService(db),
+			converter: converters.NewUserConverter(),
 		}, nil
 	}
 
@@ -204,6 +207,25 @@ func (c *UserClient) UpdateUserPreferencesFromGRPC(ctx context.Context, prefs en
 	// Call gRPC service method
 	resp, err := c.service.UpdateUserPreferences(ctx, &grpcSvc.UpdateUserPreferencesRequest{
 		Preferences: grpcPrefs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert gRPC response to domain entity
+	return c.convertGRPCUserToEntity(resp.User), nil
+}
+
+// GetConverter returns the user converter instance
+func (c *UserClient) GetConverter() *converters.UserConverter {
+	return c.converter
+}
+
+// GetUserByID retrieves a user by ID
+func (c *UserClient) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
+	// Call gRPC service method
+	resp, err := c.service.GetUserByID(ctx, &grpcSvc.GetUserByIDRequest{
+		ID: userID,
 	})
 	if err != nil {
 		return nil, err
