@@ -112,8 +112,7 @@ func (c *Config) validateJWTSecret() error {
 	}
 	
 	// Relaxed validation for development environment
-	environment := os.Getenv("ENVIRONMENT")
-	if environment == "development" || environment == "dev" {
+	if c.App.Environment == "development" || c.App.Environment == "dev" {
 		return nil
 	}
 	

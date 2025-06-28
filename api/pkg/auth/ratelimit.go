@@ -129,11 +129,12 @@ func (rl *RateLimiter) RateLimitMiddleware(next http.Handler) http.Handler {
 
 // Trusted proxy IP ranges for validating X-Forwarded-For header
 var trustedProxies = []string{
-	"127.0.0.1/32",     // localhost
-	"10.0.0.0/8",       // private network
-	"172.16.0.0/12",    // private network
-	"192.168.0.0/16",   // private network
-	"::1/128",          // IPv6 localhost
+	"130.211.0.0/22",   // Google Cloud Load Balancer
+	"35.191.0.0/16",    // Google Cloud Load Balancer
+	"34.96.0.0/14",     // Google Cloud Run
+	"169.254.169.254/32", // Google Cloud metadata server
+	"127.0.0.1/32",     // localhost (for local development)
+	"::1/128",          // IPv6 localhost (for local development)
 }
 
 // isFromTrustedProxy checks if the request comes from a trusted proxy
