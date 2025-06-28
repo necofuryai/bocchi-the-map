@@ -79,13 +79,19 @@ func (rl *RateLimiter) GetWindow() int {
 
 // cleanup removes old entries to prevent memory leaks
 func (rl *RateLimiter) cleanup() {
-	ticker := time.NewTicker(time.Minute)
+	// Use the rate-limit window (min 1m) as cleanup interval
+	cleanupInterval := rl.window
+	if cleanupInterval < time.Minute {
+		cleanupInterval = time.Minute
+	}
+	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 	
 	for range ticker.C {
 		rl.mutex.Lock()
 		now := time.Now()
-		cutoff := now.Add(-rl.window * 2) // Keep extra buffer
+		// Reduce buffer from 2×window to window + 25%
+		cutoff := now.Add(-rl.window - (rl.window / 4)) // 25% buffer
 		
 		for ip, requests := range rl.requests {
 			var validRequests []time.Time
@@ -175,7 +181,7 @@ func getClientIP(r *http.Request) string {
 			if len(ips) > 0 {
 				// Clean up whitespace and return the first IP
 				clientIP := strings.TrimSpace(ips[0])
-				if net.ParseIP(clientIP) != nil {
+				if parsedIP := net.ParseIP(clientIP); parsedIP != nil && !parsedIP.IsLoopback() && !parsedIP.IsPrivate() {
 					return clientIP
 				}
 			}
@@ -183,7 +189,7 @@ func getClientIP(r *http.Request) string {
 		
 		// Check X-Real-IP header as fallback for trusted proxies
 		if xri := r.Header.Get("X-Real-IP"); xri != "" {
-			if net.ParseIP(xri) != nil {
+			if parsedIP := net.ParseIP(xri); parsedIP != nil && !parsedIP.IsLoopback() && !parsedIP.IsPrivate() {
 				return xri
 			}
 		}

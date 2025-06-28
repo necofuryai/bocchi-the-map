@@ -317,15 +317,14 @@ func (h *AuthHandler) Logout(ctx context.Context, input *LogoutInput) (*LogoutOu
 	// Blacklist access token if present
 	if input.AccessToken != "" {
 		if err := h.authMiddleware.BlacklistToken(ctx, input.AccessToken, "logout"); err != nil {
-			// Log error but don't fail logout
-			// In production, this should be logged for monitoring
+			errors.LogError(ctx, err, "blacklist_access_token_on_logout")
 		}
 	}
 	
 	// Blacklist refresh token if present  
 	if input.RefreshToken != "" {
 		if err := h.authMiddleware.BlacklistToken(ctx, input.RefreshToken, "logout"); err != nil {
-			// Log error but don't fail logout
+			errors.LogError(ctx, err, "blacklist_refresh_token_on_logout")
 		}
 	}
 

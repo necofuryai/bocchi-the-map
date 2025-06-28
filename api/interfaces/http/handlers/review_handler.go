@@ -20,6 +20,9 @@ type ReviewHandler struct {
 
 // NewReviewHandler creates a new review handler
 func NewReviewHandler(reviewClient *clients.ReviewClient) *ReviewHandler {
+	if reviewClient == nil {
+		panic("reviewClient cannot be nil")
+	}
 	return &ReviewHandler{
 		reviewClient: reviewClient,
 	}
