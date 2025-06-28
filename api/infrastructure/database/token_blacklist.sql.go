@@ -70,6 +70,7 @@ func (q *Queries) BlacklistRefreshToken(ctx context.Context, arg BlacklistRefres
 const cleanupExpiredTokens = `-- name: CleanupExpiredTokens :exec
 DELETE FROM token_blacklist 
 WHERE expires_at < NOW() - INTERVAL 24 HOUR
+LIMIT 1000
 `
 
 func (q *Queries) CleanupExpiredTokens(ctx context.Context) error {
@@ -78,13 +79,13 @@ func (q *Queries) CleanupExpiredTokens(ctx context.Context) error {
 }
 
 const isTokenBlacklisted = `-- name: IsTokenBlacklisted :one
-SELECT COUNT(*) FROM token_blacklist 
+SELECT COUNT(*) > 0 AS is_blacklisted FROM token_blacklist 
 WHERE jti = ? AND expires_at > NOW()
 `
 
-func (q *Queries) IsTokenBlacklisted(ctx context.Context, jti string) (int64, error) {
+func (q *Queries) IsTokenBlacklisted(ctx context.Context, jti string) (bool, error) {
 	row := q.db.QueryRowContext(ctx, isTokenBlacklisted, jti)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+	var is_blacklisted bool
+	err := row.Scan(&is_blacklisted)
+	return is_blacklisted, err
 }

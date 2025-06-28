@@ -98,7 +98,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// validateJWTSecret validates the JWT secret with strict security requirements
+// validateJWTSecret validates the JWT secret with environment-specific requirements
 func (c *Config) validateJWTSecret() error {
 	secret := c.Auth.JWTSecret
 	
@@ -111,6 +111,13 @@ func (c *Config) validateJWTSecret() error {
 		return errors.New("JWT_SECRET must be at least 32 characters long")
 	}
 	
+	// Relaxed validation for development environment
+	environment := os.Getenv("ENVIRONMENT")
+	if environment == "development" || environment == "dev" {
+		return nil
+	}
+	
+	// Strict validation for production and other environments
 	// Check for lowercase letters
 	hasLower, _ := regexp.MatchString(`[a-z]`, secret)
 	if !hasLower {

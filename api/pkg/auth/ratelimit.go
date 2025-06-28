@@ -1,7 +1,10 @@
 package auth
 
 import (
+	"fmt"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -60,6 +63,20 @@ func (rl *RateLimiter) Allow(clientIP string) bool {
 	return true
 }
 
+// GetLimit returns the current rate limit value
+func (rl *RateLimiter) GetLimit() int {
+	rl.mutex.RLock()
+	defer rl.mutex.RUnlock()
+	return rl.limit
+}
+
+// GetWindow returns the current rate limit window duration in seconds
+func (rl *RateLimiter) GetWindow() int {
+	rl.mutex.RLock()
+	defer rl.mutex.RUnlock()
+	return int(rl.window.Seconds())
+}
+
 // cleanup removes old entries to prevent memory leaks
 func (rl *RateLimiter) cleanup() {
 	ticker := time.NewTicker(time.Minute)
@@ -97,9 +114,9 @@ func (rl *RateLimiter) RateLimitMiddleware(next http.Handler) http.Handler {
 		// Check rate limit
 		if !rl.Allow(clientIP) {
 			// Set rate limit headers
-			w.Header().Set("X-RateLimit-Limit", "5")
-			w.Header().Set("X-RateLimit-Window", "300") // 5 minutes in seconds
-			w.Header().Set("Retry-After", "300")
+			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", rl.limit))
+			w.Header().Set("X-RateLimit-Window", fmt.Sprintf("%.0f", rl.window.Seconds()))
+			w.Header().Set("Retry-After", fmt.Sprintf("%.0f", rl.window.Seconds()))
 			
 			http.Error(w, "Too many authentication attempts. Please try again later.", http.StatusTooManyRequests)
 			return
@@ -110,21 +127,73 @@ func (rl *RateLimiter) RateLimitMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// getClientIP extracts the real client IP from the request
-func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header first (for load balancers/proxies)
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		// X-Forwarded-For can be a comma-separated list, take the first one
-		if len(xff) > 0 {
-			return xff
+// Trusted proxy IP ranges for validating X-Forwarded-For header
+var trustedProxies = []string{
+	"127.0.0.1/32",     // localhost
+	"10.0.0.0/8",       // private network
+	"172.16.0.0/12",    // private network
+	"192.168.0.0/16",   // private network
+	"::1/128",          // IPv6 localhost
+}
+
+// isFromTrustedProxy checks if the request comes from a trusted proxy
+func isFromTrustedProxy(remoteAddr string) bool {
+	// Extract IP from remoteAddr (format is typically "IP:port")
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		// If no port, use the address as is
+		host = remoteAddr
+	}
+	
+	clientIP := net.ParseIP(host)
+	if clientIP == nil {
+		return false
+	}
+	
+	// Check against trusted proxy ranges
+	for _, cidr := range trustedProxies {
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			continue
+		}
+		if network.Contains(clientIP) {
+			return true
 		}
 	}
 	
-	// Check X-Real-IP header (for reverse proxies)
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
+	return false
+}
+
+// getClientIP extracts the real client IP from the request with security validation
+func getClientIP(r *http.Request) string {
+	// Only trust X-Forwarded-For if request comes from a trusted proxy
+	if isFromTrustedProxy(r.RemoteAddr) {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			// X-Forwarded-For can be a comma-separated list, take the first one
+			ips := strings.Split(xff, ",")
+			if len(ips) > 0 {
+				// Clean up whitespace and return the first IP
+				clientIP := strings.TrimSpace(ips[0])
+				if net.ParseIP(clientIP) != nil {
+					return clientIP
+				}
+			}
+		}
+		
+		// Check X-Real-IP header as fallback for trusted proxies
+		if xri := r.Header.Get("X-Real-IP"); xri != "" {
+			if net.ParseIP(xri) != nil {
+				return xri
+			}
+		}
 	}
 	
-	// Fall back to RemoteAddr
-	return r.RemoteAddr
+	// Extract IP from RemoteAddr (format is typically "IP:port")
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		// If no port, use the address as is
+		return r.RemoteAddr
+	}
+	
+	return host
 }

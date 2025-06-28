@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -111,11 +112,9 @@ func (h *AuthHandler) RegisterRoutes(api huma.API) {
 	}, h.Logout)
 }
 
-// RegisterRoutesWithRateLimit registers authentication routes with rate limiting protection
-func (h *AuthHandler) RegisterRoutesWithRateLimit(api huma.API, rateLimiter *auth.RateLimiter) {
-	// Create Huma-compatible rate limit middleware
-	var rateLimitHumaMiddleware func(huma.Context, func(huma.Context))
-	rateLimitHumaMiddleware = func(ctx huma.Context, next func(huma.Context)) {
+// CreateHumaRateLimitMiddleware creates a reusable Huma-compatible rate limit middleware
+func CreateHumaRateLimitMiddleware(rateLimiter *auth.RateLimiter) func(huma.Context, func(huma.Context)) {
+	return func(ctx huma.Context, next func(huma.Context)) {
 		// Get client IP from request
 		clientIP := ctx.RemoteAddr()
 		if xff := ctx.Header("X-Forwarded-For"); xff != "" {
@@ -127,9 +126,9 @@ func (h *AuthHandler) RegisterRoutesWithRateLimit(api huma.API, rateLimiter *aut
 		// Check rate limit
 		if !rateLimiter.Allow(clientIP) {
 			// Set rate limit headers
-			ctx.SetHeader("X-RateLimit-Limit", "5")
-			ctx.SetHeader("X-RateLimit-Window", "300")
-			ctx.SetHeader("Retry-After", "300")
+			ctx.SetHeader("X-RateLimit-Limit", strconv.Itoa(rateLimiter.GetLimit()))
+			ctx.SetHeader("X-RateLimit-Window", strconv.Itoa(rateLimiter.GetWindow()))
+			ctx.SetHeader("Retry-After", strconv.Itoa(rateLimiter.GetWindow()))
 			
 			// Return rate limit error
 			ctx.SetStatus(http.StatusTooManyRequests)
@@ -139,6 +138,12 @@ func (h *AuthHandler) RegisterRoutesWithRateLimit(api huma.API, rateLimiter *aut
 		// Continue to next middleware/handler
 		next(ctx)
 	}
+}
+
+// RegisterRoutesWithRateLimit registers authentication routes with rate limiting protection
+func (h *AuthHandler) RegisterRoutesWithRateLimit(api huma.API, rateLimiter *auth.RateLimiter) {
+	// Create Huma-compatible rate limit middleware
+	rateLimitHumaMiddleware := CreateHumaRateLimitMiddleware(rateLimiter)
 
 	// Token generation endpoint with rate limiting
 	huma.Register(api, huma.Operation{
@@ -190,7 +195,6 @@ func (h *AuthHandler) GenerateToken(ctx context.Context, input *GenerateTokenInp
 	}
 
 	// Rate limiting protection - prevent token generation abuse
-	// TODO: Implement rate limiting middleware for production use
 
 	// Convert provider string to domain enum for user lookup
 	userConverter := h.userClient.GetConverter()
