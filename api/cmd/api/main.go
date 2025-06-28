@@ -101,14 +101,12 @@ func main() {
 			logger.Fatal("Failed to create user client", err)
 		}
 
-		// TODO: Review client creation is temporarily disabled due to compilation errors.
-		// Re-enable once the review service implementation is fixed.
-		// reviewClient, err := clients.NewReviewClient("internal", db)
-		// if err != nil {
-		// 	spotClient.Close()
-		// 	userClient.Close()
-		// 	logger.Fatal("Failed to create review client", err)
-		// }
+		reviewClient, err := clients.NewReviewClient("internal", db)
+		if err != nil {
+			spotClient.Close()
+			userClient.Close()
+			logger.Fatal("Failed to create review client", err)
+		}
 
 		// Ensure proper cleanup on shutdown
 		hooks.OnStop(func() {
@@ -120,7 +118,7 @@ func main() {
 			// Close gRPC clients
 			spotClient.Close()
 			userClient.Close()
-			// reviewClient.Close()
+			reviewClient.Close()
 			
 			// Close database connection
 			logger.Info("Closing database connection")
@@ -167,7 +165,7 @@ func main() {
 		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", cfg.App.Version))
 
 		// Register routes with gRPC clients and database queries
-		registerRoutes(api, spotClient, userClient, nil, queries, cfg, authMiddleware, rateLimiter)
+		registerRoutes(api, spotClient, userClient, reviewClient, queries, cfg, authMiddleware, rateLimiter)
 
 		// Start gRPC server in a goroutine
 		errChan := make(chan error, 1)
@@ -268,8 +266,8 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 	// Spot routes
 	registerSpotRoutes(api, spotClient)
 
-	// Review routes (temporarily disabled due to compile issues)
-	// registerReviewRoutes(api, reviewClient)
+	// Review routes
+	registerReviewRoutes(api, reviewClient)
 
 	// User routes
 	registerUserRoutes(api, userClient, queries, authMiddleware)

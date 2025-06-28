@@ -71,7 +71,7 @@ func (c *UserClient) GetUserByAuthProvider(ctx context.Context, authProvider ent
 	}
 
 	// Convert gRPC response to domain entity
-	return c.convertGRPCUserToEntity(resp.User), nil
+	return c.convertGRPCUserToEntity(resp.User)
 }
 
 // CreateUser creates a new user
@@ -92,7 +92,7 @@ func (c *UserClient) CreateUser(ctx context.Context, user *entities.User) (*enti
 	}
 
 	// Convert gRPC response to domain entity
-	return c.convertGRPCUserToEntity(resp.User), nil
+	return c.convertGRPCUserToEntity(resp.User)
 }
 
 // UpdateUser updates an existing user
@@ -113,19 +113,19 @@ func (c *UserClient) UpdateUser(ctx context.Context, user *entities.User) (*enti
 	}
 
 	// Convert gRPC response to domain entity
-	return c.convertGRPCUserToEntity(resp.User), nil
+	return c.convertGRPCUserToEntity(resp.User)
 }
 
 // convertGRPCUserToEntity converts gRPC User struct to domain entity
-func (c *UserClient) convertGRPCUserToEntity(grpcUser *grpcSvc.User) *entities.User {
+func (c *UserClient) convertGRPCUserToEntity(grpcUser *grpcSvc.User) (*entities.User, error) {
 	if grpcUser == nil {
-		return nil
+		return nil, nil
 	}
 
 	// Convert gRPC auth provider to domain enum using converter
 	authProvider, err := c.grpcConverter.ConvertGRPCAuthProviderToEntity(grpcUser.AuthProvider)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	// Convert gRPC preferences to domain preferences using converter
@@ -141,7 +141,7 @@ func (c *UserClient) convertGRPCUserToEntity(grpcUser *grpcSvc.User) *entities.U
 		Preferences:    prefs,
 		CreatedAt:      grpcUser.CreatedAt,
 		UpdatedAt:      grpcUser.UpdatedAt,
-	}
+	}, nil
 }
 
 // GetCurrentUserFromGRPC gets the current user via gRPC service  
@@ -153,7 +153,7 @@ func (c *UserClient) GetCurrentUserFromGRPC(ctx context.Context) (*entities.User
 	}
 
 	// Convert gRPC response to domain entity
-	return c.convertGRPCUserToEntity(resp.User), nil
+	return c.convertGRPCUserToEntity(resp.User)
 }
 
 // UpdateUserPreferencesFromGRPC updates user preferences via gRPC service
@@ -170,7 +170,7 @@ func (c *UserClient) UpdateUserPreferencesFromGRPC(ctx context.Context, prefs en
 	}
 
 	// Convert gRPC response to domain entity
-	return c.convertGRPCUserToEntity(resp.User), nil
+	return c.convertGRPCUserToEntity(resp.User)
 }
 
 // GetConverter returns the user converter instance
@@ -189,5 +189,5 @@ func (c *UserClient) GetUserByID(ctx context.Context, userID string) (*entities.
 	}
 
 	// Convert gRPC response to domain entity
-	return c.convertGRPCUserToEntity(resp.User), nil
+	return c.convertGRPCUserToEntity(resp.User)
 }
