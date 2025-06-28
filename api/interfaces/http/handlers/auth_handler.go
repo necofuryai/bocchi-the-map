@@ -113,6 +113,7 @@ func (h *AuthHandler) RegisterRoutes(api huma.API) {
 }
 
 // CreateHumaRateLimitMiddleware creates a reusable Huma-compatible rate limit middleware
+// Updated for Huma v2 compatibility - middleware should handle errors by panicking with status errors
 func CreateHumaRateLimitMiddleware(rateLimiter *auth.RateLimiter) func(huma.Context, func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
 		// Get client IP from request
@@ -130,9 +131,8 @@ func CreateHumaRateLimitMiddleware(rateLimiter *auth.RateLimiter) func(huma.Cont
 			ctx.SetHeader("X-RateLimit-Window", strconv.Itoa(rateLimiter.GetWindow()))
 			ctx.SetHeader("Retry-After", strconv.Itoa(rateLimiter.GetWindow()))
 			
-			// Return rate limit error
-			ctx.SetStatus(http.StatusTooManyRequests)
-			return
+			// In Huma v2, middleware handles errors by panicking with proper error types
+			panic(huma.Error429TooManyRequests("Rate limit exceeded"))
 		}
 		
 		// Continue to next middleware/handler

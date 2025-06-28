@@ -183,11 +183,14 @@ func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserI
 	// Add operation context for error tracking
 	ctx = errors.WithOperation(ctx, "get_current_user_http")
 
-	// Extract authenticated user ID from context
-	userID := errors.GetUserID(ctx)
-	if userID == "" {
+	// Extract authenticated user ID from Huma v2 context
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
 		return nil, huma.Error401Unauthorized("authentication required to get current user")
 	}
+
+	// Add user ID to context for gRPC service access
+	ctx = errors.WithUserID(ctx, userID)
 
 	// Get user via gRPC client with authenticated user ID
 	user, err := h.userClient.GetCurrentUserFromGRPC(ctx)
@@ -216,11 +219,14 @@ func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePrefer
 	// Add operation context for error tracking
 	ctx = errors.WithOperation(ctx, "update_user_preferences_http")
 
-	// Extract authenticated user ID from context
-	userID := errors.GetUserID(ctx)
-	if userID == "" {
+	// Extract authenticated user ID from Huma v2 context
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
 		return nil, huma.Error401Unauthorized("authentication required to update preferences")
 	}
+
+	// Add user ID to context for gRPC service access
+	ctx = errors.WithUserID(ctx, userID)
 
 	// Convert HTTP preferences to domain preferences using standardized converter
 	prefs := h.userConverter.ConvertHTTPPreferencesToEntity(input.Body.Preferences)
@@ -247,50 +253,28 @@ func (h *UserHandler) UpdatePreferences(ctx context.Context, input *UpdatePrefer
 }
 
 // CreateHumaAuthMiddleware creates a reusable Huma-compatible authentication middleware
-// NOTE: This implementation uses deprecated Huma v1 methods (SetStatus, SetBody, SetContext)
-// that don't exist in Huma v2. This needs to be updated to use proper Huma v2 middleware patterns.
-// For now, this is commented out to prevent compilation errors.
+// Updated for Huma v2 compatibility with proper context handling
 func CreateHumaAuthMiddleware(authMiddleware *auth.AuthMiddleware) func(huma.Context, func(huma.Context)) {
 	return func(ctx huma.Context, next func(huma.Context)) {
-		// TODO: Update this to use Huma v2 middleware API
-		// The following methods don't exist in Huma v2:
-		// - ctx.SetStatus()
-		// - ctx.SetBody()  
-		// - ctx.SetContext()
-		//
-		// Huma v2 middleware should handle errors differently.
-		// Please refer to Huma v2 documentation for proper implementation.
-		
 		// Extract JWT token from request and validate it
 		claims, err := authMiddleware.ExtractAndValidateTokenFromContext(ctx)
 		if err != nil {
-			// FIXME: Replace with proper Huma v2 error handling
-			/*
+			// In Huma v2, middleware handles errors by panicking with proper error types
 			if strings.Contains(err.Error(), "no token found") {
-				ctx.SetStatus(http.StatusUnauthorized)
-				ctx.SetBody(map[string]string{"error": "Authentication required - no valid token found"})
+				panic(huma.Error401Unauthorized("Authentication required - no valid token found"))
 			} else if strings.Contains(err.Error(), "authentication service error") {
-				ctx.SetStatus(http.StatusInternalServerError)
-				ctx.SetBody(map[string]string{"error": "Authentication service error"})
+				panic(huma.Error500InternalServerError("Authentication service error"))
 			} else {
-				ctx.SetStatus(http.StatusUnauthorized)
-				ctx.SetBody(map[string]string{"error": "Invalid token"})
+				panic(huma.Error401Unauthorized("Invalid token"))
 			}
-			*/
-			return
 		}
 
-		// FIXME: Replace with proper Huma v2 context handling
-		/*
-		// Add user context to request
-		requestCtx := ctx.Context()
-		requestCtx = errors.WithUserID(requestCtx, claims.UserID)
-		requestCtx = errors.WithRequestID(requestCtx, ctx.Header("X-Request-ID"))
-		ctx.SetContext(requestCtx)
-		*/
-
-		// Continue to next middleware/handler
-		next(ctx)
+		// Add user context using Huma v2 proper context handling
+		authorizedCtx := huma.WithValue(ctx, "user_id", claims.UserID)
+		authorizedCtx = huma.WithValue(authorizedCtx, "request_id", ctx.Header("X-Request-ID"))
+		
+		// Continue to next middleware/handler with the modified context
+		next(authorizedCtx)
 	}
 }
 

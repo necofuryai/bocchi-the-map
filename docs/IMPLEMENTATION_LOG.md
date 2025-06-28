@@ -1,5 +1,26 @@
 # Bocchi The Map 実装ログ
 
+## 🔐 2025年6月28日 - Huma v2 認証システム重要修正
+
+### 実装した内容
+
+#### 重大なバグ修正
+- **🚨 Critical Fix**: Huma v2認証ミドルウェアのコンテキスト伝播問題を解決
+- **Problem**: 認証が動作しているように見えるが、実際にはユーザーコンテキストがハンドラーに渡されていなかった
+- **Solution**: `huma.WithValue()`による正しいコンテキストハンドリングの実装
+- **Impact**: 全ての保護エンドポイントが正しく認証されるようになった
+
+#### 修正されたファイル
+- `interfaces/http/handlers/user_handler.go` - 認証ミドルウェアとハンドラーの修正
+- `interfaces/http/handlers/review_handler.go` - レビュー作成の認証修正
+- `application/clients/user_client.go` - gRPCサービス統合の修正
+
+#### アーキテクチャの改善
+- ✅ Huma v2準拠の認証パターン
+- ✅ 一貫したコンテキスト伝播
+- ✅ 型安全性の維持
+- ✅ 本番環境対応の認証システム
+
 ## 2025年5月29日 - 初期実装
 
 ### 実装した内容

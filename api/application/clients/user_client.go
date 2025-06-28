@@ -10,6 +10,7 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
 	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/converters"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 )
 
 // UserClient wraps gRPC client calls for user operations
@@ -158,12 +159,14 @@ func (c *UserClient) GetCurrentUserFromGRPC(ctx context.Context) (*entities.User
 
 // UpdateUserPreferencesFromGRPC updates user preferences via gRPC service
 func (c *UserClient) UpdateUserPreferencesFromGRPC(ctx context.Context, userID string, prefs entities.UserPreferences) (*entities.User, error) {
+	// Add user ID to context for gRPC service to access
+	ctx = errors.WithUserID(ctx, userID)
+	
 	// Convert domain preferences to gRPC preferences using converter
 	grpcPrefs := c.grpcConverter.ConvertEntityPreferencesToGRPC(prefs)
 
-	// Call gRPC service method
+	// Call gRPC service method (UserID is passed via context)
 	resp, err := c.service.UpdateUserPreferences(ctx, &grpcSvc.UpdateUserPreferencesRequest{
-		UserID:      userID,
 		Preferences: grpcPrefs,
 	})
 	if err != nil {
