@@ -21,9 +21,10 @@ SET average_rating = ?, review_count = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
 
 -- name: ListSpotsByLocation :many
+WITH earth_radius AS (SELECT 6371 AS radius_km)
 SELECT * FROM (
     SELECT *, 
-           (6371 * acos(
+           ((SELECT radius_km FROM earth_radius) * acos(
                cos(radians(?)) * cos(radians(latitude)) * 
                cos(radians(longitude) - radians(?)) + 
                sin(radians(?)) * sin(radians(latitude))
@@ -35,8 +36,9 @@ ORDER BY distance
 LIMIT ? OFFSET ?;
 
 -- name: CountSpotsByLocation :one
+WITH earth_radius AS (SELECT 6371 AS radius_km)
 SELECT COUNT(*) FROM (
-    SELECT (6371 * acos(
+    SELECT ((SELECT radius_km FROM earth_radius) * acos(
         cos(radians(?)) * cos(radians(latitude)) * 
         cos(radians(longitude) - radians(?)) + 
         sin(radians(?)) * sin(radians(latitude))
@@ -66,9 +68,10 @@ SELECT COUNT(*) FROM spots
 WHERE country_code = ?;
 
 -- name: SearchSpots :many
+WITH earth_radius AS (SELECT 6371 AS radius_km)
 SELECT * FROM (
     SELECT *, 
-           (6371 * acos(
+           ((SELECT radius_km FROM earth_radius) * acos(
                cos(radians(?)) * cos(radians(latitude)) * 
                cos(radians(longitude) - radians(?)) + 
                sin(radians(?)) * sin(radians(latitude))
@@ -86,8 +89,9 @@ ORDER BY
 LIMIT ? OFFSET ?;
 
 -- name: CountSearchSpots :one
+WITH earth_radius AS (SELECT 6371 AS radius_km)
 SELECT COUNT(*) FROM (
-    SELECT (6371 * acos(
+    SELECT ((SELECT radius_km FROM earth_radius) * acos(
         cos(radians(?)) * cos(radians(latitude)) * 
         cos(radians(longitude) - radians(?)) + 
         sin(radians(?)) * sin(radians(latitude))

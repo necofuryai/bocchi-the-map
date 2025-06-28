@@ -3,7 +3,7 @@ INSERT INTO token_blacklist (jti, user_id, token_type, expires_at, reason)
 VALUES (?, ?, ?, ?, ?);
 
 -- name: IsTokenBlacklisted :one
-SELECT COUNT(*) FROM token_blacklist 
+SELECT COUNT(*) > 0 AS is_blacklisted FROM token_blacklist 
 WHERE jti = ? AND expires_at > NOW();
 
 -- name: BlacklistAccessToken :exec
@@ -16,4 +16,5 @@ VALUES (?, ?, 'refresh', ?, 'logout');
 
 -- name: CleanupExpiredTokens :exec
 DELETE FROM token_blacklist 
-WHERE expires_at < NOW() - INTERVAL 24 HOUR;
+WHERE expires_at < NOW() - INTERVAL 24 HOUR
+LIMIT 1000;
