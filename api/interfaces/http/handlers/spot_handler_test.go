@@ -4,6 +4,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,6 +17,11 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/tests/helpers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+)
+
+const (
+	InvalidLatitude  = 91.0
+	InvalidLongitude = 181.0
 )
 
 var _ = Describe("SpotHandler BDD Tests", func() {
@@ -50,7 +56,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 		authData = authHelper.NewAuthTestData()
 		
 		// Create test user in database
-		fixtureManager.CreateUserFixture(helpers.UserFixture{
+		fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 			ID:             authData.ValidUserID,
 			Email:          authData.TestUser.Email,
 			DisplayName:    authData.TestUser.DisplayName,
@@ -142,7 +148,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					By("Preparing a request with invalid latitude")
 					requestBody := map[string]interface{}{
 						"name":         "Test Cafe",
-						"latitude":     91.0, // Invalid: > 90
+						"latitude":     InvalidLatitude, // Invalid: > 90
 						"longitude":    139.6503,
 						"category":     "cafe",
 						"address":      "Test Address",
@@ -171,7 +177,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					requestBody := map[string]interface{}{
 						"name":         "Test Cafe",
 						"latitude":     35.6762,
-						"longitude":    181.0, // Invalid: > 180
+						"longitude":    InvalidLongitude, // Invalid: > 180
 						"category":     "cafe",
 						"address":      "Test Address",
 						"country_code": "JP",
@@ -267,7 +273,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 				Address:   "Existing Address",
 				CountryCode: "JP",
 			}
-			fixtureManager.CreateSpotFixture(*existingSpot)
+			fixtureManager.CreateSpotFixture(context.Background(), *existingSpot)
 		})
 
 		Context("Given a valid spot ID", func() {
@@ -374,8 +380,108 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					Expect(exists).To(BeTrue(), "Response should contain spots array")
 					Expect(spots).To(Not(BeNil()), "Spots array should not be nil")
 					
-					// Additional verification for location-based filtering would go here
-					// This depends on the actual spots created in the fixtures
+					spotsArray, ok := spots.([]interface{})
+					Expect(ok).To(BeTrue(), "Spots should be an array")
+					
+					By("Verifying distance calculations and filtering accuracy")
+					// Test coordinates: Tokyo (35.6762, 139.6503) with radius 10km
+					// Expected: Only Tokyo spot should be returned, Osaka spot should be filtered out
+					// Distance from Tokyo to Osaka is approximately 400km, far beyond 10km radius
+					
+					Expect(len(spotsArray)).To(Equal(1), "Should return exactly 1 spot within 10km radius of Tokyo")
+					
+					if len(spotsArray) > 0 {
+						firstSpot, ok := spotsArray[0].(map[string]interface{})
+						Expect(ok).To(BeTrue(), "Spot should be an object")
+						
+						// Verify the returned spot is the Tokyo spot based on ID
+						spotID, exists := firstSpot["id"]
+						Expect(exists).To(BeTrue(), "Spot should have an ID")
+						Expect(spotID).To(Equal("spot-cafe-tokyo"), "Should return the Tokyo cafe spot")
+						
+						// Verify coordinates are within expected range
+						lat, exists := firstSpot["latitude"]
+						Expect(exists).To(BeTrue(), "Spot should have latitude")
+						lng, exists := firstSpot["longitude"]
+						Expect(exists).To(BeTrue(), "Spot should have longitude")
+						
+						spotLat, ok := lat.(float64)
+						Expect(ok).To(BeTrue(), "Latitude should be a number")
+						spotLng, ok := lng.(float64)
+						Expect(ok).To(BeTrue(), "Longitude should be a number")
+						
+						// Verify the coordinates match the Tokyo fixture
+						Expect(spotLat).To(BeNumerically("~", 35.6762, 0.0001), "Latitude should match Tokyo coordinates")
+						Expect(spotLng).To(BeNumerically("~", 139.6503, 0.0001), "Longitude should match Tokyo coordinates")
+						
+						// Calculate and verify the actual distance is within the specified radius
+						// Using Haversine formula approximation for verification
+						// Distance from search point (35.6762, 139.6503) to itself should be 0
+						deltaLat := spotLat - 35.6762
+						deltaLng := spotLng - 139.6503
+						distanceApprox := (deltaLat*deltaLat + deltaLng*deltaLng) * 111000 // Rough km conversion
+						Expect(distanceApprox).To(BeNumerically("<", 100), "Distance should be very small for same coordinates")
+					}
+				})
+				
+				It("Then spots should be correctly filtered with larger radius including multiple locations", func() {
+					By("Sending a request with large radius that should include both Tokyo and Osaka")
+					req := httptest.NewRequest(http.MethodGet, "/api/v1/spots?latitude=35.6762&longitude=139.6503&radius=500", nil)
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					By("Verifying the successful response")
+					Expect(resp.Code).To(Equal(http.StatusOK), "Expected status 200 OK")
+					
+					var responseBody map[string]interface{}
+					err := json.Unmarshal(resp.Body.Bytes(), &responseBody)
+					Expect(err).NotTo(HaveOccurred())
+					
+					By("Verifying both spots are returned with large radius")
+					spots, exists := responseBody["spots"]
+					Expect(exists).To(BeTrue(), "Response should contain spots array")
+					
+					spotsArray, ok := spots.([]interface{})
+					Expect(ok).To(BeTrue(), "Spots should be an array")
+					Expect(len(spotsArray)).To(Equal(2), "Should return both spots within 500km radius")
+					
+					By("Verifying returned spots contain both Tokyo and Osaka locations")
+					spotIDs := make([]string, 0, len(spotsArray))
+					for _, spot := range spotsArray {
+						spotMap, ok := spot.(map[string]interface{})
+						Expect(ok).To(BeTrue(), "Each spot should be an object")
+						
+						spotID, exists := spotMap["id"]
+						Expect(exists).To(BeTrue(), "Spot should have an ID")
+						spotIDs = append(spotIDs, spotID.(string))
+					}
+					
+					Expect(spotIDs).To(ContainElement("spot-cafe-tokyo"), "Should include Tokyo spot")
+					Expect(spotIDs).To(ContainElement("spot-library-osaka"), "Should include Osaka spot")
+				})
+				
+				It("Then no spots should be returned when searching in remote location", func() {
+					By("Sending a request from a location far from any fixtures (New York coordinates)")
+					req := httptest.NewRequest(http.MethodGet, "/api/v1/spots?latitude=40.7128&longitude=-74.0060&radius=100", nil)
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					By("Verifying the successful response")
+					Expect(resp.Code).To(Equal(http.StatusOK), "Expected status 200 OK")
+					
+					var responseBody map[string]interface{}
+					err := json.Unmarshal(resp.Body.Bytes(), &responseBody)
+					Expect(err).NotTo(HaveOccurred())
+					
+					By("Verifying no spots are returned for remote location")
+					spots, exists := responseBody["spots"]
+					Expect(exists).To(BeTrue(), "Response should contain spots array")
+					
+					spotsArray, ok := spots.([]interface{})
+					Expect(ok).To(BeTrue(), "Spots should be an array")
+					Expect(len(spotsArray)).To(Equal(0), "Should return no spots when searching from New York")
 				})
 			})
 		})

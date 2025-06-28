@@ -1,9 +1,10 @@
-// +build integration
+//go:build integration
 
 package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -59,7 +60,7 @@ var _ = Describe("AuthHandler BDD Tests", func() {
 		authData = authHelper.NewAuthTestData()
 		
 		// Create test user in database for token generation
-		fixtureManager.CreateUserFixture(helpers.UserFixture{
+		fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 			ID:             authData.ValidUserID,
 			Email:          authData.TestUser.Email,
 			DisplayName:    authData.TestUser.DisplayName,
@@ -461,9 +462,131 @@ var _ = Describe("AuthHandler BDD Tests", func() {
 			})
 		})
 
-		// Note: Testing actual rate limit exceeded scenarios would require 
-		// making 6+ requests rapidly, which might be flaky in test environment
-		// This can be expanded with more sophisticated rate limit testing
-		// when running in isolated test containers
+		Context("Given excessive requests beyond rate limits", func() {
+			Context("When making more than 5 authentication requests from same IP", func() {
+				It("Then should return rate limit error after 5 requests", func() {
+					By("Making exactly 5 requests to reach the limit")
+					for i := 0; i < 5; i++ {
+						requestBody := map[string]interface{}{
+							"email":            fmt.Sprintf("ratetest%d@example.com", i),
+							"auth_provider":    "google",
+							"auth_provider_id": fmt.Sprintf("google_rate_%d", i),
+						}
+						
+						bodyBytes, err := json.Marshal(requestBody)
+						Expect(err).NotTo(HaveOccurred())
+						
+						req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
+						req.Header.Set("Content-Type", "application/json")
+						req.RemoteAddr = "192.168.1.100:12345" // Consistent IP for rate limiting
+						
+						resp := httptest.NewRecorder()
+						testServer.Config.Handler.ServeHTTP(resp, req)
+						
+						By(fmt.Sprintf("Verifying request %d is processed successfully", i+1))
+						Expect(resp.Code).To(Not(Equal(http.StatusTooManyRequests)), 
+							fmt.Sprintf("Request %d should not be rate limited yet", i+1))
+					}
+					
+					By("Making the 6th request that should trigger rate limit")
+					requestBody := map[string]interface{}{
+						"email":            "ratelimit6@example.com",
+						"auth_provider":    "google",
+						"auth_provider_id": "google_rate_6",
+					}
+					
+					bodyBytes, err := json.Marshal(requestBody)
+					Expect(err).NotTo(HaveOccurred())
+					
+					req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
+					req.Header.Set("Content-Type", "application/json")
+					req.RemoteAddr = "192.168.1.100:12345" // Same IP as previous requests
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					By("Verifying rate limit is triggered")
+					Expect(resp.Code).To(Equal(http.StatusTooManyRequests), "6th request should be rate limited")
+					
+					By("Verifying rate limit headers are set correctly")
+					Expect(resp.Header().Get("X-RateLimit-Limit")).To(Equal("5"), "Rate limit header should show limit of 5")
+					Expect(resp.Header().Get("X-RateLimit-Window")).To(Equal("300"), "Rate limit window should be 300 seconds")
+					Expect(resp.Header().Get("Retry-After")).To(Equal("300"), "Retry-After should be 300 seconds")
+					
+					By("Verifying rate limit error message")
+					Expect(resp.Body.String()).To(ContainSubstring("Too many authentication attempts"), 
+						"Response should contain rate limit error message")
+				})
+			})
+			
+			Context("When making requests from different IPs", func() {
+				It("Then each IP should have separate rate limit counters", func() {
+					By("Making 5 requests from first IP")
+					for i := 0; i < 5; i++ {
+						requestBody := map[string]interface{}{
+							"email":            fmt.Sprintf("ip1test%d@example.com", i),
+							"auth_provider":    "google", 
+							"auth_provider_id": fmt.Sprintf("google_ip1_%d", i),
+						}
+						
+						bodyBytes, err := json.Marshal(requestBody)
+						Expect(err).NotTo(HaveOccurred())
+						
+						req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
+						req.Header.Set("Content-Type", "application/json")
+						req.RemoteAddr = "192.168.1.101:12345" // First IP
+						
+						resp := httptest.NewRecorder()
+						testServer.Config.Handler.ServeHTTP(resp, req)
+						
+						By(fmt.Sprintf("Verifying request %d from first IP is processed", i+1))
+						Expect(resp.Code).To(Not(Equal(http.StatusTooManyRequests)))
+					}
+					
+					By("Making 5 requests from second IP (should not be rate limited)")
+					for i := 0; i < 5; i++ {
+						requestBody := map[string]interface{}{
+							"email":            fmt.Sprintf("ip2test%d@example.com", i),
+							"auth_provider":    "google",
+							"auth_provider_id": fmt.Sprintf("google_ip2_%d", i),
+						}
+						
+						bodyBytes, err := json.Marshal(requestBody)
+						Expect(err).NotTo(HaveOccurred())
+						
+						req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
+						req.Header.Set("Content-Type", "application/json")
+						req.RemoteAddr = "192.168.1.102:12345" // Different IP
+						
+						resp := httptest.NewRecorder()
+						testServer.Config.Handler.ServeHTTP(resp, req)
+						
+						By(fmt.Sprintf("Verifying request %d from second IP is processed", i+1))
+						Expect(resp.Code).To(Not(Equal(http.StatusTooManyRequests)), 
+							"Requests from different IP should not be rate limited")
+					}
+					
+					By("Verifying first IP is still rate limited")
+					requestBody := map[string]interface{}{
+						"email":            "ip1blocked@example.com",
+						"auth_provider":    "google",
+						"auth_provider_id": "google_ip1_blocked",
+					}
+					
+					bodyBytes, err := json.Marshal(requestBody)
+					Expect(err).NotTo(HaveOccurred())
+					
+					req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
+					req.Header.Set("Content-Type", "application/json")
+					req.RemoteAddr = "192.168.1.101:12345" // First IP again
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusTooManyRequests), 
+						"First IP should still be rate limited")
+				})
+			})
+		})
 	})
 })
