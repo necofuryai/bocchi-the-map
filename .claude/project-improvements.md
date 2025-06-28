@@ -1105,6 +1105,7 @@ next(ctx)  // ❌ Passing original ctx instead of modified context!
 ```
 
 **✅ Fixed Implementation:**
+
 ```go
 // user_handler.go - CORRECTED CODE
 authorizedCtx := huma.WithValue(ctx, "user_id", claims.UserID)
@@ -1127,6 +1128,7 @@ next(authorizedCtx)  // ✅ Properly passing modified context!
 ### 📁 **Files Modified:**
 
 #### **1. Authentication Middleware** (`interfaces/http/handlers/user_handler.go:249-273`)
+
 ```go
 // Fixed: CreateHumaAuthMiddleware with proper context handling
 func CreateHumaAuthMiddleware(authMiddleware *auth.AuthMiddleware) func(huma.Context, func(huma.Context)) {
