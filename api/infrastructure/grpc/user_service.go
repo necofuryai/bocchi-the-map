@@ -238,10 +238,6 @@ func (s *UserService) convertDatabaseUserToEntity(dbUser database.User) *entitie
 		UpdatedAt:      dbUser.UpdatedAt,
 	}
 
-	if dbUser.AnonymousID.Valid {
-		user.AnonymousID = dbUser.AnonymousID.String
-	}
-
 	if dbUser.AvatarUrl.Valid {
 		user.AvatarURL = dbUser.AvatarUrl.String
 	}
@@ -375,10 +371,68 @@ func (s *UserService) UpdateUserGRPC(ctx context.Context, req *UpdateUserRequest
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
 
-	// TODO: Implement UpdateUser method in database queries
-	// For now, return error to indicate this functionality is not yet implemented
-	_ = req // Suppress unused parameter warning
-	return nil, status.Error(codes.Unimplemented, "user update functionality not yet implemented")
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "update_user_grpc")
+	ctx = errors.WithUserID(ctx, req.ID)
+
+	// Get existing user to verify it exists and get auth provider info
+	existingUser, err := s.queries.GetUserByID(ctx, req.ID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, errors.HandleDatabaseError(ctx, err, "get_user_by_id")
+	}
+
+	// Convert avatar URL to sql.NullString
+	var avatarURL sql.NullString
+	if req.AvatarURL != "" {
+		avatarURL = sql.NullString{String: req.AvatarURL, Valid: true}
+	}
+
+	// Prepare preferences JSON
+	var prefsJSON json.RawMessage
+	if req.Preferences != nil {
+		prefsMap := map[string]interface{}{
+			"language":  req.Preferences.Language,
+			"dark_mode": req.Preferences.DarkMode,
+			"timezone":  req.Preferences.Timezone,
+		}
+		prefsJSON, err = json.Marshal(prefsMap)
+		if err != nil {
+			return nil, errors.GRPCInternal(ctx, "failed to marshal preferences")
+		}
+	} else {
+		// Keep existing preferences if not provided
+		prefsJSON = existingUser.Preferences
+	}
+
+	// Use UpsertUser to update the user
+	err = s.queries.UpsertUser(ctx, database.UpsertUserParams{
+		ID:             req.ID,
+		Email:          req.Email,
+		DisplayName:    req.DisplayName,
+		AvatarUrl:      avatarURL,
+		AuthProvider:   existingUser.AuthProvider,   // Keep existing auth provider
+		AuthProviderID: existingUser.AuthProviderID, // Keep existing auth provider ID
+		Preferences:    prefsJSON,
+	})
+	if err != nil {
+		return nil, errors.HandleDatabaseError(ctx, err, "upsert_user")
+	}
+
+	// Get updated user from database
+	dbUser, err := s.queries.GetUserByID(ctx, req.ID)
+	if err != nil {
+		return nil, errors.HandleDatabaseError(ctx, err, "get_updated_user")
+	}
+
+	// Convert to gRPC response
+	user, err := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	if err != nil {
+		return nil, errors.GRPCInternal(ctx, "failed to convert user data")
+	}
+	return &UpdateUserResponse{User: user}, nil
 }
 
 // GetUserByAuthProviderGRPC retrieves a user by authentication provider via gRPC interface

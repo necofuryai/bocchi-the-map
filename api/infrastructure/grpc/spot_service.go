@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
 )
 
 // SpotService implements the gRPC SpotService
@@ -135,24 +136,30 @@ func (s *SpotService) CreateSpot(ctx context.Context, req *CreateSpotRequest) (*
 	longitude := strconv.FormatFloat(req.Coordinates.Longitude, 'f', 8, 64)
 
 	// Convert i18n maps to JSON
-	nameI18nJSON, err := json.Marshal(req.NameI18n)
-	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to marshal name i18n")
-	}
+	var nameI18nJSON []byte
 	if req.NameI18n == nil {
 		nameI18nJSON = []byte("{}")
+	} else {
+		var err error
+		nameI18nJSON, err = json.Marshal(req.NameI18n)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "failed to marshal name i18n")
+		}
 	}
 
-	addressI18nJSON, err := json.Marshal(req.AddressI18n)
-	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to marshal address i18n")
-	}
+	var addressI18nJSON []byte
 	if req.AddressI18n == nil {
 		addressI18nJSON = []byte("{}")
+	} else {
+		var err error
+		addressI18nJSON, err = json.Marshal(req.AddressI18n)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "failed to marshal address i18n")
+		}
 	}
 
 	// Create spot in database
-	err = s.queries.CreateSpot(ctx, database.CreateSpotParams{
+	err := s.queries.CreateSpot(ctx, database.CreateSpotParams{
 		ID:          spotID,
 		Name:        req.Name,
 		NameI18n:    nameI18nJSON,
@@ -268,20 +275,55 @@ func (s *SpotService) SearchSpots(ctx context.Context, req *SearchSpotsRequest) 
 
 // convertDatabaseSpotToGRPC converts database spot model to gRPC spot struct
 func (s *SpotService) convertDatabaseSpotToGRPC(dbSpot database.Spot) *Spot {
-	// Parse coordinates from strings
-	latitude, _ := strconv.ParseFloat(dbSpot.Latitude, 64)
-	longitude, _ := strconv.ParseFloat(dbSpot.Longitude, 64)
-	averageRating, _ := strconv.ParseFloat(dbSpot.AverageRating, 64)
+	// Parse coordinates from strings with error handling
+	latitude, err := strconv.ParseFloat(dbSpot.Latitude, 64)
+	if err != nil {
+		logger.ErrorWithFields("Failed to parse latitude", err, map[string]interface{}{
+			"spot_id": dbSpot.ID,
+			"latitude_value": dbSpot.Latitude,
+		})
+		latitude = 0.0 // Use default value for invalid latitude
+	}
+	
+	longitude, err := strconv.ParseFloat(dbSpot.Longitude, 64)
+	if err != nil {
+		logger.ErrorWithFields("Failed to parse longitude", err, map[string]interface{}{
+			"spot_id": dbSpot.ID,
+			"longitude_value": dbSpot.Longitude,
+		})
+		longitude = 0.0 // Use default value for invalid longitude
+	}
+	
+	averageRating, err := strconv.ParseFloat(dbSpot.AverageRating, 64)
+	if err != nil {
+		logger.ErrorWithFields("Failed to parse average rating", err, map[string]interface{}{
+			"spot_id": dbSpot.ID,
+			"rating_value": dbSpot.AverageRating,
+		})
+		averageRating = 0.0 // Use default value for invalid rating
+	}
 
-	// Parse i18n JSON fields
+	// Parse i18n JSON fields with error handling
 	var nameI18n map[string]string
 	if len(dbSpot.NameI18n) > 0 {
-		json.Unmarshal(dbSpot.NameI18n, &nameI18n)
+		if err := json.Unmarshal(dbSpot.NameI18n, &nameI18n); err != nil {
+			logger.ErrorWithFields("Failed to parse name i18n JSON", err, map[string]interface{}{
+				"spot_id": dbSpot.ID,
+				"name_i18n_value": string(dbSpot.NameI18n),
+			})
+			nameI18n = nil // Use nil for invalid JSON data
+		}
 	}
 
 	var addressI18n map[string]string
 	if len(dbSpot.AddressI18n) > 0 {
-		json.Unmarshal(dbSpot.AddressI18n, &addressI18n)
+		if err := json.Unmarshal(dbSpot.AddressI18n, &addressI18n); err != nil {
+			logger.ErrorWithFields("Failed to parse address i18n JSON", err, map[string]interface{}{
+				"spot_id": dbSpot.ID,
+				"address_i18n_value": string(dbSpot.AddressI18n),
+			})
+			addressI18n = nil // Use nil for invalid JSON data
+		}
 	}
 
 	return &Spot{

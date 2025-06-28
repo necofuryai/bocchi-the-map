@@ -189,7 +189,6 @@ func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserI
 	}
 
 	// Get user via gRPC client with authenticated user ID
-	ctx = errors.WithUserID(ctx, userID)
 	user, err := h.userClient.GetCurrentUserFromGRPC(ctx)
 	if err != nil {
 		return nil, errors.HandleHTTPError(ctx, err, "get_current_user", "failed to get current user")

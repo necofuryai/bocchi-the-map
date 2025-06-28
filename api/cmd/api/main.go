@@ -101,6 +101,8 @@ func main() {
 			logger.Fatal("Failed to create user client", err)
 		}
 
+		// TODO: Review client creation is temporarily disabled due to compilation errors.
+		// Re-enable once the review service implementation is fixed.
 		// reviewClient, err := clients.NewReviewClient("internal", db)
 		// if err != nil {
 		// 	spotClient.Close()
@@ -141,7 +143,7 @@ func main() {
 		
 		// Add CORS middleware for frontend integration
 		router.Use(cors.Handler(cors.Options{
-			AllowedOrigins:   []string{"http://localhost:3000", "https://*.vercel.app"}, // Next.js dev and production
+			AllowedOrigins:   []string{"http://localhost:3000", "https://bocchi-the-map.vercel.app"}, // Next.js dev and production
 			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"},
 			ExposedHeaders:   []string{"Link", "X-Request-ID"},
@@ -158,6 +160,7 @@ func main() {
 		authMiddleware := auth.NewAuthMiddleware(cfg.Auth.JWTSecret, queries)
 		
 		// Initialize rate limiter (5 requests per 5 minutes for auth endpoints)
+		// Rate limiting is applied per IP address, not per user
 		rateLimiter := auth.NewRateLimiter(5, 5*time.Minute)
 
 		// Create Huma API
