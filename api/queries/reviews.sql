@@ -23,7 +23,17 @@ DELETE FROM reviews
 WHERE id = ?;
 
 -- name: ListReviewsBySpot :many
-SELECT r.*, u.display_name as user_name, u.avatar_url as user_avatar
+SELECT
+  r.id,
+  r.spot_id,
+  r.user_id,
+  r.rating,
+  r.comment,
+  r.rating_aspects,
+  r.created_at,
+  r.updated_at,
+  u.display_name  AS user_name,
+  u.avatar_url    AS user_avatar
 FROM reviews r
 JOIN users u ON r.user_id = u.id
 WHERE r.spot_id = ?
@@ -59,10 +69,25 @@ FROM reviews
 WHERE spot_id = ?;
 
 -- name: ListTopRatedSpots :many
-SELECT s.*, AVG(r.rating) as avg_rating, COUNT(r.id) as total_reviews
+SELECT
+  s.id,
+  s.name,
+  s.category,
+  s.address,
+  s.latitude,
+  s.longitude,
+  s.country_code,
+  s.description,
+  s.opening_hours,
+  s.average_rating,
+  s.review_count,
+  s.created_at,
+  s.updated_at,
+  AVG(r.rating)  AS avg_rating,
+  COUNT(r.id)    AS total_reviews
 FROM spots s
 LEFT JOIN reviews r ON s.id = r.spot_id
-GROUP BY s.id
+GROUP BY s.id, s.name, s.category, s.address, s.latitude, s.longitude, s.country_code, s.description, s.opening_hours, s.average_rating, s.review_count, s.created_at, s.updated_at
 HAVING COUNT(r.id) >= ?
 ORDER BY avg_rating DESC, total_reviews DESC
 LIMIT ? OFFSET ?;

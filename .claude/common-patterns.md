@@ -306,6 +306,16 @@ func (c *EntityClient) CreateEntity(ctx context.Context, req *CreateEntityReques
 ```go
 // Generate JWT with unique ID for tracking
 func GenerateToken(userID, email string) (string, error) {
+    // Input validation
+    if userID == "" || email == "" {
+        return "", errors.New("userID and email are required")
+    }
+    
+    // Basic email format validation
+    if !strings.Contains(email, "@") {
+        return "", errors.New("invalid email format")
+    }
+    
     jti := uuid.New().String()
     claims := &JWTClaims{
         UserID: userID,
@@ -318,7 +328,14 @@ func GenerateToken(userID, email string) (string, error) {
             Subject:   userID,
         },
     }
-    return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(jwtSecret)
+    
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+    signedToken, err := token.SignedString(jwtSecret)
+    if err != nil {
+        return "", fmt.Errorf("failed to sign token: %w", err)
+    }
+    
+    return signedToken, nil
 }
 ```
 
@@ -334,14 +351,28 @@ func createSecureCookies(accessToken, refreshToken string, expiresAt time.Time) 
         Name:     "bocchi_access_token",
         Value:    accessToken,
         Expires:  expiresAt,
-        HttpOnly: true,           // XSS protection
-        Secure:   isProduction,   // HTTPS only in production
-        SameSite: http.SameSiteStrictMode, // CSRF protection
+        HttpOnly: true,                      // XSS protection
+        Secure:   isProduction,              // HTTPS only in production
+        SameSite: http.SameSiteStrictMode,   // CSRF protection
         Domain:   domain,
         Path:     "/",
     }
-    // Return cookie strings for response headers
-    return []string{accessCookie.String()}
+    
+    refreshCookie := &http.Cookie{
+        Name:     "bocchi_refresh_token",
+        Value:    refreshToken,
+        Expires:  expiresAt.Add(14 * 24 * time.Hour), // Longer expiry for refresh
+        HttpOnly: true,
+        Secure:   isProduction,
+        SameSite: http.SameSiteStrictMode,
+        Domain:   domain,
+        Path:     "/",
+    }
+
+    return []string{
+        accessCookie.String(),
+        refreshCookie.String(),
+    }
 }
 ```
 
@@ -350,10 +381,18 @@ func createSecureCookies(accessToken, refreshToken string, expiresAt time.Time) 
 ```go
 // Check token blacklist in middleware
 func (am *AuthMiddleware) validateToken(ctx context.Context, tokenString string) (*JWTClaims, error) {
-    claims, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+    token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(t *jwt.Token) (interface{}, error) {
         return am.jwtSecret, nil
     })
+    if err != nil {
+        return nil, err
+    }
     
+    claims, ok := token.Claims.(*JWTClaims)
+    if !ok {
+        return nil, errors.New("failed to parse JWT claims")
+    }
+
     // Check if token is blacklisted
     if am.queries != nil && claims.ID != "" {
         isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, claims.ID)
@@ -379,10 +418,15 @@ type RateLimiter struct {
 func (rl *RateLimiter) Allow(clientIP string) bool {
     rl.mutex.Lock()
     defer rl.mutex.Unlock()
-    
+
+    // Initialize map if nil to prevent panic
+    if rl.requests == nil {
+        rl.requests = make(map[string][]time.Time)
+    }
+
     now := time.Now()
     cutoff := now.Add(-rl.window)
-    
+
     // Clean old requests
     requests := rl.requests[clientIP]
     var validRequests []time.Time
@@ -391,11 +435,11 @@ func (rl *RateLimiter) Allow(clientIP string) bool {
             validRequests = append(validRequests, req)
         }
     }
-    
+
     if len(validRequests) >= rl.limit {
         return false
     }
-    
+
     validRequests = append(validRequests, now)
     rl.requests[clientIP] = validRequests
     return true

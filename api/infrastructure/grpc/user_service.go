@@ -11,8 +11,6 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 	"github.com/necofuryai/bocchi-the-map/api/pkg/converters"
 	"github.com/google/uuid"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // UserService implements the gRPC UserService
