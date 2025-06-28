@@ -68,7 +68,9 @@ ORDER BY avg_rating DESC, total_reviews DESC
 LIMIT ? OFFSET ?;
 
 -- name: CountTopRatedSpots :one
-SELECT COUNT(DISTINCT s.id) FROM spots s
-LEFT JOIN reviews r ON s.id = r.spot_id
-GROUP BY s.id
-HAVING COUNT(r.id) >= ?;
+SELECT COUNT(*) FROM (
+  SELECT s.id FROM spots s
+  LEFT JOIN reviews r ON s.id = r.spot_id
+  GROUP BY s.id
+  HAVING COUNT(r.id) >= ?
+) AS filtered_spots;

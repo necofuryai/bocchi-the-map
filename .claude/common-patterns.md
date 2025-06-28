@@ -302,6 +302,7 @@ func (c *EntityClient) CreateEntity(ctx context.Context, req *CreateEntityReques
 ## Production Authentication Security Patterns
 
 ### JWT Token Management
+
 ```go
 // Generate JWT with unique ID for tracking
 func GenerateToken(userID, email string) (string, error) {
@@ -322,6 +323,7 @@ func GenerateToken(userID, email string) (string, error) {
 ```
 
 ### Secure Cookie Configuration
+
 ```go
 // Production-ready httpOnly cookie settings
 func createSecureCookies(accessToken, refreshToken string, expiresAt time.Time) []string {
@@ -344,6 +346,7 @@ func createSecureCookies(accessToken, refreshToken string, expiresAt time.Time) 
 ```
 
 ### Token Blacklist Integration
+
 ```go
 // Check token blacklist in middleware
 func (am *AuthMiddleware) validateToken(ctx context.Context, tokenString string) (*JWTClaims, error) {
@@ -363,6 +366,7 @@ func (am *AuthMiddleware) validateToken(ctx context.Context, tokenString string)
 ```
 
 ### Rate Limiting Pattern
+
 ```go
 // Memory-efficient rate limiter
 type RateLimiter struct {
@@ -399,6 +403,7 @@ func (rl *RateLimiter) Allow(clientIP string) bool {
 ```
 
 ### Database Cleanup Commands
+
 ```bash
 # Token blacklist maintenance
 cd api
@@ -417,6 +422,7 @@ mysql < scripts/token_cleanup_event.sql
 ```
 
 ### Security Monitoring Commands
+
 ```bash
 cd api
 
@@ -429,8 +435,6 @@ for i in {1..6}; do curl -I "http://localhost:8080/api/v1/auth/token"; done
 # Verify CORS headers
 curl -H "Origin: http://localhost:3000" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: X-Requested-With" -X OPTIONS "http://localhost:8080/api/v1/auth/token"
 ```
-        return nil, fmt.Errorf("failed to create entity: %w", err)
-    }
 
     return &CreateEntityResponse{
         // Map from entity
