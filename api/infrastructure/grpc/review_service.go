@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
+	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
 )
 
 // ReviewService implements the gRPC ReviewService
@@ -95,7 +95,7 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 	}
 
 	// Check if user already reviewed this spot
-	existingReview, err := s.queries.GetReviewByUserAndSpot(ctx, database.GetReviewByUserAndSpotParams{
+	_, err := s.queries.GetReviewByUserAndSpot(ctx, database.GetReviewByUserAndSpotParams{
 		UserID: userID,
 		SpotID: req.SpotID,
 	})
@@ -367,11 +367,11 @@ func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*
 }
 
 // updateSpotRating updates the spot's average rating and review count
-func (s *ReviewService) updateSpotRating(ctx context.Context, spotID string) {
+func (s *ReviewService) updateSpotRating(ctx context.Context, spotID string) error {
 	stats, err := s.queries.GetSpotRatingStats(ctx, spotID)
 	if err != nil {
 		log.Printf("Failed to get spot rating stats for spot %s: %v", spotID, err)
-		return
+		return err
 	}
 
 	averageRating := "0.0"
@@ -387,5 +387,7 @@ func (s *ReviewService) updateSpotRating(ctx context.Context, spotID string) {
 	})
 	if err != nil {
 		log.Printf("Failed to update spot rating for spot %s: %v", spotID, err)
+		return err
 	}
+	return nil
 }

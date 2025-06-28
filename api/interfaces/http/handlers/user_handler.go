@@ -266,7 +266,6 @@ func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.
 		Summary:     "Get current user",
 		Description: "Get the current authenticated user's information",
 		Tags:        []string{"Users"},
-		Middlewares: huma.Middlewares{authMiddleware.Middleware},
 	}, h.GetCurrentUser)
 
 	// Protected endpoint - update preferences requires authentication
@@ -277,6 +276,5 @@ func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.
 		Summary:     "Update user preferences",
 		Description: "Update the current user's preferences",
 		Tags:        []string{"Users"},
-		Middlewares: huma.Middlewares{authMiddleware.Middleware},
 	}, h.UpdatePreferences)
 }

@@ -56,7 +56,7 @@ func grpcToHTTPError(err error, defaultMessage string) error {
 	case codes.Unavailable:
 		return huma.Error503ServiceUnavailable(st.Message())
 	case codes.DeadlineExceeded:
-		return huma.Error408RequestTimeout(st.Message())
+		return huma.Error503ServiceUnavailable(st.Message())
 	default:
 		return huma.Error500InternalServerError(defaultMessage)
 	}

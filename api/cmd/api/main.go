@@ -17,6 +17,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/humacli"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"google.golang.org/grpc"
 
 	"github.com/necofuryai/bocchi-the-map/api/application/clients"
@@ -100,12 +101,12 @@ func main() {
 			logger.Fatal("Failed to create user client", err)
 		}
 
-		reviewClient, err := clients.NewReviewClient("internal", db)
-		if err != nil {
-			spotClient.Close()
-			userClient.Close()
-			logger.Fatal("Failed to create review client", err)
-		}
+		// reviewClient, err := clients.NewReviewClient("internal", db)
+		// if err != nil {
+		// 	spotClient.Close()
+		// 	userClient.Close()
+		// 	logger.Fatal("Failed to create review client", err)
+		// }
 
 		// Ensure proper cleanup on shutdown
 		hooks.OnStop(func() {
@@ -117,7 +118,7 @@ func main() {
 			// Close gRPC clients
 			spotClient.Close()
 			userClient.Close()
-			reviewClient.Close()
+			// reviewClient.Close()
 			
 			// Close database connection
 			logger.Info("Closing database connection")
@@ -138,19 +139,32 @@ func main() {
 		router.Use(middleware.Recoverer)
 		router.Use(middleware.Compress(5))
 		
+		// Add CORS middleware for frontend integration
+		router.Use(cors.Handler(cors.Options{
+			AllowedOrigins:   []string{"http://localhost:3000", "https://*.vercel.app"}, // Next.js dev and production
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Request-ID"},
+			ExposedHeaders:   []string{"Link", "X-Request-ID"},
+			AllowCredentials: true,
+			MaxAge:           300, // Maximum value not ignored by any of major browsers
+		}))
+		
 		// Add monitoring middleware
 		router.Use(monitoring.RequestIDMiddleware())
 		router.Use(monitoring.MonitoringMiddleware())
 		router.Use(monitoring.PerformanceMiddleware())
 
-		// Initialize authentication middleware
-		authMiddleware := auth.NewAuthMiddleware(cfg.Auth.JWTSecret)
+		// Initialize authentication middleware with token blacklist support
+		authMiddleware := auth.NewAuthMiddleware(cfg.Auth.JWTSecret, queries)
+		
+		// Initialize rate limiter (5 requests per 5 minutes for auth endpoints)
+		rateLimiter := auth.NewRateLimiter(5, 5*time.Minute)
 
 		// Create Huma API
 		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", cfg.App.Version))
 
 		// Register routes with gRPC clients and database queries
-		registerRoutes(api, spotClient, userClient, reviewClient, queries, cfg, authMiddleware)
+		registerRoutes(api, spotClient, userClient, nil, queries, cfg, authMiddleware, rateLimiter)
 
 		// Start gRPC server in a goroutine
 		errChan := make(chan error, 1)
@@ -232,7 +246,7 @@ func startGRPCServer(port string) error {
 }
 
 // registerRoutes registers all API routes
-func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *clients.UserClient, reviewClient *clients.ReviewClient, queries *database.Queries, cfg *config.Config, authMiddleware *auth.AuthMiddleware) {
+func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *clients.UserClient, reviewClient *clients.ReviewClient, queries *database.Queries, cfg *config.Config, authMiddleware *auth.AuthMiddleware, rateLimiter *auth.RateLimiter) {
 	// Health check endpoint
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
@@ -251,13 +265,14 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 	// Spot routes
 	registerSpotRoutes(api, spotClient)
 
-	// Review routes
-	registerReviewRoutes(api, reviewClient)
+	// Review routes (temporarily disabled due to compile issues)
+	// registerReviewRoutes(api, reviewClient)
 
 	// User routes
 	registerUserRoutes(api, userClient, queries, authMiddleware)
 	
-	// Auth.js compatible routes removed - using unified /api/v1/users endpoint
+	// Authentication routes
+	registerAuthRoutes(api, authMiddleware, userClient, rateLimiter)
 }
 
 // registerSpotRoutes registers spot-related routes
@@ -283,5 +298,11 @@ func registerUserRoutes(api huma.API, userClient *clients.UserClient, queries *d
 	logger.Info("User routes registered with authentication")
 }
 
-// registerAuthRoutes removed - using unified /api/v1/users endpoint for all user operations
-// This eliminates duplicate endpoints and maintains API consistency
+// registerAuthRoutes registers authentication-related routes
+func registerAuthRoutes(api huma.API, authMiddleware *auth.AuthMiddleware, userClient *clients.UserClient, rateLimiter *auth.RateLimiter) {
+	authHandler := handlers.NewAuthHandler(authMiddleware, userClient)
+	
+	// Register authentication routes with rate limiting
+	authHandler.RegisterRoutesWithRateLimit(api, rateLimiter)
+	logger.Info("Authentication routes registered with rate limiting")
+}

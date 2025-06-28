@@ -53,6 +53,14 @@ type GetCurrentUserResponse struct {
 	User *User
 }
 
+type GetUserByIDRequest struct {
+	ID string
+}
+
+type GetUserByIDResponse struct {
+	User *User
+}
+
 type UpdateUserPreferencesRequest struct {
 	Preferences *UserPreferences
 }
@@ -114,7 +122,10 @@ func (s *UserService) GetCurrentUser(ctx context.Context, req *GetCurrentUserReq
 	}
 
 	// Convert database user to gRPC response
-	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	user, err := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	if err != nil {
+		return nil, errors.HandleGRPCError(ctx, err, "convert_database_to_grpc", "failed to convert user data")
+	}
 	return &GetCurrentUserResponse{User: user}, nil
 }
 
@@ -140,7 +151,7 @@ func (s *UserService) GetUserByAuthProvider(ctx context.Context, authProvider en
 	// Convert database user to entity using standardized converter
 	entity, err := s.userConverter.ConvertDatabaseToEntity(dbUser)
 	if err != nil {
-		return nil, errors.HandleGRPCError(ctx, err, "convert_database_to_entity")
+		return nil, errors.HandleGRPCError(ctx, err, "convert_database_to_entity", "failed to convert user data")
 	}
 	return entity, nil
 }
@@ -156,7 +167,7 @@ func (s *UserService) CreateUser(ctx context.Context, user *entities.User) (*ent
 	// Convert entity to database parameters using standardized converter
 	createParams, err := s.userConverter.ConvertEntityToDatabase(user)
 	if err != nil {
-		return nil, errors.HandleGRPCError(ctx, err, "convert_entity_to_database")
+		return nil, errors.HandleGRPCError(ctx, err, "convert_entity_to_database", "failed to prepare user data")
 	}
 
 	err = s.queries.CreateUser(ctx, createParams)
@@ -181,7 +192,7 @@ func (s *UserService) UpdateUser(ctx context.Context, user *entities.User) (*ent
 	// Convert entity to database upsert parameters using standardized converter
 	upsertParams, err := s.userConverter.ConvertEntityToUpsertDatabase(user)
 	if err != nil {
-		return nil, errors.HandleGRPCError(ctx, err, "convert_entity_to_upsert_database")
+		return nil, errors.HandleGRPCError(ctx, err, "convert_entity_to_upsert_database", "failed to prepare user update data")
 	}
 
 	// Use upsert to update user
@@ -242,7 +253,7 @@ func (s *UserService) convertDatabaseUserToEntity(dbUser database.User) *entitie
 // UpdateUserPreferences updates user preferences
 func (s *UserService) UpdateUserPreferences(ctx context.Context, req *UpdateUserPreferencesRequest) (*UpdateUserPreferencesResponse, error) {
 	if req.Preferences == nil {
-		return nil, errors.GRPCInvalidArgument(ctx, "preferences are required")
+		return nil, errors.GRPCInvalidArgument(ctx, "preferences", "preferences are required")
 	}
 
 	// Extract user ID from authentication context
@@ -277,7 +288,10 @@ func (s *UserService) UpdateUserPreferences(ctx context.Context, req *UpdateUser
 	}
 
 	// Convert database user to gRPC response
-	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	user, err := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	if err != nil {
+		return nil, errors.GRPCInternal(ctx, "failed to convert user data")
+	}
 	return &UpdateUserPreferencesResponse{User: user}, nil
 }
 
@@ -345,7 +359,10 @@ func (s *UserService) CreateUserGRPC(ctx context.Context, req *CreateUserRequest
 	}
 
 	// Convert to gRPC response
-	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	user, err := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	if err != nil {
+		return nil, errors.GRPCInternal(ctx, "failed to convert user data")
+	}
 	return &CreateUserResponse{User: user}, nil
 }
 
@@ -358,55 +375,10 @@ func (s *UserService) UpdateUserGRPC(ctx context.Context, req *UpdateUserRequest
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
 
-	// Convert preferences to JSON if provided
-	var prefsJSON []byte
-	if req.Preferences != nil {
-		prefsMap := map[string]interface{}{
-			"language":  req.Preferences.Language,
-			"dark_mode": req.Preferences.DarkMode,
-			"timezone":  req.Preferences.Timezone,
-		}
-		var err error
-		prefsJSON, err = json.Marshal(prefsMap)
-		if err != nil {
-			return nil, status.Error(codes.Internal, "failed to marshal preferences")
-		}
-	} else {
-		// Keep existing preferences if not provided
-		existingUser, err := s.queries.GetUserByID(ctx, req.ID)
-		if err != nil {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
-		prefsJSON = existingUser.Preferences
-	}
-
-	// Convert avatar URL to sql.NullString
-	var avatarURL sql.NullString
-	if req.AvatarURL != "" {
-		avatarURL = sql.NullString{String: req.AvatarURL, Valid: true}
-	}
-
-	// Update user in database (using update instead of upsert for explicit updates)
-	err := s.queries.UpdateUser(ctx, database.UpdateUserParams{
-		ID:          req.ID,
-		Email:       req.Email,
-		DisplayName: req.DisplayName,
-		AvatarUrl:   avatarURL,
-		Preferences: prefsJSON,
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to update user")
-	}
-
-	// Get updated user from database
-	dbUser, err := s.queries.GetUserByID(ctx, req.ID)
-	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to get updated user")
-	}
-
-	// Convert to gRPC response
-	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
-	return &UpdateUserResponse{User: user}, nil
+	// TODO: Implement UpdateUser method in database queries
+	// For now, return error to indicate this functionality is not yet implemented
+	_ = req // Suppress unused parameter warning
+	return nil, status.Error(codes.Unimplemented, "user update functionality not yet implemented")
 }
 
 // GetUserByAuthProviderGRPC retrieves a user by authentication provider via gRPC interface
@@ -439,6 +411,36 @@ func (s *UserService) GetUserByAuthProviderGRPC(ctx context.Context, req *GetUse
 	}
 
 	// Convert to gRPC response
-	user := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	user, err := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	if err != nil {
+		return nil, errors.GRPCInternal(ctx, "failed to convert user data")
+	}
 	return &GetUserByAuthProviderResponse{User: user}, nil
+}
+
+// GetUserByID retrieves a user by ID via gRPC interface
+func (s *UserService) GetUserByID(ctx context.Context, req *GetUserByIDRequest) (*GetUserByIDResponse, error) {
+	if req.ID == "" {
+		return nil, status.Error(codes.InvalidArgument, "user ID is required")
+	}
+
+	// Add operation context for error tracking
+	ctx = errors.WithOperation(ctx, "get_user_by_id_grpc")
+	ctx = errors.WithUserID(ctx, req.ID)
+
+	// Get user from database
+	dbUser, err := s.queries.GetUserByID(ctx, req.ID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+		return nil, errors.HandleDatabaseError(ctx, err, "get_user_by_id")
+	}
+
+	// Convert to gRPC response
+	user, err := s.grpcConverter.ConvertDatabaseToGRPC(dbUser)
+	if err != nil {
+		return nil, errors.GRPCInternal(ctx, "failed to convert user data")
+	}
+	return &GetUserByIDResponse{User: user}, nil
 }
