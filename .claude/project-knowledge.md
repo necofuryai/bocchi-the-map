@@ -79,6 +79,58 @@ The Go API follows strict onion architecture principles with clear layer separat
 8. **English-Only Comments**: All code comments must be written in English for international collaboration
 9. **English-Only Commit Messages**: All git commit messages must be written in English for international collaboration
 
+## Fundamental Development Principles
+
+The project strictly adheres to these core software development principles:
+
+### SOLID Principles
+
+#### Single Responsibility Principle (SRP)
+- Each class/struct should have only one reason to change
+- Handlers only handle HTTP concerns, Services only contain business logic
+- Example: `UserHandler` only handles HTTP requests, `UserService` only contains user business logic
+
+#### Open/Closed Principle (OCP)
+- Software entities should be open for extension, closed for modification
+- Use interfaces and dependency injection to extend functionality
+- Example: `SpotRepository` interface allows different storage implementations
+
+#### Liskov Substitution Principle (LSP)
+- Objects should be replaceable with instances of their subtypes
+- All repository implementations must fulfill their interface contracts
+- Example: Memory and database repositories are interchangeable
+
+#### Interface Segregation Principle (ISP)
+- Many client-specific interfaces are better than one general-purpose interface
+- Create focused interfaces rather than large, monolithic ones
+- Example: Separate `SpotReader` and `SpotWriter` instead of one large interface
+
+#### Dependency Inversion Principle (DIP)
+- Depend on abstractions, not concretions
+- High-level modules should not depend on low-level modules
+- Example: Application layer depends on repository interfaces, not database implementations
+
+### KISS (Keep It Simple, Stupid)
+
+- Prefer simple solutions over complex ones
+- Avoid over-engineering and premature optimization
+- Use clear, readable code over clever tricks
+- Example: Straightforward error handling with `if err != nil` instead of complex error wrapping
+
+### YAGNI (You Aren't Gonna Need It)
+
+- Don't implement features until they are actually needed
+- Remove unused code and dependencies
+- Focus on current requirements, not hypothetical future needs
+- Example: Don't create complex caching systems until performance issues are proven
+
+### DRY (Don't Repeat Yourself)
+
+- Every piece of knowledge should have a single, unambiguous representation
+- Extract common code into shared utilities
+- Use code generation (sqlc, Protocol Buffers) to eliminate repetition
+- Example: Common error handling patterns in `pkg/errors/` package
+
 ## Implementation Patterns
 
 ### Backend Patterns

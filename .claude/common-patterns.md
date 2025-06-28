@@ -297,10 +297,138 @@ func (c *EntityClient) CreateEntity(ctx context.Context, req *CreateEntityReques
     entity := &entities.Entity{
         // Map from request
     }
+```
 
-    // Persistence
-    if err := c.repo.Create(ctx, entity); err != nil {
-        c.logger.Error().Err(err).Msg("failed to create entity")
+## Production Authentication Security Patterns
+
+### JWT Token Management
+```go
+// Generate JWT with unique ID for tracking
+func GenerateToken(userID, email string) (string, error) {
+    jti := uuid.New().String()
+    claims := &JWTClaims{
+        UserID: userID,
+        Email:  email,
+        RegisteredClaims: jwt.RegisteredClaims{
+            ID:        jti,  // Essential for token revocation
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+            IssuedAt:  jwt.NewNumericDate(time.Now()),
+            Issuer:    "bocchi-the-map-api",
+            Subject:   userID,
+        },
+    }
+    return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(jwtSecret)
+}
+```
+
+### Secure Cookie Configuration
+```go
+// Production-ready httpOnly cookie settings
+func createSecureCookies(accessToken, refreshToken string, expiresAt time.Time) []string {
+    isProduction := os.Getenv("ENVIRONMENT") == "production"
+    domain := os.Getenv("COOKIE_DOMAIN")
+    
+    accessCookie := &http.Cookie{
+        Name:     "bocchi_access_token",
+        Value:    accessToken,
+        Expires:  expiresAt,
+        HttpOnly: true,           // XSS protection
+        Secure:   isProduction,   // HTTPS only in production
+        SameSite: http.SameSiteStrictMode, // CSRF protection
+        Domain:   domain,
+        Path:     "/",
+    }
+    // Return cookie strings for response headers
+    return []string{accessCookie.String()}
+}
+```
+
+### Token Blacklist Integration
+```go
+// Check token blacklist in middleware
+func (am *AuthMiddleware) validateToken(ctx context.Context, tokenString string) (*JWTClaims, error) {
+    claims, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+        return am.jwtSecret, nil
+    })
+    
+    // Check if token is blacklisted
+    if am.queries != nil && claims.ID != "" {
+        isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, claims.ID)
+        if err != nil || isBlacklisted > 0 {
+            return nil, errors.New("token has been revoked")
+        }
+    }
+    return claims, nil
+}
+```
+
+### Rate Limiting Pattern
+```go
+// Memory-efficient rate limiter
+type RateLimiter struct {
+    requests map[string][]time.Time
+    mutex    sync.RWMutex
+    limit    int           // Max requests per window
+    window   time.Duration
+}
+
+func (rl *RateLimiter) Allow(clientIP string) bool {
+    rl.mutex.Lock()
+    defer rl.mutex.Unlock()
+    
+    now := time.Now()
+    cutoff := now.Add(-rl.window)
+    
+    // Clean old requests
+    requests := rl.requests[clientIP]
+    var validRequests []time.Time
+    for _, req := range requests {
+        if req.After(cutoff) {
+            validRequests = append(validRequests, req)
+        }
+    }
+    
+    if len(validRequests) >= rl.limit {
+        return false
+    }
+    
+    validRequests = append(validRequests, now)
+    rl.requests[clientIP] = validRequests
+    return true
+}
+```
+
+### Database Cleanup Commands
+```bash
+# Token blacklist maintenance
+cd api
+
+# Manual cleanup of expired tokens
+mysql -e "DELETE FROM token_blacklist WHERE expires_at < NOW() - INTERVAL 24 HOUR;"
+
+# Check blacklist table status  
+mysql -e "SELECT COUNT(*) as total_tokens, COUNT(CASE WHEN expires_at > NOW() THEN 1 END) as active_tokens FROM token_blacklist;"
+
+# Enable MySQL event scheduler for automatic cleanup
+mysql -e "SET GLOBAL event_scheduler = ON;"
+
+# Create cleanup event (from scripts/token_cleanup_event.sql)
+mysql < scripts/token_cleanup_event.sql
+```
+
+### Security Monitoring Commands
+```bash
+cd api
+
+# Check authentication endpoint performance
+curl -w "@curl-format.txt" -o /dev/null -s "http://localhost:8080/api/v1/auth/token"
+
+# Test rate limiting (should return 429 after 5 requests)
+for i in {1..6}; do curl -I "http://localhost:8080/api/v1/auth/token"; done
+
+# Verify CORS headers
+curl -H "Origin: http://localhost:3000" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: X-Requested-With" -X OPTIONS "http://localhost:8080/api/v1/auth/token"
+```
         return nil, fmt.Errorf("failed to create entity: %w", err)
     }
 
