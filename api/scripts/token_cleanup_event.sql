@@ -9,7 +9,8 @@ STARTS CURRENT_TIMESTAMP
 DO
 BEGIN
     DELETE FROM token_blacklist 
-    WHERE expires_at < NOW() - INTERVAL 24 HOUR;
+    WHERE expires_at < NOW() - INTERVAL 24 HOUR
+    LIMIT 1000;
 END;;
 
 DELIMITER ;
@@ -17,6 +18,11 @@ DELIMITER ;
 -- To enable/disable the event:
 -- SET GLOBAL event_scheduler = ON;
 -- SET GLOBAL event_scheduler = OFF;
+--
+-- PRODUCTION NOTE: The event scheduler MUST be enabled (ON) in production
+-- environments to ensure automatic token cleanup runs correctly. This is
+-- critical for system reliability and preventing token blacklist table
+-- from growing indefinitely, which could impact performance and storage.
 
 -- To manually run cleanup:
--- DELETE FROM token_blacklist WHERE expires_at < NOW() - INTERVAL 24 HOUR;
+-- DELETE FROM token_blacklist WHERE expires_at < NOW() - INTERVAL 24 HOUR LIMIT 1000;
