@@ -354,7 +354,7 @@ func (am *AuthMiddleware) validateToken(ctx context.Context, tokenString string)
     // Check if token is blacklisted
     if am.queries != nil && claims.ID != "" {
         isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, claims.ID)
-        if err != nil || isBlacklisted > 0 {
+        if err != nil || isBlacklisted {
             return nil, errors.New("token has been revoked")
         }
     }
