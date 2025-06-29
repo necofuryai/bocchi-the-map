@@ -13,6 +13,10 @@ inputs:
     description: 'Working directory for Go operations'
     required: false
     default: 'api'
+  mysql-root-password:
+    description: 'MySQL root password for database connection'
+    required: false
+    default: 'password'
 
 runs:
   using: 'composite'
@@ -49,9 +53,10 @@ runs:
       run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
     - name: Install protoc
-      uses: arduino/setup-protoc@v2
+      uses: arduino/setup-protoc@v3
       with:
-        version: '3.21.12'
+        version: '23.x'
+        repo-token: ${{ github.token }}
 
     - name: Install protoc-gen-go
       shell: bash
@@ -71,7 +76,7 @@ runs:
       run: |
         counter=0
         max_wait=60
-        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"${MYSQL_ROOT_PASSWORD:-password}" --silent; do
+        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"${{ inputs.mysql-root-password }}" --silent; do
           echo 'Waiting for MySQL...'
           sleep 1
           counter=$((counter + 1))
@@ -85,7 +90,7 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       shell: bash
       env:
-        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+        TEST_DATABASE_URL: "root:${{ inputs.mysql-root-password }}@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
       run: |
         go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
         migrate -path migrations -database "mysql://$TEST_DATABASE_URL" up
