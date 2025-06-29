@@ -74,7 +74,7 @@ runs:
       run: |
         counter=0
         max_wait=60
-        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" --silent; do
+        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"${MYSQL_ROOT_PASSWORD:-password}" --silent; do
           echo 'Waiting for MySQL...'
           sleep 1
           counter=$((counter + 1))
@@ -91,4 +91,4 @@ runs:
         TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
       run: |
         go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-        migrate -path migrations -database "mysql://root:password@tcp(localhost:3306)/bocchi_test" up
+        migrate -path migrations -database "mysql://$TEST_DATABASE_URL" up

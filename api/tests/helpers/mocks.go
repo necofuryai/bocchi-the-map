@@ -178,7 +178,7 @@ func (m *MockSpotRepository) Reset() {
 	defer m.mu.Unlock()
 	
 	// Clear all stored spots  
-	m.spots = make(map[string]*proto.Spot)
+	m.spots = make(map[string]*entities.Spot)
 	
 	// Reset all mock functions to nil
 	m.createSpotFunc = nil
@@ -354,7 +354,7 @@ func (m *MockUserRepository) Delete(ctx context.Context, id string) error {
 	}
 	
 	if !exists {
-		return errors.New("user not found")
+		return fmt.Errorf("user not found: id=%s", id)
 	}
 	
 	m.mu.Lock()
