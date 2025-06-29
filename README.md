@@ -286,9 +286,15 @@ gh pr create --title "feat: your amazing feature"
 - [ ] **Mobile App** - React Native with shared business logic
 - [ ] **API v2** - GraphQL federation for microservices
 
-## 🔐 Latest Security Update (2025-06-28)
+## 🔐 Latest Updates (2025-06-29)
 
-**Critical Authentication Fix Deployed** 🚨
+**Database Migration & CI/CD Improvements** 🚧
+- **Migration Fixes**: Resolved idx_location index conflicts in reviews table migrations
+- **GitHub Actions**: Enhanced BDD test security with database URL consistency and debug logging
+- **Production Ready**: All migration files synchronized between development and production
+- **CI Stability**: Improved test environment setup with better error handling and security measures
+
+**Previous Security Update (2025-06-28)** 🚨
 - **Issue**: Huma v2 authentication middleware had silent context propagation failure
 - **Impact**: Protected API endpoints were not properly authenticating users
 - **Resolution**: Implemented proper `huma.WithValue()` context handling pattern
