@@ -41,7 +41,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: "claude-sonnet-4-20250514"
-          allowed_tools: >
-          Bash(git:*),Bash(gh:*),Bash(pnpm:*),Bash(npm:*),Bash(npx:*),
-          Bash(mkdir:*),Bash(mv:*),Bash(cp:*),Bash(touch:*),Bash(ls:*),
-          Bash(cat:*),Bash(echo:*),Bash(pwd:*),Bash(open:*)
+          allowed_tools: >-
+            Bash(git:*),Bash(gh:*),Bash(pnpm:*),Bash(npm:*),Bash(npx:*),
+            Bash(mkdir:*),Bash(mv:*),Bash(cp:*),Bash(touch:*),Bash(ls:*),
+            Bash(cat:*),Bash(echo:*),Bash(pwd:*),Bash(open:*)

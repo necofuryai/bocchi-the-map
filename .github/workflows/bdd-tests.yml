@@ -110,8 +110,10 @@ jobs:
         env:
           CGO_ENABLED: 1
         run: |
-          go test -tags=integration -v ./tests/integration/... \
-            ./interfaces/http/handlers/... 2>&1 | tee test_output.log
+          go test -tags=integration -v \
+            ./tests/integration/... \
+            ./interfaces/http/handlers/... \
+            2>&1 | tee test_output.log
 
       - name: Comment PR with test results
         if: always() && github.event_name == 'pull_request'
@@ -125,7 +127,14 @@ jobs:
             try {
               testOutput = fs.readFileSync('api/test_output.log', 'utf8');
             } catch (error) {
-              console.log('Could not read test output file:', error.message);
+              console.error('Could not read test output file:', {
+                message: error.message,
+                code: error.code,
+                errno: error.errno,
+                syscall: error.syscall,
+                path: error.path,
+                stack: error.stack
+              });
             }
 
             // Parse test results to detect failures and successes
@@ -146,7 +155,9 @@ jobs:
                 }
 
                 // Track Ginkgo suite results
-                const suiteMatch = line.match(/Running Suite: (.+) -/);
+                const suiteMatch = line.match(
+                  /Running Suite: (.+) -/
+                );
                 if (suiteMatch) {
                   suites.push(suiteMatch[1].trim());
                 }
@@ -162,7 +173,9 @@ jobs:
                 }
 
                 // Track suite pass/fail status
-                if (line.match(/Ginkgo ran \d+ suites? in .* and found no failures/)) {
+                if (line.match(
+                  /Ginkgo ran \d+ suites? in .* and found no failures/
+                )) {
                   passedSuites.push(...suites);
                 } else if (line.match(/Test Suite Failed/)) {
                   failedSuites.push(...suites);
@@ -170,7 +183,9 @@ jobs:
               }
 
               // If no specific suites found, use default
-              const allSuites = suites.length > 0 ? suites : ['HTTP Handlers Integration Test Suite'];
+              const allSuites = suites.length > 0 ? suites : [
+                'HTTP Handlers Integration Test Suite'
+              ];
 
               return {
                 passed: passedTests,
@@ -178,7 +193,9 @@ jobs:
                 suites: allSuites,
                 passedSuites,
                 failedSuites,
-                hasFailures: failedTests > 0 || output.includes('FAIL') || output.includes('Test Suite Failed')
+                hasFailures: failedTests > 0 ||
+                  output.includes('FAIL') ||
+                  output.includes('Test Suite Failed')
               };
             };
 
@@ -192,7 +209,7 @@ jobs:
               comment += `**Results Summary:**\n`;
               comment += `- ✅ Passed: ${results.passed}\n`;
               comment += `- ❌ Failed: ${results.failed}\n\n`;
-              
+
               if (results.failedSuites.length > 0) {
                 comment += '**Failed Test Suites:**\n';
                 for (const suite of results.failedSuites) {
@@ -209,7 +226,8 @@ jobs:
 
             comment += '**Test Suites Executed:**\n';
             for (const suite of results.suites) {
-              const status = results.failedSuites.includes(suite) ? '❌' : '✅';
+              const status = results.failedSuites.includes(suite) ?
+                '❌' : '✅';
               comment += `- ${status} ${suite}\n`;
             }
 

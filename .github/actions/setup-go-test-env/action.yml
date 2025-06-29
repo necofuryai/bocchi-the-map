@@ -1,3 +1,4 @@
+---
 name: 'Setup Go Test Environment'
 description: 'Sets up Go environment with dependencies, protoc, and code generation for testing'
 inputs:
@@ -16,6 +17,10 @@ inputs:
   mysql-root-password:
     description: 'MySQL root password for database connection'
     required: true
+  protoc-version:
+    description: 'Protoc version to use'
+    required: false
+    default: '23.x'
 
 runs:
   using: 'composite'
@@ -54,7 +59,7 @@ runs:
     - name: Install protoc
       uses: arduino/setup-protoc@v3
       with:
-        version: '23.x'
+        version: ${{ inputs.protoc-version }}
         repo-token: ${{ github.token }}
 
     - name: Install protoc-gen-go
@@ -74,16 +79,16 @@ runs:
       shell: bash
       run: |
         set -o xtrace  # Enable command tracing for debugging
-        
+
         echo "Starting MySQL readiness check..."
         echo "Connection details: host=127.0.0.1, port=3306, user=root"
-        
+
         counter=0
         max_wait=60
-        
+
         until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"${{ inputs.mysql-root-password }}" --silent; do
           echo "Waiting for MySQL... (attempt $((counter + 1))/$max_wait)"
-          
+
           # Show more detailed connection attempt every 10 seconds
           if [ $((counter % 10)) -eq 0 ]; then
             echo "Attempting detailed MySQL connection test..."
@@ -91,10 +96,10 @@ runs:
             echo "Checking if MySQL port is accessible..."
             nc -z 127.0.0.1 3306 && echo "Port 3306 is open" || echo "Port 3306 is not accessible"
           fi
-          
+
           sleep 1
           counter=$((counter + 1))
-          
+
           if [ $counter -ge $max_wait ]; then
             echo "==============================================="
             echo "ERROR: MySQL failed to start within $max_wait seconds"
@@ -127,7 +132,7 @@ runs:
             exit 1
           fi
         done
-        
+
         echo "✅ MySQL is ready and accepting connections!"
         echo "Connection successful after $counter seconds"
 
@@ -139,7 +144,7 @@ runs:
       run: |
         # Export TEST_DATABASE_URL for use in subsequent workflow steps
         echo "TEST_DATABASE_URL=$TEST_DATABASE_URL" >> $GITHUB_ENV
-        
+
         go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
         # Create temporary directory with only numbered migration files (exclude production subdirectory and utility files)
         mkdir -p migrations_test
