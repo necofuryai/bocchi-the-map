@@ -3,11 +3,10 @@
 
 -- Query Pattern 1: Get reviews for a spot ordered by creation date (most common)
 -- This benefits from idx_reviews_spot_created (spot_id, created_at DESC)
-EXPLAIN SELECT r.*, u.display_name 
-FROM reviews r 
-JOIN users u ON r.user_id = u.id 
-WHERE r.spot_id = 'spot123' 
-ORDER BY r.created_at DESC 
+EXPLAIN SELECT * 
+FROM reviews 
+WHERE spot_id = 'spot123' 
+ORDER BY created_at DESC 
 LIMIT 10;
 
 -- Query Pattern 2: Get user's review history ordered by date
@@ -38,7 +37,7 @@ EXPLAIN SELECT s.*, AVG(r.rating) AS avg_rating, COUNT(r.id) AS total_reviews
 FROM spots s
 JOIN reviews r ON s.id = r.spot_id
 WHERE r.rating >= 4
-GROUP BY s.id, s.name, s.latitude, s.longitude, s.address, s.description, s.created_at, s.updated_at
+GROUP BY s.id
 HAVING COUNT(r.id) >= 5
 ORDER BY avg_rating DESC, total_reviews DESC
 LIMIT 20;
@@ -47,6 +46,13 @@ LIMIT 20;
 -- This benefits from the existing unique constraint (user_id, spot_id)
 EXPLAIN SELECT id FROM reviews 
 WHERE user_id = 'user456' AND spot_id = 'spot123';
+
+-- Query Pattern 5b: Alternative EXISTS pattern for checking user review existence
+-- Compare execution plans with the direct SELECT approach above
+EXPLAIN SELECT EXISTS (
+    SELECT 1 FROM reviews 
+    WHERE user_id = 'user456' AND spot_id = 'spot123'
+) AS has_reviewed;
 
 -- Expected performance improvements:
 -- 1. Queries with WHERE spot_id + ORDER BY created_at can use covering index

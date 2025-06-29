@@ -2,6 +2,9 @@
 -- Composite index for name and address LIKE searches
 CREATE INDEX `idx_spots_name_address` ON `spots`(`name`, `address`(255));
 
+-- Individual index for name-only searches
+CREATE INDEX `idx_spots_name` ON `spots`(`name`);
+
 -- Individual index for address-only searches
 CREATE INDEX `idx_spots_address` ON `spots`(`address`(255));
 

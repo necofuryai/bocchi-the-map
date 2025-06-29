@@ -16,11 +16,13 @@ expires_at TIMESTAMP NOT NULL,    -- When the token expires
 
 ## Index Size Calculation
 - **Charset**: utf8mb4 (4 bytes per character maximum)
-- **jti column**: VARCHAR(255) × 4 bytes = 1,020 bytes maximum
+- **jti column**: VARCHAR(255) × 4 bytes + 2 bytes length = 1,022 bytes maximum
 - **expires_at column**: TIMESTAMP = 8 bytes
-- **Total index size**: 1,028 bytes
+- **Total index size**: 1,030 bytes
 - **MySQL limit**: 3,072 bytes for InnoDB
 - **Result**: ✅ **SAFE** - Well within limits
+
+**Note**: VARCHAR fields in MySQL InnoDB require 1-2 additional bytes to store the length of the variable-length data. For VARCHAR(255), 2 bytes are used for length storage.
 
 ## Query Pattern Analysis
 
@@ -77,6 +79,24 @@ WHERE jti = 'test-jti' AND expires_at > NOW();
 EXPLAIN DELETE FROM token_blacklist 
 WHERE expires_at < NOW() - INTERVAL 24 HOUR LIMIT 1000;
 ```
+
+### 📊 **Performance Analysis with Execution Metrics**
+For comprehensive performance insights, run EXPLAIN ANALYZE to capture actual runtime metrics:
+```sql
+-- Analyze primary query with actual execution time and row processing
+EXPLAIN ANALYZE SELECT COUNT(*) > 0 FROM token_blacklist 
+WHERE jti = 'test-jti' AND expires_at > NOW();
+
+-- Analyze cleanup query with actual execution time and affected rows
+EXPLAIN ANALYZE DELETE FROM token_blacklist 
+WHERE expires_at < NOW() - INTERVAL 24 HOUR LIMIT 1000;
+```
+
+**Key metrics to monitor:**
+- **Execution time**: Actual time vs. estimated cost
+- **Rows examined**: Actual vs. estimated row count
+- **Index usage**: Confirm composite index utilization
+- **Buffer pool**: Memory efficiency during operations
 
 ## Conclusion
 **✅ Current index configuration is OPTIMAL** for the primary use case and safe regarding size limits. The composite index `(jti, expires_at)` correctly prioritizes the hot path query performance over cleanup query performance.

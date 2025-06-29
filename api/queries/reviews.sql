@@ -81,13 +81,19 @@ SELECT
   s.review_count,
   s.created_at,
   s.updated_at,
-  AVG(r.rating)  AS avg_rating,
-  COUNT(r.id)    AS total_reviews
+  ra.avg_rating,
+  ra.total_reviews
 FROM spots s
-LEFT JOIN reviews r ON s.id = r.spot_id
-GROUP BY s.id, s.name, s.category, s.address, s.latitude, s.longitude, s.country_code, s.average_rating, s.review_count, s.created_at, s.updated_at
-HAVING COUNT(r.id) >= ?
-ORDER BY avg_rating DESC, total_reviews DESC
+INNER JOIN (
+  SELECT
+    r.spot_id,
+    AVG(r.rating) AS avg_rating,
+    COUNT(r.id) AS total_reviews
+  FROM reviews r
+  GROUP BY r.spot_id
+  HAVING COUNT(r.id) >= ?
+) ra ON s.id = ra.spot_id
+ORDER BY ra.avg_rating DESC, ra.total_reviews DESC
 LIMIT ? OFFSET ?;
 
 -- name: CountTopRatedSpots :one
