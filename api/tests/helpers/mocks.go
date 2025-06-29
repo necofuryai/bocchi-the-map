@@ -609,7 +609,7 @@ func (bdm *BehaviorDrivenMocks) ConfigureHappyPathWithMultipleScenarios(spotScen
 func (bdm *BehaviorDrivenMocks) ConfigureFailurePath() {
 	// Spots fail
 	bdm.SpotRepo.SetCreateSpotFunc(func(ctx context.Context, spot *entities.Spot) error {
-		return errors.New("database connection failed")
+		return fmt.Errorf("database connection failed for spot creation: spot_id=%s", spot.ID)
 	})
 	
 	bdm.SpotRepo.SetGetSpotFunc(func(ctx context.Context, id string) (*entities.Spot, error) {
@@ -618,7 +618,7 @@ func (bdm *BehaviorDrivenMocks) ConfigureFailurePath() {
 	
 	// Users fail
 	bdm.UserRepo.SetCreateUserFunc(func(ctx context.Context, user *entities.User) error {
-		return errors.New("user creation failed")
+		return fmt.Errorf("user creation failed: user_id=%s, email=%s", user.ID, user.Email)
 	})
 	
 	bdm.UserRepo.SetGetUserFunc(func(ctx context.Context, id string) (*entities.User, error) {
@@ -633,7 +633,7 @@ func (bdm *BehaviorDrivenMocks) ConfigurePartialFailure() {
 	
 	// But users fail
 	bdm.UserRepo.SetCreateUserFunc(func(ctx context.Context, user *entities.User) error {
-		return errors.New("user creation failed")
+		return fmt.Errorf("user creation failed in partial failure scenario: user_id=%s, email=%s", user.ID, user.Email)
 	})
 }
 
