@@ -51,6 +51,8 @@ test-bdd-coverage:
 	@go test -tags=integration -cover -coverprofile=integration_coverage.out -v ./interfaces/http/handlers ./pkg/auth
 	@go test -tags=e2e -cover -coverprofile=e2e_coverage.out -v ./tests/e2e
 	@echo "Merging coverage files..."
+	@command -v gocovmerge >/dev/null 2>&1 || { \
+		echo "Error: gocovmerge is not installed. Install with: go install github.com/wadey/gocovmerge@latest" ; exit 1 ; }
 	@gocovmerge integration_coverage.out e2e_coverage.out > combined_coverage.out
 	@echo "Combined coverage report generated: combined_coverage.out"
 
@@ -62,9 +64,9 @@ test-bdd-suite:
 		exit 1; \
 	fi
 	@if command -v ginkgo >/dev/null 2>&1; then \
-		ginkgo run -v tests/$(SUITE); \
+		ginkgo run -v $(SUITE); \
 	elif [ -f ~/go/bin/ginkgo ]; then \
-		~/go/bin/ginkgo run -v tests/$(SUITE); \
+		~/go/bin/ginkgo run -v $(SUITE); \
 	else \
 		echo "Error: ginkgo is not installed. Install with: go install github.com/onsi/ginkgo/v2/ginkgo@latest" ; exit 1 ; \
 	fi
