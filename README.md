@@ -56,7 +56,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 ### Prerequisites
 ```bash
 # Required
-go install golang.org/dl/go1.21@latest  # Go 1.21+
+go install golang.org/dl/go1.24@latest  # Go 1.24+
 node --version                          # Node.js 20+
 terraform --version                     # Terraform 1.5+
 

@@ -304,7 +304,7 @@ logger.ErrorWithContextAndFields(ctx, "User operation failed", err, map[string]i
 #### Multi-Stage Build Pattern
 ```dockerfile
 # Build stage - Full Go development environment
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 # ... build steps
 
 # Production stage - Minimal runtime
