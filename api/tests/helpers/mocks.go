@@ -57,7 +57,7 @@ func (m *MockSpotRepository) Create(ctx context.Context, spot *entities.Spot) er
 	
 	// Check if spot with the same ID already exists
 	if _, exists := m.spots[spot.ID]; exists {
-		return errors.New("spot with ID already exists")
+		return fmt.Errorf("spot with ID already exists: id=%s", spot.ID)
 	}
 	
 	m.spots[spot.ID] = spot
@@ -230,13 +230,13 @@ func (m *MockUserRepository) Create(ctx context.Context, user *entities.User) er
 	
 	// Check for duplicate email
 	if _, exists := m.usersByEmail[user.Email]; exists {
-		return errors.New("user with this email already exists")
+		return fmt.Errorf("user with this email already exists: email=%s", user.Email)
 	}
 	
 	// Check for duplicate auth provider combination
 	authKey := buildAuthKey(user.AuthProvider, user.AuthProviderID)
 	if _, exists := m.usersByAuthProvider[authKey]; exists {
-		return errors.New("user with this auth provider already exists")
+		return fmt.Errorf("user with this auth provider already exists: provider=%s, providerID=%s", user.AuthProvider, user.AuthProviderID)
 	}
 	
 	// Insert the user
@@ -318,7 +318,7 @@ func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) er
 	// Check for duplicate email (if different from current user's email)
 	if user.Email != oldUser.Email {
 		if existingUserByEmail, emailExists := m.usersByEmail[user.Email]; emailExists && existingUserByEmail.ID != user.ID {
-			return errors.New("user with this email already exists")
+			return fmt.Errorf("user with this email already exists: email=%s", user.Email)
 		}
 	}
 	
@@ -327,7 +327,7 @@ func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) er
 	oldAuthKey := buildAuthKey(oldUser.AuthProvider, oldUser.AuthProviderID)
 	if newAuthKey != oldAuthKey {
 		if existingUserByAuth, authExists := m.usersByAuthProvider[newAuthKey]; authExists && existingUserByAuth.ID != user.ID {
-			return errors.New("user with this auth provider already exists")
+			return fmt.Errorf("user with this auth provider already exists: provider=%s, providerID=%s", user.AuthProvider, user.AuthProviderID)
 		}
 	}
 	
@@ -613,7 +613,7 @@ func (bdm *BehaviorDrivenMocks) ConfigureFailurePath() {
 	})
 	
 	bdm.SpotRepo.SetGetSpotFunc(func(ctx context.Context, id string) (*entities.Spot, error) {
-		return nil, errors.New("spot not found")
+		return nil, fmt.Errorf("spot not found: id=%s", id)
 	})
 	
 	// Users fail
@@ -622,7 +622,7 @@ func (bdm *BehaviorDrivenMocks) ConfigureFailurePath() {
 	})
 	
 	bdm.UserRepo.SetGetUserFunc(func(ctx context.Context, id string) (*entities.User, error) {
-		return nil, errors.New("user not found")
+		return nil, fmt.Errorf("user not found: id=%s", id)
 	})
 }
 

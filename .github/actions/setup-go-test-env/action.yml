@@ -43,7 +43,7 @@ runs:
         go mod tidy
 
     - name: Install Ginkgo CLI
-      if: inputs.install-ginkgo == 'true'
+      if: ${{ inputs.install-ginkgo == 'true' }}
       shell: bash
       run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
 
