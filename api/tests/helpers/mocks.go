@@ -424,15 +424,9 @@ func (m *MockUserRepository) Reset() {
 	defer m.mu.Unlock()
 	
 	// Clear all stored users
-	for k := range m.users {
-		delete(m.users, k)
-	}
-	for k := range m.usersByEmail {
-		delete(m.usersByEmail, k)
-	}
-	for k := range m.usersByAuthProvider {
-		delete(m.usersByAuthProvider, k)
-	}
+	m.users = make(map[string]*entities.User)
+	m.usersByEmail = make(map[string]*entities.User)
+	m.usersByAuthProvider = make(map[string]*entities.User)
 	
 	// Reset all mock functions to nil
 	m.createUserFunc = nil
