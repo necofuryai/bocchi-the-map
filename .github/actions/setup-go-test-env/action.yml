@@ -1,0 +1,87 @@
+name: 'Setup Go Test Environment'
+description: 'Sets up Go environment with dependencies, protoc, and code generation for testing'
+inputs:
+  go-version:
+    description: 'Go version to use'
+    required: true
+    default: '1.24'
+  install-ginkgo:
+    description: 'Whether to install Ginkgo CLI'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Working directory for Go operations'
+    required: false
+    default: 'api'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install Go dependencies
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      run: |
+        go mod download
+        go mod tidy
+
+    - name: Install Ginkgo CLI
+      if: inputs.install-ginkgo == 'true'
+      shell: bash
+      run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
+
+    - name: Install sqlc
+      shell: bash
+      run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+    - name: Install protoc
+      uses: arduino/setup-protoc@v2
+      with:
+        version: '3.21.12'
+
+    - name: Install protoc-gen-go
+      shell: bash
+      run: |
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+    - name: Generate code
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      run: |
+        make proto
+        make sqlc
+
+    - name: Wait for MySQL to be ready
+      shell: bash
+      run: |
+        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" --silent; do
+          echo 'Waiting for MySQL...'
+          sleep 1
+        done
+
+    - name: Install migration tool and run migrations
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+      run: |
+        go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+        migrate -path migrations -database "mysql://root:password@tcp(localhost:3306)/bocchi_test" up
