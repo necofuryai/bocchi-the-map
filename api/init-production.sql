@@ -1,7 +1,4 @@
--- DEPRECATED: This file contains unreliable environment variable logic.
--- Use init-production.sql for production environments
--- Use init-test.sql for test/CI environments
-
+-- Production database initialization
 -- Initialize database with UTF-8 support
 CREATE DATABASE IF NOT EXISTS bocchi_the_map CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

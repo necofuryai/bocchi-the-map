@@ -146,6 +146,15 @@ docker-up:
 	@echo "Waiting for MySQL to be ready..."
 	@sleep 10
 
+# Initialize database with appropriate SQL file based on environment
+db-init-production:
+	@echo "Initializing production database..."
+	@docker exec bocchi-the-map-mysql mysql -u root -p$${MYSQL_ROOT_PASSWORD:-change_me_in_production} < init-production.sql
+
+db-init-test:
+	@echo "Initializing test database..."
+	@docker exec bocchi-the-map-mysql mysql -u root -p$${MYSQL_ROOT_PASSWORD:-change_me_in_production} < init-test.sql
+
 docker-down:
 	@echo "Stopping development environment..."
 	@docker-compose down
