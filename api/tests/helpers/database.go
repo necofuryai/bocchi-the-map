@@ -80,7 +80,9 @@ func (td *TestDatabase) WithTransaction(fn func(*sql.Tx)) {
 	
 	defer func() {
 		if r := recover(); r != nil {
-			tx.Rollback()
+			if err := tx.Rollback(); err != nil {
+				GinkgoWriter.Printf("Failed to rollback transaction after panic: %v\n", err)
+			}
 			panic(r)
 		}
 	}()

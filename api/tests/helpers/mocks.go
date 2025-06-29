@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
@@ -57,7 +58,7 @@ func (m *MockSpotRepository) GetByID(ctx context.Context, id string) (*entities.
 	}
 	
 	if !exists {
-		return nil, errors.New("spot not found")
+		return nil, fmt.Errorf("spot not found: id=%s", id)
 	}
 	
 	return spot, nil
@@ -92,7 +93,7 @@ func (m *MockSpotRepository) Update(ctx context.Context, spot *entities.Spot) er
 	}
 	
 	if !exists {
-		return errors.New("spot not found")
+		return fmt.Errorf("spot not found: id=%s", spot.ID)
 	}
 	
 	m.mu.Lock()
@@ -112,7 +113,7 @@ func (m *MockSpotRepository) Delete(ctx context.Context, id string) error {
 	}
 	
 	if !exists {
-		return errors.New("spot not found")
+		return fmt.Errorf("spot not found: id=%s", id)
 	}
 	
 	m.mu.Lock()
@@ -229,7 +230,7 @@ func (m *MockUserRepository) GetByID(ctx context.Context, id string) (*entities.
 	}
 	
 	if !exists {
-		return nil, errors.New("user not found")
+		return nil, fmt.Errorf("user not found: id=%s", id)
 	}
 	
 	return user, nil
@@ -249,7 +250,7 @@ func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*ent
 	m.mu.RUnlock()
 	
 	if !exists {
-		return nil, errors.New("user not found")
+		return nil, fmt.Errorf("user not found: email=%s", email)
 	}
 	return user, nil
 }
@@ -269,7 +270,7 @@ func (m *MockUserRepository) GetByAuthProvider(ctx context.Context, provider, pr
 	m.mu.RUnlock()
 	
 	if !exists {
-		return nil, errors.New("user not found")
+		return nil, fmt.Errorf("user not found: provider=%s, providerID=%s", provider, providerID)
 	}
 	return user, nil
 }
@@ -285,7 +286,7 @@ func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) er
 	}
 	
 	if !exists {
-		return errors.New("user not found")
+		return fmt.Errorf("user not found: id=%s", user.ID)
 	}
 	
 	m.mu.Lock()

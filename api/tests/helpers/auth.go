@@ -2,6 +2,8 @@ package helpers
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -122,5 +124,10 @@ func (ah *AuthHelper) NewAuthTestData() *AuthTestData {
 
 // generateRandomID generates a random ID for testing
 func generateRandomID() string {
-	return time.Now().Format("20060102150405.000000")
+	bytes := make([]byte, 8)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to timestamp if crypto/rand fails
+		return time.Now().Format("20060102150405.000000")
+	}
+	return hex.EncodeToString(bytes)
 }
