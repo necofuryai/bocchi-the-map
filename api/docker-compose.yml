@@ -10,6 +10,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-bocchi_the_map}
       MYSQL_USER: ${MYSQL_USER:-bocchi_user}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_me_too}
+      MYSQL_USER_PASSWORD: ${MYSQL_USER_PASSWORD:-secure_test_password_2024}
     ports:
       - "3306:3306"
     volumes:

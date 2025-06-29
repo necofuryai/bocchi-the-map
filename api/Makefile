@@ -1,7 +1,7 @@
 .PHONY: all proto sqlc clean test build run deps dev migrate-up migrate-down docs
 
 # Define ginkgo command with fallback logic
-GINKGO_CMD := $(shell if command -v ginkgo >/dev/null 2>&1; then echo "ginkgo"; elif [ -f ~/go/bin/ginkgo ]; then echo "~/go/bin/ginkgo"; else echo ""; fi)
+GINKGO_CMD := $(shell if command -v ginkgo >/dev/null 2>&1; then echo "ginkgo"; elif [ -f "$$(go env GOPATH)/bin/ginkgo" ]; then echo "$$(go env GOPATH)/bin/ginkgo"; else echo ""; fi)
 
 define check_ginkgo
 	@if [ -z "$(GINKGO_CMD)" ]; then \
@@ -64,6 +64,12 @@ test-bdd-coverage:
 		echo "Error: gocovmerge is not installed. Install with: go install github.com/wadey/gocovmerge@latest" ; exit 1 ; }
 	@gocovmerge integration_coverage.out e2e_coverage.out > combined_coverage.out
 	@echo "Combined coverage report generated: combined_coverage.out"
+
+# Clean up intermediate coverage files
+clean-coverage:
+	@echo "Cleaning up coverage files..."
+	@rm -f integration_coverage.out e2e_coverage.out combined_coverage.out
+	@echo "Coverage files cleaned up"
 
 # Run specific BDD test suite
 test-bdd-suite:
@@ -149,11 +155,11 @@ docker-up:
 # Initialize database with appropriate SQL file based on environment
 db-init-production:
 	@echo "Initializing production database..."
-	@docker exec bocchi-the-map-mysql mysql -u root -p$${MYSQL_ROOT_PASSWORD:-change_me_in_production} < init-production.sql
+	@docker exec bocchi-the-map-mysql mysql -u root -p"$${MYSQL_ROOT_PASSWORD:-change_me_in_production}" < init-production.sql
 
 db-init-test:
 	@echo "Initializing test database..."
-	@docker exec bocchi-the-map-mysql mysql -u root -p$${MYSQL_ROOT_PASSWORD:-change_me_in_production} < init-test.sql
+	@docker exec bocchi-the-map-mysql mysql -u root -p"$${MYSQL_ROOT_PASSWORD:-change_me_in_production}" < init-test.sql
 
 docker-down:
 	@echo "Stopping development environment..."
