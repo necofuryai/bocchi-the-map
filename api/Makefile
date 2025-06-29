@@ -1,5 +1,14 @@
 .PHONY: all proto sqlc clean test build run deps dev migrate-up migrate-down docs
 
+# Define ginkgo command with fallback logic
+GINKGO_CMD := $(shell if command -v ginkgo >/dev/null 2>&1; then echo "ginkgo"; elif [ -f ~/go/bin/ginkgo ]; then echo "~/go/bin/ginkgo"; else echo ""; fi)
+
+define check_ginkgo
+	@if [ -z "$(GINKGO_CMD)" ]; then \
+		echo "Error: ginkgo is not installed. Install with: go install github.com/onsi/ginkgo/v2/ginkgo@latest" ; exit 1 ; \
+	fi
+endef
+
 # Generate SQL code
 sqlc:
 	@command -v sqlc >/dev/null 2>&1 || { \
@@ -63,24 +72,14 @@ test-bdd-suite:
 		echo "Usage: make test-bdd-suite SUITE=interfaces/http/handlers/spot_handler_test.go"; \
 		exit 1; \
 	fi
-	@if command -v ginkgo >/dev/null 2>&1; then \
-		ginkgo run -v $(SUITE); \
-	elif [ -f ~/go/bin/ginkgo ]; then \
-		~/go/bin/ginkgo run -v $(SUITE); \
-	else \
-		echo "Error: ginkgo is not installed. Install with: go install github.com/onsi/ginkgo/v2/ginkgo@latest" ; exit 1 ; \
-	fi
+	$(call check_ginkgo)
+	$(GINKGO_CMD) run -v $(SUITE)
 
 # Run BDD tests in watch mode for development
 test-bdd-watch:
 	@echo "Running BDD tests in watch mode..."
-	@if command -v ginkgo >/dev/null 2>&1; then \
-		ginkgo watch -r --label-filter="!slow" tests/; \
-	elif [ -f ~/go/bin/ginkgo ]; then \
-		~/go/bin/ginkgo watch -r --label-filter="!slow" tests/; \
-	else \
-		echo "Error: ginkgo is not installed. Install with: go install github.com/onsi/ginkgo/v2/ginkgo@latest" ; exit 1 ; \
-	fi
+	$(call check_ginkgo)
+	$(GINKGO_CMD) watch -r --label-filter="!slow" ./interfaces/http/handlers ./tests/e2e
 
 # Build the application
 build:
