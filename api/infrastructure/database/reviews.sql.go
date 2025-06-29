@@ -37,10 +37,12 @@ func (q *Queries) CountReviewsByUser(ctx context.Context, userID string) (int64,
 }
 
 const countTopRatedSpots = `-- name: CountTopRatedSpots :one
-SELECT COUNT(DISTINCT s.id) FROM spots s
-LEFT JOIN reviews r ON s.id = r.spot_id
-GROUP BY s.id
-HAVING COUNT(r.id) >= ?
+SELECT COUNT(*) FROM (
+  SELECT s.id FROM spots s
+  LEFT JOIN reviews r ON s.id = r.spot_id
+  GROUP BY s.id
+  HAVING COUNT(r.id) >= ?
+) AS filtered_spots
 `
 
 func (q *Queries) CountTopRatedSpots(ctx context.Context, id string) (int64, error) {
@@ -175,7 +177,17 @@ func (q *Queries) GetSpotRatingStats(ctx context.Context, spotID string) (GetSpo
 }
 
 const listReviewsBySpot = `-- name: ListReviewsBySpot :many
-SELECT r.id, r.spot_id, r.user_id, r.rating, r.comment, r.rating_aspects, r.created_at, r.updated_at, u.display_name as user_name, u.avatar_url as user_avatar
+SELECT
+  r.id,
+  r.spot_id,
+  r.user_id,
+  r.rating,
+  r.comment,
+  r.rating_aspects,
+  r.created_at,
+  r.updated_at,
+  u.display_name  AS user_name,
+  u.avatar_url    AS user_avatar
 FROM reviews r
 JOIN users u ON r.user_id = u.id
 WHERE r.spot_id = ?
@@ -299,10 +311,23 @@ func (q *Queries) ListReviewsByUser(ctx context.Context, arg ListReviewsByUserPa
 }
 
 const listTopRatedSpots = `-- name: ListTopRatedSpots :many
-SELECT s.id, s.name, s.name_i18n, s.latitude, s.longitude, s.category, s.address, s.address_i18n, s.country_code, s.average_rating, s.review_count, s.created_at, s.updated_at, AVG(r.rating) as avg_rating, COUNT(r.id) as total_reviews
+SELECT
+  s.id,
+  s.name,
+  s.category,
+  s.address,
+  s.latitude,
+  s.longitude,
+  s.country_code,
+  s.average_rating,
+  s.review_count,
+  s.created_at,
+  s.updated_at,
+  AVG(r.rating)  AS avg_rating,
+  COUNT(r.id)    AS total_reviews
 FROM spots s
 LEFT JOIN reviews r ON s.id = r.spot_id
-GROUP BY s.id
+GROUP BY s.id, s.name, s.category, s.address, s.latitude, s.longitude, s.country_code, s.average_rating, s.review_count, s.created_at, s.updated_at
 HAVING COUNT(r.id) >= ?
 ORDER BY avg_rating DESC, total_reviews DESC
 LIMIT ? OFFSET ?
@@ -315,21 +340,19 @@ type ListTopRatedSpotsParams struct {
 }
 
 type ListTopRatedSpotsRow struct {
-	ID            string          `json:"id"`
-	Name          string          `json:"name"`
-	NameI18n      json.RawMessage `json:"name_i18n"`
-	Latitude      string          `json:"latitude"`
-	Longitude     string          `json:"longitude"`
-	Category      string          `json:"category"`
-	Address       string          `json:"address"`
-	AddressI18n   json.RawMessage `json:"address_i18n"`
-	CountryCode   string          `json:"country_code"`
-	AverageRating string          `json:"average_rating"`
-	ReviewCount   int32           `json:"review_count"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
-	AvgRating     interface{}     `json:"avg_rating"`
-	TotalReviews  int64           `json:"total_reviews"`
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Category      string      `json:"category"`
+	Address       string      `json:"address"`
+	Latitude      string      `json:"latitude"`
+	Longitude     string      `json:"longitude"`
+	CountryCode   string      `json:"country_code"`
+	AverageRating string      `json:"average_rating"`
+	ReviewCount   int32       `json:"review_count"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+	AvgRating     interface{} `json:"avg_rating"`
+	TotalReviews  int64       `json:"total_reviews"`
 }
 
 func (q *Queries) ListTopRatedSpots(ctx context.Context, arg ListTopRatedSpotsParams) ([]ListTopRatedSpotsRow, error) {
@@ -344,12 +367,10 @@ func (q *Queries) ListTopRatedSpots(ctx context.Context, arg ListTopRatedSpotsPa
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.NameI18n,
-			&i.Latitude,
-			&i.Longitude,
 			&i.Category,
 			&i.Address,
-			&i.AddressI18n,
+			&i.Latitude,
+			&i.Longitude,
 			&i.CountryCode,
 			&i.AverageRating,
 			&i.ReviewCount,

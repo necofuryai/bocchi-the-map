@@ -77,8 +77,6 @@ SELECT
   s.latitude,
   s.longitude,
   s.country_code,
-  s.description,
-  s.opening_hours,
   s.average_rating,
   s.review_count,
   s.created_at,
@@ -87,7 +85,7 @@ SELECT
   COUNT(r.id)    AS total_reviews
 FROM spots s
 LEFT JOIN reviews r ON s.id = r.spot_id
-GROUP BY s.id, s.name, s.category, s.address, s.latitude, s.longitude, s.country_code, s.description, s.opening_hours, s.average_rating, s.review_count, s.created_at, s.updated_at
+GROUP BY s.id, s.name, s.category, s.address, s.latitude, s.longitude, s.country_code, s.average_rating, s.review_count, s.created_at, s.updated_at
 HAVING COUNT(r.id) >= ?
 ORDER BY avg_rating DESC, total_reviews DESC
 LIMIT ? OFFSET ?;
