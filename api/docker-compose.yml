@@ -14,9 +14,9 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      # Use environment-specific init SQL file instead of generic init.sql
-      # For test: ./init-test.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      # For production: ./init-production.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # Use environment-specific init SQL files via override files:
+      # For test: docker-compose up (uses docker-compose.override.yml)
+      # For production: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
     command: --default-authentication-plugin=mysql_native_password
 
 volumes:

@@ -1,0 +1,5 @@
+services:
+  mysql:
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-test.sql:/docker-entrypoint-initdb.d/init.sql:ro
