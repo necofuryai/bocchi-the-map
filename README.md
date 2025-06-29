@@ -4,7 +4,7 @@
 
 [![Alpha](https://img.shields.io/badge/Status-Alpha-orange?style=flat)](https://github.com/necofuryai/bocchi-the-map)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.2-000000?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel)](https://vercel.com/)
@@ -87,6 +87,23 @@ pnpm dev                    # Starts on :3000 with Turbopack
 
 # Visit http://localhost:3000 🎉
 ```
+
+### Database Setup
+
+The project uses environment-specific database initialization files:
+
+- **Development/Testing**: `init-test.sql` - Used automatically with `docker-compose up`
+- **Production**: `init-production.sql` - Used with production docker-compose configuration
+
+```bash
+# Start database for development/testing
+docker-compose up -d
+
+# Start database for production
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+The database configuration supports both local development and production environments with appropriate schema initialization for each context.
 
 ### Testing
 

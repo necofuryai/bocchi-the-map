@@ -304,11 +304,11 @@ logger.ErrorWithContextAndFields(ctx, "User operation failed", err, map[string]i
 #### Multi-Stage Build Pattern
 ```dockerfile
 # Build stage - Full Go development environment
-FROM golang:1.24-alpine AS builder
+FROM golang@sha256:68932fa6d4d4059845c8f40ad7e654e626f3ebd3706eef7846f319293ab5cb7a AS builder
 # ... build steps
 
 # Production stage - Minimal runtime
-FROM alpine:latest
+FROM alpine@sha256:8a1f59ffb675680d47db6337b49d22281a139e9d709335b492be023728e11715
 # Security: non-root user, ca-certificates, health checks
 ```
 
