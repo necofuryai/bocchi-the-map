@@ -2,25 +2,25 @@ name: BDD Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
       - 'api/**'
       - '.github/workflows/bdd-tests.yml'
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'api/**'
       - '.github/workflows/bdd-tests.yml'
 
 env:
-  GO_VERSION: '1.21'
+  GO_VERSION: '1.24'
   MYSQL_VERSION: '8.0'
 
 jobs:
   bdd-tests:
     name: BDD Tests with Ginkgo
     runs-on: ubuntu-latest
-    
+
     services:
       mysql:
         image: mysql:8.0
@@ -36,101 +36,44 @@ jobs:
           --health-retries=10
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Setup Go Test Environment
+        uses: ./.github/actions/setup-go-test-env
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          install-ginkgo: 'true'
+          working-directory: 'api'
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GO_VERSION }}
+      - name: Run BDD Tests
+        working-directory: api
+        env:
+          TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+          CGO_ENABLED: 1
+        run: |
+          make test-bdd-coverage
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bdd-test-results
+          path: |
+            api/coverage.out
+            api/tests/
 
-    - name: Install dependencies
-      working-directory: api
-      run: |
-        go mod download
-        go mod tidy
-
-    - name: Install Ginkgo CLI
-      run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
-
-    - name: Install sqlc
-      run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-
-    - name: Install protoc
-      uses: arduino/setup-protoc@v2
-      with:
-        version: '3.21.12'
-
-    - name: Install protoc-gen-go
-      run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-
-    - name: Generate code
-      working-directory: api
-      run: |
-        make proto
-        make sqlc
-
-    - name: Wait for MySQL to be ready
-      run: |
-        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" --silent; do
-          echo 'Waiting for MySQL...'
-          sleep 1
-        done
-
-    - name: Run database migrations
-      working-directory: api
-      env:
-        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
-      run: |
-        # Install migrate tool
-        go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-        
-        # Run migrations on test database
-        migrate -path migrations -database "mysql://root:password@tcp(localhost:3306)/bocchi_test" up
-
-    - name: Run BDD Tests
-      working-directory: api
-      env:
-        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
-        CGO_ENABLED: 1
-      run: |
-        make test-bdd-coverage
-
-    - name: Upload test results
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: bdd-test-results
-        path: |
-          api/coverage.out
-          api/tests/
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: api/coverage.out
-        flags: bdd-tests
-        name: bdd-coverage
-        fail_ci_if_error: false
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: api/coverage.out
+          flags: bdd-tests
+          name: bdd-coverage
+          fail_ci_if_error: false
 
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: bdd-tests
     if: github.event_name == 'pull_request'
-    
+
     services:
       mysql:
         image: mysql:8.0
@@ -146,128 +89,79 @@ jobs:
           --health-retries=10
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Setup Go Test Environment
+        uses: ./.github/actions/setup-go-test-env
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          install-ginkgo: 'true'
+          working-directory: 'api'
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GO_VERSION }}
+      - name: Run Integration Tests Only
+        working-directory: api
+        env:
+          TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+          CGO_ENABLED: 1
+        run: |
+          go test -tags=integration -v ./tests/integration/... ./interfaces/http/handlers/... 2>&1 | tee test_output.log
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-
-    - name: Install dependencies
-      working-directory: api
-      run: |
-        go mod download
-        go install github.com/onsi/ginkgo/v2/ginkgo@latest
-        go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-
-    - name: Install protoc
-      uses: arduino/setup-protoc@v2
-      with:
-        version: '3.21.12'
-
-    - name: Install protoc-gen-go
-      run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-
-    - name: Generate code
-      working-directory: api
-      run: |
-        make proto
-        make sqlc
-
-    - name: Wait for MySQL to be ready
-      run: |
-        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" --silent; do
-          echo 'Waiting for MySQL...'
-          sleep 1
-        done
-
-    - name: Run database migrations
-      working-directory: api
-      env:
-        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
-      run: |
-        go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-        migrate -path migrations -database "mysql://root:password@tcp(localhost:3306)/bocchi_test" up
-
-    - name: Run Integration Tests Only
-      working-directory: api
-      env:
-        TEST_DATABASE_URL: "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
-        CGO_ENABLED: 1
-      run: |
-        go test -tags=integration -v ./tests/integration/... ./interfaces/http/handlers/... 2>&1 | tee test_output.log
-
-    - name: Comment PR with test results
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const fs = require('fs');
-          
-          // Read test output to extract executed test suites
-          let testOutput = '';
-          try {
-            testOutput = fs.readFileSync('api/test_output.log', 'utf8');
-          } catch (error) {
-            console.log('Could not read test output file:', error.message);
-          }
-          
-          // Extract test suite names from the output
-          const extractTestSuites = (output) => {
-            const suites = [];
-            const lines = output.split('\n');
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
             
-            for (const line of lines) {
-              // Look for "Running Suite:" lines which indicate Ginkgo test suites
-              const suiteMatch = line.match(/Running Suite: (.+) -/);
-              if (suiteMatch) {
-                suites.push(suiteMatch[1].trim());
-              }
-              
-              // Also look for package test runs
-              const packageMatch = line.match(/=== RUN\s+Test(\w+)/);
-              if (packageMatch) {
-                const testName = packageMatch[1];
-                if (!suites.some(suite => suite.includes(testName))) {
-                  suites.push(`${testName} BDD Tests`);
-                }
-              }
+            // Read test output to extract executed test suites
+            let testOutput = '';
+            try {
+              testOutput = fs.readFileSync('api/test_output.log', 'utf8');
+            } catch (error) {
+              console.log('Could not read test output file:', error.message);
             }
             
-            return suites.length > 0 ? suites : ['HTTP Handlers Integration Test Suite'];
-          };
-          
-          const executedSuites = extractTestSuites(testOutput);
-          
-          let comment = '## 🧪 BDD Integration Test Results\n\n';
-          comment += '✅ All integration tests passed!\n\n';
-          comment += 'The following test suites were executed:\n';
-          
-          for (const suite of executedSuites) {
-            comment += `- ${suite}\n`;
-          }
-          
-          comment += '\n**Test Environment:**\n';
-          comment += `- Go Version: ${{ env.GO_VERSION }}\n`;
-          comment += `- MySQL Version: ${{ env.MYSQL_VERSION }}\n`;
-          comment += '- Framework: Ginkgo v2 with Gomega\n';
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+            // Extract test suite names from the output
+            const extractTestSuites = (output) => {
+              const suites = [];
+              const lines = output.split('\n');
+              
+              for (const line of lines) {
+                // Look for "Running Suite:" lines which indicate Ginkgo test suites
+                const suiteMatch = line.match(/Running Suite: (.+) -/);
+                if (suiteMatch) {
+                  suites.push(suiteMatch[1].trim());
+                }
+                
+                // Also look for package test runs
+                const packageMatch = line.match(/=== RUN\s+Test(\w+)/);
+                if (packageMatch) {
+                  const testName = packageMatch[1];
+                  if (!suites.some(suite => suite.includes(testName))) {
+                    suites.push(`${testName} BDD Tests`);
+                  }
+                }
+              }
+              
+              return suites.length > 0 ? suites : ['HTTP Handlers Integration Test Suite'];
+            };
+            
+            const executedSuites = extractTestSuites(testOutput);
+            
+            let comment = '## 🧪 BDD Integration Test Results\n\n';
+            comment += '✅ All integration tests passed!\n\n';
+            comment += 'The following test suites were executed:\n';
+            
+            for (const suite of executedSuites) {
+              comment += `- ${suite}\n`;
+            }
+            
+            comment += '\n**Test Environment:**\n';
+            comment += `- Go Version: ${{ env.GO_VERSION }}\n`;
+            comment += `- MySQL Version: ${{ env.MYSQL_VERSION }}\n`;
+            comment += '- Framework: Ginkgo v2 with Gomega\n';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
