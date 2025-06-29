@@ -60,7 +60,13 @@ nc -z 127.0.0.1 3306 && echo "Port 3306 is accessible" || echo "Port 3306 is NOT
 #### **Network Information:**
 ```bash
 echo "Network connections:"
-netstat -tlpn | grep :3306 || echo "No process listening on port 3306"
+# Try netstat first, fallback to ss if netstat is not available
+if command -v netstat >/dev/null 2>&1; then
+  netstat -tlpn | grep :3306 || echo "No process listening on port 3306"
+else
+  echo "netstat not available, using ss instead..."
+  ss -ltn | grep :3306 || echo "No process listening on port 3306"
+fi
 ```
 
 #### **Docker Container Status:**

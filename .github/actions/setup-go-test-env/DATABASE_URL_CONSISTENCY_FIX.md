@@ -12,7 +12,7 @@ The `TEST_DATABASE_URL` environment variable was duplicated and hardcoded in mul
 ✅ **Added environment variable export**:
 ```bash
 # Export TEST_DATABASE_URL for use in subsequent workflow steps
-echo "TEST_DATABASE_URL=$TEST_DATABASE_URL" >> $GITHUB_ENV
+echo "TEST_DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
 ```
 
 **Benefits:**

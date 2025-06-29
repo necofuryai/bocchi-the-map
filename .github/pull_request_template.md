@@ -1,4 +1,4 @@
-# Pull Request
+# Bocchi The Map - Pull Request 🗺️
 
 ## 📋 Description
 <!-- Briefly describe what this PR does -->
@@ -18,7 +18,7 @@
 <!-- Describe the tests you ran to verify your changes -->
 - [ ] Unit tests pass
 - [ ] Integration tests pass
-- [ ] E2E tests pass (if applicable)
+- [ ] E2E tests pass (run when changes affect user workflows, critical integrations, or API contracts)
 - [ ] Manual testing completed
 
 ## 📚 Documentation Checklist
@@ -60,7 +60,13 @@ Closes #
 - [ ] Security considerations
 - [ ] Performance impact
 - [ ] Breaking changes
-- [ ] Database migration safety (including rollback testing for schema changes)
+- [ ] Database migration safety:
+  - [ ] Migration scripts are reversible with proper down migrations
+  - [ ] Rollback testing performed on non-production environment
+  - [ ] Data integrity verification before and after migration
+  - [ ] Performance impact assessment for large tables
+  - [ ] Zero-downtime migration strategy for production deployments
+  - [ ] Migration dependencies and order verified
 - [ ] Error handling
 
 ## 🤖 Automated Checks
