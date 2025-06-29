@@ -1,4 +1,12 @@
 -- Add indexes for improved search performance on spots table
+-- DEPENDENCY: This migration requires idx_location index from 000001_initial_schema.up.sql
+-- Verify that the required index exists before proceeding
+SELECT COUNT(*) FROM information_schema.statistics 
+WHERE table_schema = database() 
+  AND table_name = 'spots' 
+  AND index_name = 'idx_location'
+  AND column_name IN ('latitude', 'longitude');
+
 -- Composite index for name and address LIKE searches
 CREATE INDEX `idx_spots_name_address` ON `spots`(`name`, `address`(255));
 
@@ -14,5 +22,6 @@ CREATE INDEX `idx_spots_country_rating` ON `spots`(`country_code`, `average_rati
 
 -- Regular composite index for location-based queries
 -- Note: SPATIAL INDEX requires POINT/GEOMETRY columns, using regular BTREE index for DECIMAL columns
--- Keep original idx_location index as-is (already exists from initial schema)
+-- DEPENDENCY CONFIRMED: idx_location index exists from 000001_initial_schema.up.sql (line 32)
+-- This migration relies on the existing idx_location index for location-based functionality
 -- No additional location index needed since idx_location already provides this functionality

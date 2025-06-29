@@ -70,6 +70,13 @@ var _ = Describe("AuthHandler BDD Tests", func() {
 		})
 	})
 
+	AfterEach(func() {
+		By("Cleaning up test server resources")
+		if testServer != nil {
+			testServer.Close()
+		}
+	})
+
 	Describe("API Token Generation", func() {
 		Context("Given a valid OAuth user", func() {
 			Context("When requesting API token with matching credentials", func() {
@@ -450,7 +457,7 @@ var _ = Describe("AuthHandler BDD Tests", func() {
 						
 						req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
 						req.Header.Set("Content-Type", "application/json")
-						req.RemoteAddr = "127.0.0.1:12345" // Consistent IP for rate limiting
+						req.RemoteAddr = fmt.Sprintf("127.0.0.%d:12345", i+1) // Unique IP for each request
 						
 						resp := httptest.NewRecorder()
 						testServer.Config.Handler.ServeHTTP(resp, req)
@@ -511,6 +518,7 @@ var _ = Describe("AuthHandler BDD Tests", func() {
 					By("Verifying rate limit headers are set correctly")
 					Expect(resp.Header().Get("X-RateLimit-Limit")).To(Equal("5"), "Rate limit header should show limit of 5")
 					Expect(resp.Header().Get("X-RateLimit-Window")).To(Equal("300"), "Rate limit window should be 300 seconds")
+					Expect(resp.Header().Get("X-RateLimit-Remaining")).To(Equal("0"), "Rate limit remaining should be 0 when limit is exceeded")
 					Expect(resp.Header().Get("Retry-After")).To(Equal("300"), "Retry-After should be 300 seconds")
 					
 					By("Verifying rate limit error message")

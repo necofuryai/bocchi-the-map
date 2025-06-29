@@ -77,8 +77,6 @@ SELECT
   s.latitude,
   s.longitude,
   s.country_code,
-  s.average_rating,
-  s.review_count,
   s.created_at,
   s.updated_at,
   ra.avg_rating,

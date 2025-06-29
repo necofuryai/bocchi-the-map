@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -19,6 +20,13 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/tests/helpers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+)
+
+const (
+	defaultTestLanguage   = "ja"
+	defaultTestTimezone   = "Asia/Tokyo"
+	alternateTestLanguage = "en"
+	alternateTestTimezone = "UTC"
 )
 
 var _ = Describe("UserHandler BDD Tests", func() {

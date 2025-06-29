@@ -562,8 +562,8 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 				testSuite.FixtureManager.CreateSpotFixture(context.Background(), helpers.SpotFixture{
 					ID:          spotID,
 					Name:        fmt.Sprintf("User Spot %d", i),
-					Latitude:    35.6762 + float64(i)*0.001,
-					Longitude:   139.6503 + float64(i)*0.001,
+					Latitude:    35.6762 + float64(i)*0.01,
+					Longitude:   139.6503 + float64(i)*0.01,
 					Category:    "cafe",
 					Address:     fmt.Sprintf("Address %d", i),
 					CountryCode: "JP",

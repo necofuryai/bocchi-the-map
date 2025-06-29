@@ -20,14 +20,12 @@ var (
 // FixtureManager manages test data fixtures
 type FixtureManager struct {
 	db      *TestDatabase
-	authHelper *AuthHelper
 }
 
 // NewFixtureManager creates a new fixture manager
 func NewFixtureManager(db *TestDatabase) *FixtureManager {
 	return &FixtureManager{
-		db:         db,
-		authHelper: NewAuthHelper(),
+		db: db,
 	}
 }
 
@@ -218,44 +216,43 @@ func (fm *FixtureManager) DefaultUserFixtures() []UserFixture {
 	}
 }
 
-// SetupStandardFixtures creates a standard set of test data
-func (fm *FixtureManager) SetupStandardFixtures(ctx context.Context) {
-	// Create users first (for foreign key constraints)
-	for _, userFixture := range fm.DefaultUserFixtures() {
-		fm.CreateUserFixture(ctx, userFixture)
-	}
-	
-	// Create spots
-	for _, spotFixture := range fm.DefaultSpotFixtures() {
-		fm.CreateSpotFixture(ctx, spotFixture)
-	}
-}
-
-// SetupStandardFixturesWithReturn creates a standard set of test data and returns the created entities
-func (fm *FixtureManager) SetupStandardFixturesWithReturn() ([]*entities.User, []*entities.Spot) {
+// createStandardFixtures creates a standard set of test data and returns the created entities
+func (fm *FixtureManager) createStandardFixtures(ctx context.Context) ([]*entities.User, []*entities.Spot) {
 	var users []*entities.User
 	var spots []*entities.Spot
 	
 	// Create users first (for foreign key constraints)
 	for _, userFixture := range fm.DefaultUserFixtures() {
-		user := fm.CreateUserFixture(context.Background(), userFixture)
+		user := fm.CreateUserFixture(ctx, userFixture)
 		users = append(users, user)
 	}
 	
 	// Create spots
 	for _, spotFixture := range fm.DefaultSpotFixtures() {
-		spot := fm.CreateSpotFixture(context.Background(), spotFixture)
+		spot := fm.CreateSpotFixture(ctx, spotFixture)
 		spots = append(spots, spot)
 	}
 	
 	return users, spots
 }
 
+// SetupStandardFixtures creates a standard set of test data
+func (fm *FixtureManager) SetupStandardFixtures(ctx context.Context) {
+	fm.createStandardFixtures(ctx)
+}
+
+// SetupStandardFixturesWithReturn creates a standard set of test data and returns the created entities
+func (fm *FixtureManager) SetupStandardFixturesWithReturn() ([]*entities.User, []*entities.Spot) {
+	return fm.createStandardFixtures(context.Background())
+}
+
 // CleanupFixtures removes all fixture data
-func (fm *FixtureManager) CleanupFixtures(t *testing.T) {
+func (fm *FixtureManager) CleanupFixtures(t *testing.T) error {
 	err := fm.db.CleanDatabase()
 	if err != nil {
 		// Log error but don't panic in cleanup
 		t.Logf("Warning: Failed to cleanup fixtures: %v", err)
+		return err
 	}
+	return nil
 }

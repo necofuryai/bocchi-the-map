@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
@@ -20,15 +22,33 @@ func buildAuthKey(provider entities.AuthProvider, providerID string) string {
 	return string(provider) + ":" + providerID
 }
 
+// distanceInKm calculates the distance between two coordinates in kilometers using the Haversine formula
+func distanceInKm(lat1, lng1, lat2, lng2 float64) float64 {
+	const earthRadiusKm = 6371
+
+	dLat := (lat2 - lat1) * math.Pi / 180
+	dLng := (lng2 - lng1) * math.Pi / 180
+
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*
+		math.Sin(dLng/2)*math.Sin(dLng/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return earthRadiusKm * c
+}
+
 // MockSpotRepository provides a mock implementation for testing
 type MockSpotRepository struct {
-	mu              sync.RWMutex
-	spots           map[string]*entities.Spot
-	createSpotFunc  func(ctx context.Context, spot *entities.Spot) error
-	getSpotFunc     func(ctx context.Context, id string) (*entities.Spot, error)
-	listSpotsFunc   func(ctx context.Context, filters map[string]interface{}) ([]*entities.Spot, error)
-	updateSpotFunc  func(ctx context.Context, spot *entities.Spot) error
-	deleteSpotFunc  func(ctx context.Context, id string) error
+	mu                    sync.RWMutex
+	spots                 map[string]*entities.Spot
+	createSpotFunc        func(ctx context.Context, spot *entities.Spot) error
+	getSpotFunc           func(ctx context.Context, id string) (*entities.Spot, error)
+	getByCoordinatesFunc  func(ctx context.Context, lat, lng, radiusKm float64) ([]*entities.Spot, error)
+	listSpotsFunc         func(ctx context.Context, offset, limit int) ([]*entities.Spot, int, error)
+	searchSpotsFunc       func(ctx context.Context, query string, lang string, offset, limit int) ([]*entities.Spot, int, error)
+	updateSpotFunc        func(ctx context.Context, spot *entities.Spot) error
+	deleteSpotFunc        func(ctx context.Context, id string) error
+	updateRatingFunc      func(ctx context.Context, spotID string, averageRating float64, reviewCount int) error
 }
 
 // NewMockSpotRepository creates a new mock spot repository
@@ -49,7 +69,7 @@ func (m *MockSpotRepository) Create(ctx context.Context, spot *entities.Spot) er
 	}
 	
 	if spot.ID == "" {
-		return errors.New("spot ID is required")
+		return errors.New("validation error: spot.ID field cannot be empty - a valid spot ID is required for spot creation")
 	}
 	
 	m.mu.Lock()
@@ -81,12 +101,35 @@ func (m *MockSpotRepository) GetByID(ctx context.Context, id string) (*entities.
 	return spot, nil
 }
 
-func (m *MockSpotRepository) List(ctx context.Context, filters map[string]interface{}) ([]*entities.Spot, error) {
+func (m *MockSpotRepository) GetByCoordinates(ctx context.Context, lat, lng, radiusKm float64) ([]*entities.Spot, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	if m.getByCoordinatesFunc != nil {
+		return m.getByCoordinatesFunc(ctx, lat, lng, radiusKm)
+	}
+	
+	result := make([]*entities.Spot, 0)
+	for _, spot := range m.spots {
+		// Simple distance check - in real implementation would use proper geospatial calculation
+		if distanceInKm(lat, lng, spot.Latitude, spot.Longitude) <= radiusKm {
+			result = append(result, spot)
+		}
+	}
+	
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID < result[j].ID
+	})
+	
+	return result, nil
+}
+
+func (m *MockSpotRepository) List(ctx context.Context, offset, limit int) ([]*entities.Spot, int, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	
 	if m.listSpotsFunc != nil {
-		return m.listSpotsFunc(ctx, filters)
+		return m.listSpotsFunc(ctx, offset, limit)
 	}
 	
 	result := make([]*entities.Spot, 0, len(m.spots))
@@ -98,7 +141,81 @@ func (m *MockSpotRepository) List(ctx context.Context, filters map[string]interf
 		return result[i].ID < result[j].ID
 	})
 	
-	return result, nil
+	total := len(result)
+	
+	// Apply pagination
+	if offset >= total {
+		return []*entities.Spot{}, total, nil
+	}
+	
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	
+	return result[offset:end], total, nil
+}
+
+func (m *MockSpotRepository) Search(ctx context.Context, query string, lang string, offset, limit int) ([]*entities.Spot, int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	if m.searchSpotsFunc != nil {
+		return m.searchSpotsFunc(ctx, query, lang, offset, limit)
+	}
+	
+	result := make([]*entities.Spot, 0)
+	lowerQuery := strings.ToLower(query)
+	
+	for _, spot := range m.spots {
+		matched := false
+		
+		// Simple text search in name and address
+		if strings.Contains(strings.ToLower(spot.Name), lowerQuery) ||
+		   strings.Contains(strings.ToLower(spot.Address), lowerQuery) ||
+		   strings.Contains(strings.ToLower(spot.Category), lowerQuery) {
+			matched = true
+		}
+		
+		// Also search in localized names and addresses if available
+		if !matched && spot.NameI18n != nil {
+			if localizedName, ok := spot.NameI18n[lang]; ok {
+				if strings.Contains(strings.ToLower(localizedName), lowerQuery) {
+					matched = true
+				}
+			}
+		}
+		
+		if !matched && spot.AddressI18n != nil {
+			if localizedAddress, ok := spot.AddressI18n[lang]; ok {
+				if strings.Contains(strings.ToLower(localizedAddress), lowerQuery) {
+					matched = true
+				}
+			}
+		}
+		
+		if matched {
+			result = append(result, spot)
+		}
+	}
+	
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID < result[j].ID
+	})
+	
+	total := len(result)
+	
+	// Apply pagination
+	if offset >= total {
+		return []*entities.Spot{}, total, nil
+	}
+	
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	
+	return result[offset:end], total, nil
 }
 
 func (m *MockSpotRepository) Update(ctx context.Context, spot *entities.Spot) error {
@@ -141,6 +258,28 @@ func (m *MockSpotRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (m *MockSpotRepository) UpdateRating(ctx context.Context, spotID string, averageRating float64, reviewCount int) error {
+	m.mu.RLock()
+	updateRatingFunc := m.updateRatingFunc
+	spot, exists := m.spots[spotID]
+	m.mu.RUnlock()
+	
+	if updateRatingFunc != nil {
+		return updateRatingFunc(ctx, spotID, averageRating, reviewCount)
+	}
+	
+	if !exists {
+		return fmt.Errorf("spot not found: id=%s", spotID)
+	}
+	
+	m.mu.Lock()
+	spot.AverageRating = averageRating
+	spot.ReviewCount = reviewCount
+	m.mu.Unlock()
+	
+	return nil
+}
+
 // Mock configuration methods
 func (m *MockSpotRepository) SetCreateSpotFunc(fn func(ctx context.Context, spot *entities.Spot) error) {
 	m.mu.Lock()
@@ -154,7 +293,7 @@ func (m *MockSpotRepository) SetGetSpotFunc(fn func(ctx context.Context, id stri
 	m.mu.Unlock()
 }
 
-func (m *MockSpotRepository) SetListSpotsFunc(fn func(ctx context.Context, filters map[string]interface{}) ([]*entities.Spot, error)) {
+func (m *MockSpotRepository) SetListSpotsFunc(fn func(ctx context.Context, offset, limit int) ([]*entities.Spot, int, error)) {
 	m.mu.Lock()
 	m.listSpotsFunc = fn
 	m.mu.Unlock()
@@ -172,6 +311,24 @@ func (m *MockSpotRepository) SetDeleteSpotFunc(fn func(ctx context.Context, id s
 	m.mu.Unlock()
 }
 
+func (m *MockSpotRepository) SetGetByCoordinatesFunc(fn func(ctx context.Context, lat, lng, radiusKm float64) ([]*entities.Spot, error)) {
+	m.mu.Lock()
+	m.getByCoordinatesFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockSpotRepository) SetSearchSpotsFunc(fn func(ctx context.Context, query string, lang string, offset, limit int) ([]*entities.Spot, int, error)) {
+	m.mu.Lock()
+	m.searchSpotsFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockSpotRepository) SetUpdateRatingFunc(fn func(ctx context.Context, spotID string, averageRating float64, reviewCount int) error) {
+	m.mu.Lock()
+	m.updateRatingFunc = fn
+	m.mu.Unlock()
+}
+
 // Reset clears all mock data and configurations
 func (m *MockSpotRepository) Reset() {
 	m.mu.Lock()
@@ -183,9 +340,12 @@ func (m *MockSpotRepository) Reset() {
 	// Reset all mock functions to nil
 	m.createSpotFunc = nil
 	m.getSpotFunc = nil
+	m.getByCoordinatesFunc = nil
 	m.listSpotsFunc = nil
+	m.searchSpotsFunc = nil
 	m.updateSpotFunc = nil
 	m.deleteSpotFunc = nil
+	m.updateRatingFunc = nil
 }
 
 // MockUserRepository provides a mock implementation for user testing
@@ -298,6 +458,39 @@ func (m *MockUserRepository) GetByAuthProvider(ctx context.Context, provider, pr
 	return user, nil
 }
 
+func (m *MockUserRepository) validateUniqueConstraints(newUser, oldUser *entities.User) error {
+	// Check for duplicate email (if different from current user's email)
+	if newUser.Email != oldUser.Email {
+		if existingUserByEmail, emailExists := m.usersByEmail[newUser.Email]; emailExists && existingUserByEmail.ID != newUser.ID {
+			return fmt.Errorf("user with this email already exists: email=%s", newUser.Email)
+		}
+	}
+	
+	// Check for duplicate AuthProvider combination (if different from current user's)
+	newAuthKey := buildAuthKey(newUser.AuthProvider, newUser.AuthProviderID)
+	oldAuthKey := buildAuthKey(oldUser.AuthProvider, oldUser.AuthProviderID)
+	if newAuthKey != oldAuthKey {
+		if existingUserByAuth, authExists := m.usersByAuthProvider[newAuthKey]; authExists && existingUserByAuth.ID != newUser.ID {
+			return fmt.Errorf("user with this auth provider already exists: provider=%s, providerID=%s", newUser.AuthProvider, newUser.AuthProviderID)
+		}
+	}
+	
+	return nil
+}
+
+func (m *MockUserRepository) updateIndexes(newUser, oldUser *entities.User) {
+	// Remove old mappings
+	delete(m.usersByEmail, oldUser.Email)
+	oldAuthKey := buildAuthKey(oldUser.AuthProvider, oldUser.AuthProviderID)
+	delete(m.usersByAuthProvider, oldAuthKey)
+	
+	// Update with new data
+	m.users[newUser.ID] = newUser
+	m.usersByEmail[newUser.Email] = newUser
+	newAuthKey := buildAuthKey(newUser.AuthProvider, newUser.AuthProviderID)
+	m.usersByAuthProvider[newAuthKey] = newUser
+}
+
 func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) error {
 	m.mu.RLock()
 	updateFunc := m.updateUserFunc
@@ -315,30 +508,11 @@ func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) er
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	
-	// Check for duplicate email (if different from current user's email)
-	if user.Email != oldUser.Email {
-		if existingUserByEmail, emailExists := m.usersByEmail[user.Email]; emailExists && existingUserByEmail.ID != user.ID {
-			return fmt.Errorf("user with this email already exists: email=%s", user.Email)
-		}
+	if err := m.validateUniqueConstraints(user, oldUser); err != nil {
+		return err
 	}
 	
-	// Check for duplicate AuthProvider combination (if different from current user's)
-	newAuthKey := buildAuthKey(user.AuthProvider, user.AuthProviderID)
-	oldAuthKey := buildAuthKey(oldUser.AuthProvider, oldUser.AuthProviderID)
-	if newAuthKey != oldAuthKey {
-		if existingUserByAuth, authExists := m.usersByAuthProvider[newAuthKey]; authExists && existingUserByAuth.ID != user.ID {
-			return fmt.Errorf("user with this auth provider already exists: provider=%s, providerID=%s", user.AuthProvider, user.AuthProviderID)
-		}
-	}
-	
-	// Remove old mappings
-	delete(m.usersByEmail, oldUser.Email)
-	delete(m.usersByAuthProvider, oldAuthKey)
-	
-	// Update with new data
-	m.users[user.ID] = user
-	m.usersByEmail[user.Email] = user
-	m.usersByAuthProvider[newAuthKey] = user
+	m.updateIndexes(user, oldUser)
 	
 	return nil
 }
@@ -437,7 +611,39 @@ func (m *MockUserRepository) Reset() {
 	m.deleteUserFunc = nil
 }
 
-// BehaviorDrivenMocks provides scenario-based mock configurations
+// BehaviorDrivenMocks provides scenario-based mock configurations for behavior-driven testing.
+// It encapsulates mock repositories for different entities and offers pre-configured scenarios
+// like happy path and failure path testing to streamline test setup and improve test readability.
+//
+// The BehaviorDrivenMocks supports:
+// - Happy path scenarios with realistic default data
+// - Failure scenarios (repository errors, validation failures, etc.)
+// - Custom behavior injection through function setters
+// - Concurrent-safe operations with proper mutex handling
+//
+// Example usage:
+//
+//	// Basic instantiation
+//	mocks := NewBehaviorDrivenMocks()
+//	
+//	// Configure happy path scenario with default values
+//	mocks.ConfigureHappyPath(DefaultHappyPathConfig())
+//	
+//	// Configure happy path with custom values
+//	config := HappyPathConfig{
+//		SpotName:     "Custom Cafe",
+//		UserEmail:    "user@example.com",
+//		DisplayName:  "John Doe",
+//		AuthProvider: "google",
+//	}
+//	mocks.ConfigureHappyPath(config)
+//	
+//	// Configure failure scenarios
+//	mocks.ConfigureRepositoryFailures()
+//	
+//	// Use in tests
+//	spotService := application.NewSpotService(mocks.SpotRepo, mocks.UserRepo)
+//	result, err := spotService.CreateSpot(ctx, request)
 type BehaviorDrivenMocks struct {
 	SpotRepo *MockSpotRepository
 	UserRepo *MockUserRepository

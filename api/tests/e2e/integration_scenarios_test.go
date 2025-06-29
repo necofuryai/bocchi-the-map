@@ -66,6 +66,25 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 		reviewHandler.RegisterRoutes(api)
 	})
 
+	AfterEach(func() {
+		By("Cleaning up test resources")
+		
+		// Close test server to prevent resource leaks
+		if testServer != nil {
+			testServer.Close()
+			testServer = nil
+		}
+		
+		// Clean up clients if they have cleanup methods
+		// Note: These clients don't currently have explicit cleanup methods,
+		// but they should close their database connections properly
+		userClient = nil
+		spotClient = nil
+		reviewClient = nil
+		authMiddleware = nil
+		rateLimiter = nil
+	})
+
 	Describe("Complete Solo Traveler Journey", func() {
 		var (
 			userAccessToken string
@@ -542,6 +561,7 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 						break
 					}
 				}
+				Expect(userToken).NotTo(BeEmpty(), "User token should be retrieved from cookies")
 				
 				// Create spot
 				spotRequestBody := map[string]interface{}{
@@ -656,11 +676,13 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 
 // extractBocchiAccessToken extracts the bocchi_access_token from response cookies
 func extractBocchiAccessToken(resp *httptest.ResponseRecorder) string {
+	// Iterate through all cookies in the HTTP response to find the authentication token
 	cookies := resp.Result().Cookies()
 	for _, cookie := range cookies {
 		if cookie.Name == "bocchi_access_token" {
 			return cookie.Value
 		}
 	}
+	// Return empty string if token cookie is not found
 	return ""
 }

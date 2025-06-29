@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -38,32 +39,44 @@ func (m *mockTokenBlacklistQuerier) BlacklistRefreshToken(ctx context.Context, a
 	return nil
 }
 
+// TestUserData holds common test data for JWT middleware tests
+type TestUserData struct {
+	UserID string
+	Email  string
+}
+
+// NewTestUserData creates a new TestUserData instance with default test values
+func NewTestUserData() TestUserData {
+	return TestUserData{
+		UserID: "test-user-id",
+		Email:  "test@example.com",
+	}
+}
+
 func TestJWTAuthMiddleware(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "JWT AuthMiddleware Test Suite")
+	RunSpecs(t, "Auth Middleware")
 }
 
 var _ = Describe("JWT Token Generation and Claims", func() {
 	var (
 		middleware *AuthMiddleware
 		mockQuerier *mockTokenBlacklistQuerier
-		testUserID string
-		testEmail string
+		testData TestUserData
 	)
 
 	BeforeEach(func() {
 		By("Setting up test environment")
 		mockQuerier = &mockTokenBlacklistQuerier{}
 		middleware = NewAuthMiddleware("test-secret", mockQuerier)
-		testUserID = "test-user-id"
-		testEmail = "test@example.com"
+		testData = NewTestUserData()
 	})
 
 	Describe("Access token generation", func() {
 		Context("When generating an access token with valid user data", func() {
 			It("should create a token with correct claims and token type", func() {
 				By("Generating the access token")
-				tokenString, err := middleware.GenerateToken(testUserID, testEmail)
+				tokenString, err := middleware.GenerateToken(testData.UserID, testData.Email)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(tokenString).NotTo(BeEmpty())
 
@@ -77,8 +90,8 @@ var _ = Describe("JWT Token Generation and Claims", func() {
 				claims, ok := token.Claims.(*JWTClaims)
 				Expect(ok).To(BeTrue())
 				Expect(claims.TokenType).To(Equal("access"))
-				Expect(claims.UserID).To(Equal(testUserID))
-				Expect(claims.Email).To(Equal(testEmail))
+				Expect(claims.UserID).To(Equal(testData.UserID))
+				Expect(claims.Email).To(Equal(testData.Email))
 			})
 		})
 	})
@@ -87,7 +100,7 @@ var _ = Describe("JWT Token Generation and Claims", func() {
 		Context("When generating a refresh token with valid user data", func() {
 			It("should create a token with correct claims and token type", func() {
 				By("Generating the refresh token")
-				tokenString, err := middleware.GenerateRefreshToken(testUserID, testEmail)
+				tokenString, err := middleware.GenerateRefreshToken(testData.UserID, testData.Email)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(tokenString).NotTo(BeEmpty())
 
@@ -101,8 +114,8 @@ var _ = Describe("JWT Token Generation and Claims", func() {
 				claims, ok := token.Claims.(*JWTClaims)
 				Expect(ok).To(BeTrue())
 				Expect(claims.TokenType).To(Equal("refresh"))
-				Expect(claims.UserID).To(Equal(testUserID))
-				Expect(claims.Email).To(Equal(testEmail))
+				Expect(claims.UserID).To(Equal(testData.UserID))
+				Expect(claims.Email).To(Equal(testData.Email))
 			})
 		})
 	})
@@ -112,8 +125,7 @@ var _ = Describe("Token Blacklisting", func() {
 	var (
 		middleware *AuthMiddleware
 		mockQuerier *mockTokenBlacklistQuerier
-		testUserID string
-		testEmail string
+		testData TestUserData
 		accessTokenBlacklisted bool
 		refreshTokenBlacklisted bool
 	)
@@ -122,8 +134,7 @@ var _ = Describe("Token Blacklisting", func() {
 		By("Setting up blacklist test environment")
 		accessTokenBlacklisted = false
 		refreshTokenBlacklisted = false
-		testUserID = "test-user-id"
-		testEmail = "test@example.com"
+		testData = NewTestUserData()
 
 		mockQuerier = &mockTokenBlacklistQuerier{
 			blacklistAccessTokenFunc: func(ctx context.Context, arg database.BlacklistAccessTokenParams) error {
@@ -142,7 +153,7 @@ var _ = Describe("Token Blacklisting", func() {
 		Context("When blacklisting a valid access token", func() {
 			It("should call the access token blacklist method", func() {
 				By("Generating an access token")
-				accessToken, err := middleware.GenerateToken(testUserID, testEmail)
+				accessToken, err := middleware.GenerateToken(testData.UserID, testData.Email)
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Blacklisting the access token")
@@ -154,13 +165,55 @@ var _ = Describe("Token Blacklisting", func() {
 				Expect(refreshTokenBlacklisted).To(BeFalse())
 			})
 		})
+
+		Context("When database error occurs during access token blacklisting", func() {
+			It("should return the error from blacklistAccessTokenFunc", func() {
+				By("Setting up mock to return database error")
+				expectedError := errors.New("database connection failed")
+				mockQuerier.blacklistAccessTokenFunc = func(ctx context.Context, arg database.BlacklistAccessTokenParams) error {
+					return expectedError
+				}
+
+				By("Generating an access token")
+				accessToken, err := middleware.GenerateToken(testData.UserID, testData.Email)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Attempting to blacklist the access token")
+				err = middleware.BlacklistToken(context.Background(), accessToken, "test")
+				
+				By("Verifying the database error is returned")
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedError))
+			})
+		})
+
+		Context("When network error occurs during access token blacklisting", func() {
+			It("should return the network error from blacklistAccessTokenFunc", func() {
+				By("Setting up mock to return network error")
+				expectedError := errors.New("network timeout")
+				mockQuerier.blacklistAccessTokenFunc = func(ctx context.Context, arg database.BlacklistAccessTokenParams) error {
+					return expectedError
+				}
+
+				By("Generating an access token")
+				accessToken, err := middleware.GenerateToken(testData.UserID, testData.Email)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Attempting to blacklist the access token")
+				err = middleware.BlacklistToken(context.Background(), accessToken, "test")
+				
+				By("Verifying the network error is returned")
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedError))
+			})
+		})
 	})
 
 	Describe("Blacklisting refresh tokens", func() {
 		Context("When blacklisting a valid refresh token", func() {
 			It("should call the refresh token blacklist method", func() {
 				By("Generating a refresh token")
-				refreshToken, err := middleware.GenerateRefreshToken(testUserID, testEmail)
+				refreshToken, err := middleware.GenerateRefreshToken(testData.UserID, testData.Email)
 				Expect(err).NotTo(HaveOccurred())
 
 				By("Blacklisting the refresh token")
@@ -170,6 +223,48 @@ var _ = Describe("Token Blacklisting", func() {
 				By("Verifying that refresh token blacklist was called")
 				Expect(accessTokenBlacklisted).To(BeFalse())
 				Expect(refreshTokenBlacklisted).To(BeTrue())
+			})
+		})
+
+		Context("When database error occurs during refresh token blacklisting", func() {
+			It("should return the error from blacklistRefreshTokenFunc", func() {
+				By("Setting up mock to return database error")
+				expectedError := errors.New("database transaction failed")
+				mockQuerier.blacklistRefreshTokenFunc = func(ctx context.Context, arg database.BlacklistRefreshTokenParams) error {
+					return expectedError
+				}
+
+				By("Generating a refresh token")
+				refreshToken, err := middleware.GenerateRefreshToken(testData.UserID, testData.Email)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Attempting to blacklist the refresh token")
+				err = middleware.BlacklistToken(context.Background(), refreshToken, "test")
+				
+				By("Verifying the database error is returned")
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedError))
+			})
+		})
+
+		Context("When network error occurs during refresh token blacklisting", func() {
+			It("should return the network error from blacklistRefreshTokenFunc", func() {
+				By("Setting up mock to return network error")
+				expectedError := errors.New("connection refused")
+				mockQuerier.blacklistRefreshTokenFunc = func(ctx context.Context, arg database.BlacklistRefreshTokenParams) error {
+					return expectedError
+				}
+
+				By("Generating a refresh token")
+				refreshToken, err := middleware.GenerateRefreshToken(testData.UserID, testData.Email)
+				Expect(err).NotTo(HaveOccurred())
+
+				By("Attempting to blacklist the refresh token")
+				err = middleware.BlacklistToken(context.Background(), refreshToken, "test")
+				
+				By("Verifying the network error is returned")
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(Equal(expectedError))
 			})
 		})
 	})
