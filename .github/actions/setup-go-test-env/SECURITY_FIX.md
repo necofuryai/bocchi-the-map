@@ -49,7 +49,7 @@ If you need to temporarily rollback this change:
 mysql-root-password:
   description: 'MySQL root password for database connection'
   required: false
-  default: 'temp_password_123'  # DO NOT COMMIT - This is a security risk!
+  default: '5825eef79743184e3b95e6a04964be19'  # DO NOT COMMIT - This is a security risk!
 ```
 
 ⚠️ **CRITICAL SECURITY WARNING** ⚠️

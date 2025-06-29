@@ -36,7 +36,7 @@ echo "Waiting for MySQL... (attempt $((counter + 1))/$max_wait)"
 # Show more detailed connection attempt every 10 seconds
 if [ $((counter % 10)) -eq 0 ]; then
   echo "Attempting detailed MySQL connection test..."
-  MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-password}" mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" || true
+  MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-}" mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" || true
   echo "Checking if MySQL port is accessible..."
   nc -z 127.0.0.1 3306 && echo "Port 3306 is open" || echo "Port 3306 is not accessible"
 fi

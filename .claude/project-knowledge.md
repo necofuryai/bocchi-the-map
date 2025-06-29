@@ -303,13 +303,34 @@ logger.ErrorWithContextAndFields(ctx, "User operation failed", err, map[string]i
 
 #### Multi-Stage Build Pattern
 ```dockerfile
-# Build stage - Full Go development environment
-FROM golang@sha256:68932fa6d4d4059845c8f40ad7e654e626f3ebd3706eef7846f319293ab5cb7a AS builder
-# ... build steps
+# Build stage - Full Go development environment with multi-arch support
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine@sha256:... AS builder
 
-# Production stage - Minimal runtime
-FROM alpine@sha256:8a1f59ffb675680d47db6337b49d22281a139e9d709335b492be023728e11715
+# Build arguments for cross-compilation
+ARG TARGETOS
+ARG TARGETARCH
+
+# Cross-compilation build step
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -a -installsuffix cgo -o main ./cmd/api
+
+# Production stage - Minimal runtime with target platform
+FROM --platform=$TARGETPLATFORM alpine:3.19@sha256:...
 # Security: non-root user, ca-certificates, health checks
+```
+
+**Multi-Architecture Build Options**:
+- `--platform=$BUILDPLATFORM`: Uses the native platform for the build stage to maximize build performance
+- `--platform=$TARGETPLATFORM`: Sets the target platform for the final runtime image
+- `TARGETOS`/`TARGETARCH`: Build arguments automatically set by Docker buildx for Go cross-compilation
+- Cross-compilation is handled natively by Go with `GOOS` and `GOARCH` environment variables
+
+**Build Commands**:
+```bash
+# Single architecture build
+docker build -t bocchi-the-map .
+
+# Multi-architecture build with buildx
+docker buildx build --platform linux/amd64,linux/arm64 -t bocchi-the-map .
 ```
 
 #### Security Best Practices
