@@ -23,7 +23,8 @@ func NewCommonTestSuite() *CommonTestSuite {
 	// Initialize test resources
 	testDB, err := NewTestDatabase()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to initialize test database: %v", err))
+		Fail(fmt.Sprintf("Failed to initialize test database: %v", err))
+		return nil
 	}
 	fixtureManager := NewFixtureManager(testDB)
 	authHelper := NewAuthHelper()
@@ -60,8 +61,7 @@ func (suite *CommonTestSuite) CleanupTestData() {
 	By("Cleaning up test data")
 	
 	// Cleanup is handled by PrepareCleanTestData, but can add specific cleanup here
-	// Note: CleanupFixtures now requires a *testing.T parameter for proper logging
-	// This method is called from Ginkgo context, so we handle cleanup differently
+	// This method is called from Ginkgo context, so we use Ginkgo's logging methods
 	err := suite.TestDB.CleanDatabase()
 	if err != nil {
 		// Use Ginkgo's logging instead of test logging since we're not in testing.T context

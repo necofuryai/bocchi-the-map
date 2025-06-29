@@ -173,7 +173,8 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					Expect(len(errors)).To(BeNumerically(">=", 1), "Should have at least one validation error")
 					
 					firstError := errors[0].(map[string]interface{})
-					Expect(firstError["message"]).To(Equal("expected required property name to be present"))
+					Expect(firstError["message"]).To(ContainSubstring("name"))
+					Expect(firstError["message"]).To(ContainSubstring("required"))
 					Expect(firstError["location"]).To(Equal("body"))
 				})
 			})

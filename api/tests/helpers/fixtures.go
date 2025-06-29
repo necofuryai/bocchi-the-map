@@ -69,10 +69,12 @@ func (fm *FixtureManager) CreateSpotFixture(ctx context.Context, fixture SpotFix
 	params := database.CreateSpotParams{
 		ID:          fixture.ID,
 		Name:        fixture.Name,
+		NameI18n:    fixture.NameI18n,
 		Latitude:    fmt.Sprintf("%.8f", fixture.Latitude),
 		Longitude:   fmt.Sprintf("%.8f", fixture.Longitude),
 		Category:    fixture.Category,
 		Address:     fixture.Address,
+		AddressI18n: fixture.AddressI18n,
 		CountryCode: fixture.CountryCode,
 	}
 	

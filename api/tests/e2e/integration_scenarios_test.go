@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -28,9 +29,12 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 		reviewClient  *clients.ReviewClient
 		authMiddleware *auth.AuthMiddleware
 		rateLimiter   *auth.RateLimiter
+		setupOnce     sync.Once
 	)
 
-	BeforeEach(func() {
+	var setupAPIEnvironment = func() {
+		setupOnce.Do(func() {
+		
 		By("Setting up complete API environment for integration testing")
 		
 		// Create all clients
@@ -64,25 +68,25 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 		userHandler.RegisterRoutesWithAuth(api, authMiddleware)
 		spotHandler.RegisterRoutes(api)
 		reviewHandler.RegisterRoutes(api)
+		})
+	}
+	
+	// Note: Server cleanup is handled by the common test suite AfterSuite hook
+	// The server instance will be closed when the test process exits
+
+	BeforeEach(func() {
+		// Setup API environment once
+		setupAPIEnvironment()
+		
+		By("Cleaning up database state before each test")
+		// Clean up database tables to ensure test isolation
+		err := testSuite.TestDB.CleanDatabase()
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		By("Cleaning up test resources")
-		
-		// Close test server to prevent resource leaks
-		if testServer != nil {
-			testServer.Close()
-			testServer = nil
-		}
-		
-		// Clean up clients if they have cleanup methods
-		// Note: These clients don't currently have explicit cleanup methods,
-		// but they should close their database connections properly
-		userClient = nil
-		spotClient = nil
-		reviewClient = nil
-		authMiddleware = nil
-		rateLimiter = nil
+		// Note: Server cleanup is handled once at the end of all tests via sync.Once pattern
+		// Only database cleanup is needed per test (handled by common test suite)
 	})
 
 	Describe("Complete Solo Traveler Journey", func() {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -39,8 +40,14 @@ var _ = Describe("AuthHandler BDD Tests", func() {
 		userClient, err = clients.NewUserClient("internal", testSuite.TestDB.DB)
 		Expect(err).NotTo(HaveOccurred())
 		
+		// Get JWT secret from environment variable, with a fallback for tests
+		jwtSecret := os.Getenv("TEST_JWT_SECRET")
+		if jwtSecret == "" {
+			jwtSecret = "test-jwt-secret-key-for-bdd-testing-32-chars-minimum"
+		}
+		
 		// Create auth middleware
-		authMiddleware = auth.NewAuthMiddleware("test-secret-key", testSuite.TestDB.Queries)
+		authMiddleware = auth.NewAuthMiddleware(jwtSecret, testSuite.TestDB.Queries)
 		
 		// Create rate limiter (5 requests per 5 minutes for testing)
 		rateLimiter = auth.NewRateLimiter(5, 300)

@@ -69,7 +69,7 @@ func (m *MockSpotRepository) Create(ctx context.Context, spot *entities.Spot) er
 	}
 	
 	if spot.ID == "" {
-		return errors.New("validation error: spot.ID field cannot be empty - a valid spot ID is required for spot creation")
+		return errors.New("spot.ID cannot be empty")
 	}
 	
 	m.mu.Lock()
@@ -334,7 +334,7 @@ func (m *MockSpotRepository) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	
-	// Clear all stored spots  
+	// Clear all stored spots
 	m.spots = make(map[string]*entities.Spot)
 	
 	// Reset all mock functions to nil
