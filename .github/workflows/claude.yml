@@ -1,3 +1,4 @@
+---
 name: Claude Code
 
 on:
@@ -13,10 +14,15 @@ on:
 jobs:
   claude:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' &&
+       contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' &&
+       (contains(github.event.issue.body, '@claude') ||
+        contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,4 +41,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           model: "claude-sonnet-4-20250514"
-          allowed_tools: "Bash(git:*),Bash(gh:*),Bash(pnpm:*),Bash(npm:*),Bash(npx:*),Bash(mkdir:*),Bash(mv:*),Bash(cp:*),Bash(touch:*),Bash(ls:*),Bash(cat:*),Bash(echo:*),Bash(pwd:*),Bash(open:*)"
+          allowed_tools: >
+            Bash(git:*),Bash(gh:*),Bash(pnpm:*),Bash(npm:*),Bash(npx:*),
+            Bash(mkdir:*),Bash(mv:*),Bash(cp:*),Bash(touch:*),Bash(ls:*),
+            Bash(cat:*),Bash(echo:*),Bash(pwd:*),Bash(open:*)
