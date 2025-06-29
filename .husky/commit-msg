@@ -1,4 +1,22 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
+# Run commitlint first
 npx --no-install commitlint --edit "$1"
+
+# Get the commit message
+COMMIT_MSG=$(cat "$1")
+
+# Check if this is a feature/improve commit and provide documentation reminders
+if echo "$COMMIT_MSG" | grep -E "^(feat|fix|build|ci|docs|style|refactor|perf|test|improve)(\([^)]*\))?:" > /dev/null; then
+  echo ""
+  echo "📋 Feature/improvement detected! Please consider updating documentation:"
+  echo ""
+  echo "   📝 Update README.md if setup instructions changed"
+  echo "   📚 Update docs/IMPLEMENTATION_LOG.md for significant changes"
+  echo "   🤖 Update CLAUDE.md if AI development guidance changed"
+  echo "   📊 Add milestone to implementation log for major features"
+  echo ""
+  echo "   💡 Use 'docs: update documentation for [feature]' for doc updates"
+  echo ""
+fi
