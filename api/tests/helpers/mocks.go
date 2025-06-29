@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
@@ -93,6 +94,10 @@ func (m *MockSpotRepository) List(ctx context.Context, filters map[string]interf
 		result = append(result, spot)
 	}
 	
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID < result[j].ID
+	})
+	
 	return result, nil
 }
 
@@ -172,10 +177,8 @@ func (m *MockSpotRepository) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	
-	// Clear all stored spots
-	for k := range m.spots {
-		delete(m.spots, k)
-	}
+	// Clear all stored spots  
+	m.spots = make(map[string]*proto.Spot)
 	
 	// Reset all mock functions to nil
 	m.createSpotFunc = nil
@@ -264,15 +267,12 @@ func (m *MockUserRepository) GetByID(ctx context.Context, id string) (*entities.
 func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*entities.User, error) {
 	m.mu.RLock()
 	getByEmailFunc := m.getByEmailFunc
+	user, exists := m.usersByEmail[email]
 	m.mu.RUnlock()
 	
 	if getByEmailFunc != nil {
 		return getByEmailFunc(ctx, email)
 	}
-	
-	m.mu.RLock()
-	user, exists := m.usersByEmail[email]
-	m.mu.RUnlock()
 	
 	if !exists {
 		return nil, fmt.Errorf("user not found: email=%s", email)
@@ -281,18 +281,16 @@ func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*ent
 }
 
 func (m *MockUserRepository) GetByAuthProvider(ctx context.Context, provider, providerID string) (*entities.User, error) {
+	authKey := buildAuthKey(entities.AuthProvider(provider), providerID)
+	
 	m.mu.RLock()
 	getByAuthProviderFunc := m.getByAuthProviderFunc
+	user, exists := m.usersByAuthProvider[authKey]
 	m.mu.RUnlock()
 	
 	if getByAuthProviderFunc != nil {
 		return getByAuthProviderFunc(ctx, provider, providerID)
 	}
-	
-	authKey := buildAuthKey(entities.AuthProvider(provider), providerID)
-	m.mu.RLock()
-	user, exists := m.usersByAuthProvider[authKey]
-	m.mu.RUnlock()
 	
 	if !exists {
 		return nil, fmt.Errorf("user not found: provider=%s, providerID=%s", provider, providerID)
