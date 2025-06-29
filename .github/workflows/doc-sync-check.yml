@@ -1,0 +1,150 @@
+---
+name: Documentation Sync Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+jobs:
+  doc-sync-check:
+    name: Check Documentation Sync
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to compare with base branch
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          # Get list of changed files
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Check for documentation requirements
+        id: doc-check
+        run: |
+          set -e
+          
+          echo "🔍 Analyzing changes for documentation requirements..."
+          
+          CHANGED_FILES="${{ steps.changed-files.outputs.changed_files }}"
+          DOC_SUGGESTIONS=""
+          CRITICAL_CHANGES=false
+          
+          # Check for API changes
+          if echo "$CHANGED_FILES" | grep -E "^api/(.*\.(go|sql)|migrations/)" > /dev/null; then
+            echo "🔧 API changes detected"
+            DOC_SUGGESTIONS="$DOC_SUGGESTIONS- API changes detected - consider updating api/README.md\n"
+            CRITICAL_CHANGES=true
+          fi
+          
+          # Check for frontend changes
+          if echo "$CHANGED_FILES" | grep -E "^web/(.*\.(ts|tsx|js|jsx)|package\.json)" > /dev/null; then
+            echo "🎨 Frontend changes detected"  
+            DOC_SUGGESTIONS="$DOC_SUGGESTIONS- Frontend changes detected - consider updating web/README.md\n"
+          fi
+          
+          # Check for infrastructure changes
+          if echo "$CHANGED_FILES" | grep -E "^(infra/.*\.tf|\.github/|Dockerfile)" > /dev/null; then
+            echo "🚀 Infrastructure changes detected"
+            DOC_SUGGESTIONS="$DOC_SUGGESTIONS- Infrastructure changes detected - consider updating infra/README.md\n"
+            CRITICAL_CHANGES=true
+          fi
+          
+          # Check for new features based on commit messages
+          COMMITS=$(git log --oneline ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})
+          if echo "$COMMITS" | grep -E "^[a-f0-9]+ (feat|improve):" > /dev/null; then
+            echo "✨ Feature additions detected"
+            DOC_SUGGESTIONS="$DOC_SUGGESTIONS- New features detected - consider updating docs/IMPLEMENTATION_LOG.md\n"
+            CRITICAL_CHANGES=true
+          fi
+          
+          # Check if documentation was actually updated
+          DOC_UPDATED=false
+          if echo "$CHANGED_FILES" | grep -E "\.(md|rst|txt)$" > /dev/null; then
+            DOC_UPDATED=true
+            echo "📝 Documentation files were updated"
+          fi
+          
+          # Set outputs
+          echo "has_suggestions=$([[ -n "$DOC_SUGGESTIONS" ]] && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+          echo "suggestions<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$DOC_SUGGESTIONS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "critical_changes=$CRITICAL_CHANGES" >> $GITHUB_OUTPUT
+          echo "doc_updated=$DOC_UPDATED" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR with documentation suggestions
+        if: steps.doc-check.outputs.has_suggestions == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const suggestions = `${{ steps.doc-check.outputs.suggestions }}`;
+            const criticalChanges = '${{ steps.doc-check.outputs.critical_changes }}' === 'true';
+            const docUpdated = '${{ steps.doc-check.outputs.doc_updated }}' === 'true';
+            
+            let comment = '## 📚 Documentation Sync Check\n\n';
+            
+            if (criticalChanges && !docUpdated) {
+              comment += '⚠️ **Critical changes detected without documentation updates**\n\n';
+            } else if (!docUpdated) {
+              comment += '💡 **Consider updating documentation**\n\n';
+            } else {
+              comment += '✅ **Documentation updates detected - great job!**\n\n';
+            }
+            
+            comment += '**Detected changes suggest updating:**\n';
+            comment += suggestions;
+            
+            if (!docUpdated) {
+              comment += '\n**Recommended actions:**\n';
+              comment += '- Update relevant README.md files for setup/usage changes\n';
+              comment += '- Add milestone to docs/IMPLEMENTATION_LOG.md for significant features\n';
+              comment += '- Update CLAUDE.md if AI development guidance changed\n';
+              comment += '- Use `docs: update documentation for [feature]` commit type\n';
+            }
+            
+            comment += '\n**Note:** This is an automated suggestion. Use your judgment on whether documentation updates are needed.\n';
+            
+            // Look for existing comment to update instead of creating new ones
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const existingComment = comments.find(c => 
+              c.user.login === 'github-actions[bot]' && 
+              c.body.includes('📚 Documentation Sync Check')
+            );
+            
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+
+      - name: Set check status
+        if: steps.doc-check.outputs.critical_changes == 'true' && steps.doc-check.outputs.doc_updated == 'false'
+        run: |
+          echo "⚠️ Critical changes detected without documentation updates"
+          echo "Consider updating documentation before merging"
+          # Don't fail the check, just warn
+          exit 0
