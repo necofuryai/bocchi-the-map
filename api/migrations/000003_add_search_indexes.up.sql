@@ -11,5 +11,5 @@ CREATE INDEX `idx_spots_country_rating` ON `spots`(`country_code`, `average_rati
 
 -- Regular composite index for location-based queries
 -- Note: SPATIAL INDEX requires POINT/GEOMETRY columns, using regular BTREE index for DECIMAL columns
-DROP INDEX IF EXISTS `idx_location` ON `spots`;
-CREATE INDEX `idx_spots_location` ON `spots`(`latitude`, `longitude`);
+-- Keep original idx_location index as-is (already exists from initial schema)
+-- No additional location index needed since idx_location already provides this functionality
