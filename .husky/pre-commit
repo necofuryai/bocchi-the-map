@@ -13,7 +13,7 @@ else
 fi
 
 # Check if this is a feature/improve commit
-if echo "$COMMIT_MSG" | grep -E "^(feat|improve|fix):" > /dev/null; then
+if echo "$COMMIT_MSG" | grep -E "^(feat|improve|fix)(\([^)]*\))?:" > /dev/null; then
   echo ""
   echo "📋 Feature/improvement detected! Please consider updating documentation:"
   echo ""

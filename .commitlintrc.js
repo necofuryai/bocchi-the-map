@@ -19,11 +19,6 @@ module.exports = {
         'improve'   // Improvements to existing features
       ]
     ],
-    // Custom rule: require docs update for feature commits
-    'docs-for-features': [
-      1,  // warning level
-      'always'
-    ],
     'type-case': [2, 'always', 'lower-case'],
     'type-empty': [2, 'never'],
     'scope-case': [2, 'always', 'lower-case'],
