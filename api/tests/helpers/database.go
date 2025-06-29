@@ -102,8 +102,10 @@ func (td *TestDatabase) WithTransaction(fn func(*sql.Tx)) {
 	
 	defer func() {
 		if r := recover(); r != nil {
-			if err := tx.Rollback(); err != nil {
-				GinkgoWriter.Printf("Failed to rollback transaction after panic: %v\n", err)
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				// Log rollback error and fail the test to maintain test isolation integrity
+				GinkgoWriter.Printf("CRITICAL: Failed to rollback transaction after panic: %v (original panic: %v)\n", rollbackErr, r)
+				Fail(fmt.Sprintf("Transaction rollback failed during panic recovery: %v", rollbackErr))
 			}
 			panic(r)
 		}
@@ -121,22 +123,35 @@ func (td *TestDatabase) WithTransaction(fn func(*sql.Tx)) {
 func getTestDSN() string {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
-		Skip("TEST_DATABASE_URL environment variable must be set for test database configuration. " +
-			"Example: TEST_DATABASE_URL=\"user:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true\"")
+		Skip("TEST_DATABASE_URL environment variable must be set for test database configuration")
 	}
 	return dsn
+}
+
+// extractHostFromDSN extracts host information from DSN for diagnostic purposes without exposing credentials
+func extractHostFromDSN(dsn string) string {
+	if strings.Contains(dsn, "@tcp(") {
+		if start := strings.Index(dsn, "@tcp("); start != -1 {
+			if end := strings.Index(dsn[start:], ")"); end != -1 {
+				return dsn[start+5 : start+end]
+			}
+		}
+	}
+	return "unknown"
 }
 
 // EnsureTestDatabase ensures test database exists and is ready
 func EnsureTestDatabase() {
 	dsn := getTestDSN()
+	host := extractHostFromDSN(dsn)
+	
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		Skip(fmt.Sprintf("Test database not available: %v", err))
+		Skip(fmt.Sprintf("Failed to open MySQL connection during test database initialization (host: %s): %v", host, err))
 	}
 	defer db.Close()
 	
 	if err := db.Ping(); err != nil {
-		Skip(fmt.Sprintf("Cannot connect to test database: %v", err))
+		Skip(fmt.Sprintf("Failed to ping test database during connection verification (host: %s): %v. Check if MySQL server is running and TEST_DATABASE_URL is configured correctly", host, err))
 	}
 }

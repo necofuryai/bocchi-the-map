@@ -18,30 +18,6 @@ func TestE2EScenarios(t *testing.T) {
 	RunSpecs(t, "Bocchi The Map API E2E Test Suite")
 }
 
-var _ = BeforeSuite(func() {
-	By("Setting up E2E test environment")
-	
-	testSuite = helpers.NewCommonTestSuite()
-	
-	By("E2E test environment setup completed")
-})
-
-var _ = AfterSuite(func() {
-	By("Cleaning up E2E test environment")
-	
-	if testSuite != nil {
-		testSuite.Cleanup()
-	}
-	
-	By("E2E test environment cleanup completed")
-})
-
-// BeforeEach hook for test isolation
-var _ = BeforeEach(func() {
-	testSuite.PrepareCleanTestData()
-})
-
-// AfterEach hook for test cleanup
-var _ = AfterEach(func() {
-	testSuite.CleanupTestData()
-})
+func init() {
+	testSuite = helpers.SetupGinkgoHooks("E2E")
+}

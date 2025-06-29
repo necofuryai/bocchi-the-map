@@ -23,11 +23,7 @@ func NewCommonTestSuite() *CommonTestSuite {
 	// Initialize test resources
 	testDB, err := NewTestDatabase()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to initialize test database during NewTestDatabase() operation: %v. "+
-			"Common causes: "+
-			"1) Database connection failure - check TEST_DATABASE_URL environment variable, "+
-			"2) Database ping failure - ensure database server is running and accessible, "+
-			"3) Missing test database configuration - verify database exists and credentials are correct.", err))
+		panic(fmt.Sprintf("Failed to initialize test database: %v", err))
 	}
 	fixtureManager := NewFixtureManager(testDB)
 	authHelper := NewAuthHelper()
@@ -56,7 +52,6 @@ func (suite *CommonTestSuite) PrepareCleanTestData() {
 	err := suite.TestDB.CleanDatabase()
 	if err != nil {
 		Fail(fmt.Sprintf("Failed to clean database: %v", err))
-		return
 	}
 }
 
@@ -65,5 +60,40 @@ func (suite *CommonTestSuite) CleanupTestData() {
 	By("Cleaning up test data")
 	
 	// Cleanup is handled by PrepareCleanTestData, but can add specific cleanup here
-	suite.FixtureManager.CleanupFixtures()
+	// Note: CleanupFixtures now requires a *testing.T parameter for proper logging
+	// This method is called from Ginkgo context, so we handle cleanup differently
+	err := suite.TestDB.CleanDatabase()
+	if err != nil {
+		// Use Ginkgo's logging instead of test logging since we're not in testing.T context
+		By(fmt.Sprintf("Warning: Failed to cleanup fixtures: %v", err))
+	}
+}
+
+// SetupGinkgoHooks sets up common Ginkgo BeforeSuite, AfterSuite, BeforeEach, and AfterEach hooks
+func SetupGinkgoHooks(suiteNamePrefix string) *CommonTestSuite {
+	var testSuite *CommonTestSuite
+	
+	BeforeSuite(func() {
+		By(fmt.Sprintf("Setting up %s test environment", suiteNamePrefix))
+		testSuite = NewCommonTestSuite()
+		By(fmt.Sprintf("%s test environment setup completed", suiteNamePrefix))
+	})
+	
+	AfterSuite(func() {
+		By(fmt.Sprintf("Cleaning up %s test environment", suiteNamePrefix))
+		if testSuite != nil {
+			testSuite.Cleanup()
+		}
+		By(fmt.Sprintf("%s test environment cleanup completed", suiteNamePrefix))
+	})
+	
+	BeforeEach(func() {
+		testSuite.PrepareCleanTestData()
+	})
+	
+	AfterEach(func() {
+		testSuite.CleanupTestData()
+	})
+	
+	return testSuite
 }

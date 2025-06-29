@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -95,14 +96,39 @@ var _ = Describe("UserHandler BDD Tests", func() {
 					Expect(responseBody["avatar_url"]).To(Equal("https://example.com/avatar.jpg"))
 					Expect(responseBody["created_at"]).To(Not(BeEmpty()), "Creation timestamp should be set")
 					
-					By("Verifying default Japanese preferences are set")
+					By("Verifying default Japanese preferences are set with exact structure")
 					preferences, exists := responseBody["preferences"]
 					Expect(exists).To(BeTrue(), "Default preferences should be set")
+					Expect(preferences).ToNot(BeNil(), "Preferences should not be nil")
 					
 					prefMap, ok := preferences.(map[string]interface{})
 					Expect(ok).To(BeTrue(), "Preferences should be an object")
-					Expect(prefMap["language"]).To(Equal("ja"), "Default language should be Japanese")
-					Expect(prefMap["timezone"]).To(Equal("Asia/Tokyo"), "Default timezone should be Asia/Tokyo")
+					
+					// Assert exact structure - only expected fields should be present
+					Expect(prefMap).To(HaveLen(2), "Preferences should contain exactly 2 fields")
+					expectedKeys := []string{"language", "timezone"}
+					actualKeys := make([]string, 0, len(prefMap))
+					for key := range prefMap {
+						actualKeys = append(actualKeys, key)
+					}
+					Expect(actualKeys).To(ConsistOf(expectedKeys), "Preferences should contain only expected keys")
+					
+					// Assert exact values with type safety
+					language, languageExists := prefMap["language"]
+					Expect(languageExists).To(BeTrue(), "Language field must exist")
+					Expect(language).To(BeAssignableToTypeOf(""), "Language must be a string")
+					Expect(language).To(Equal("ja"), "Default language should be exactly 'ja'")
+					
+					timezone, timezoneExists := prefMap["timezone"]
+					Expect(timezoneExists).To(BeTrue(), "Timezone field must exist")
+					Expect(timezone).To(BeAssignableToTypeOf(""), "Timezone must be a string")
+					Expect(timezone).To(Equal("Asia/Tokyo"), "Default timezone should be exactly 'Asia/Tokyo'")
+					
+					// Verify no additional or unexpected fields exist
+					for key := range prefMap {
+						Expect([]string{"language", "timezone"}).To(ContainElement(key), 
+							fmt.Sprintf("Unexpected field '%s' found in preferences", key))
+					}
 				})
 			})
 		})
@@ -273,14 +299,74 @@ var _ = Describe("UserHandler BDD Tests", func() {
 					Expect(responseBody["auth_provider"]).To(Equal(string(authData.TestUser.AuthProvider)))
 					Expect(responseBody["auth_provider_id"]).To(Equal(authData.TestUser.AuthProviderID))
 					
-					By("Verifying preferences are included in response")
+					By("Verifying required fields exist and have correct data types")
+					Expect(responseBody["id"]).To(BeAssignableToTypeOf(""), "ID should be a string")
+					Expect(responseBody["email"]).To(BeAssignableToTypeOf(""), "Email should be a string")
+					Expect(responseBody["display_name"]).To(BeAssignableToTypeOf(""), "Display name should be a string")
+					Expect(responseBody["auth_provider"]).To(BeAssignableToTypeOf(""), "Auth provider should be a string")
+					Expect(responseBody["auth_provider_id"]).To(BeAssignableToTypeOf(""), "Auth provider ID should be a string")
+					
+					By("Verifying timestamp fields are present and properly formatted")
+					createdAt, createdAtExists := responseBody["created_at"]
+					Expect(createdAtExists).To(BeTrue(), "created_at should be present")
+					Expect(createdAt).To(BeAssignableToTypeOf(""), "created_at should be a string")
+					_, err = time.Parse(time.RFC3339, createdAt.(string))
+					Expect(err).NotTo(HaveOccurred(), "created_at should be valid RFC3339 timestamp")
+					
+					updatedAt, updatedAtExists := responseBody["updated_at"]
+					Expect(updatedAtExists).To(BeTrue(), "updated_at should be present")
+					Expect(updatedAt).To(BeAssignableToTypeOf(""), "updated_at should be a string")
+					_, err = time.Parse(time.RFC3339, updatedAt.(string))
+					Expect(err).NotTo(HaveOccurred(), "updated_at should be valid RFC3339 timestamp")
+					
+					By("Verifying avatar_url field handling")
+					if avatarURL, exists := responseBody["avatar_url"]; exists {
+						Expect(avatarURL).To(BeAssignableToTypeOf(""), "avatar_url should be a string if present")
+						if avatarURL != "" {
+							Expect(avatarURL.(string)).To(MatchRegexp(`^https?://`), "avatar_url should be a valid URL if not empty")
+						}
+					}
+					
+					By("Verifying preferences structure and content")
 					preferences, exists := responseBody["preferences"]
 					Expect(exists).To(BeTrue(), "Preferences should be included")
 					
 					prefMap, ok := preferences.(map[string]interface{})
 					Expect(ok).To(BeTrue(), "Preferences should be an object")
-					Expect(prefMap["language"]).To(Not(BeEmpty()), "Language preference should be set")
-					Expect(prefMap["timezone"]).To(Not(BeEmpty()), "Timezone preference should be set")
+					
+					By("Verifying preferences contain required fields with correct types")
+					language, langExists := prefMap["language"]
+					Expect(langExists).To(BeTrue(), "Language preference should exist")
+					Expect(language).To(BeAssignableToTypeOf(""), "Language should be a string")
+					Expect(language).To(Or(Equal("ja"), Equal("en")), "Language should be 'ja' or 'en'")
+					
+					darkMode, darkModeExists := prefMap["dark_mode"]
+					Expect(darkModeExists).To(BeTrue(), "Dark mode preference should exist")
+					Expect(darkMode).To(BeAssignableToTypeOf(true), "Dark mode should be a boolean")
+					
+					timezone, timezoneExists := prefMap["timezone"]
+					Expect(timezoneExists).To(BeTrue(), "Timezone preference should exist")
+					Expect(timezone).To(BeAssignableToTypeOf(""), "Timezone should be a string")
+					Expect(timezone).To(Not(BeEmpty()), "Timezone should not be empty")
+					_, err = time.LoadLocation(timezone.(string))
+					Expect(err).NotTo(HaveOccurred(), "Timezone should be a valid timezone identifier")
+					
+					By("Verifying response structure completeness")
+					expectedFields := []string{"id", "email", "display_name", "auth_provider", "auth_provider_id", "preferences", "created_at", "updated_at"}
+					for _, field := range expectedFields {
+						_, exists := responseBody[field]
+						Expect(exists).To(BeTrue(), fmt.Sprintf("Required field '%s' should be present", field))
+					}
+					
+					By("Verifying no unexpected fields are present")
+					allowedFields := map[string]bool{
+						"id": true, "email": true, "display_name": true, "avatar_url": true,
+						"auth_provider": true, "auth_provider_id": true, "preferences": true,
+						"created_at": true, "updated_at": true,
+					}
+					for field := range responseBody {
+						Expect(allowedFields[field]).To(BeTrue(), fmt.Sprintf("Unexpected field '%s' found in response", field))
+					}
 				})
 			})
 		})
@@ -302,7 +388,11 @@ var _ = Describe("UserHandler BDD Tests", func() {
 					err := json.Unmarshal(resp.Body.Bytes(), &errorResponse)
 					Expect(err).NotTo(HaveOccurred())
 					
-					Expect(errorResponse["title"]).To(ContainSubstring("authentication"), "Should indicate authentication required")
+					By("Verifying specific error message and structure")
+					Expect(errorResponse["title"]).To(Equal("Authentication Required"), "Should have exact authentication error title")
+					Expect(errorResponse["detail"]).To(Equal("No authorization token provided"), "Should specify missing token reason")
+					Expect(errorResponse["status"]).To(Equal(float64(401)), "Should include numeric status code")
+					Expect(errorResponse["type"]).To(Equal("about:blank"), "Should follow RFC 7807 problem details format")
 				})
 			})
 		})
@@ -525,9 +615,42 @@ var _ = Describe("UserHandler BDD Tests", func() {
 					
 					prefMap, ok := preferences.(map[string]interface{})
 					Expect(ok).To(BeTrue(), "Preferences should be an object")
+					
+					By("Verifying all expected fields exist with correct types")
+					Expect(prefMap).To(HaveKey("language"), "Language field should exist")
+					Expect(prefMap).To(HaveKey("dark_mode"), "Dark mode field should exist")
+					Expect(prefMap).To(HaveKey("timezone"), "Timezone field should exist")
+					
+					By("Verifying data types of each field")
+					language, langExists := prefMap["language"]
+					Expect(langExists).To(BeTrue(), "Language field should exist")
+					Expect(language).To(BeAssignableToTypeOf(""), "Language should be a string")
+					
+					darkMode, darkExists := prefMap["dark_mode"]
+					Expect(darkExists).To(BeTrue(), "Dark mode field should exist")
+					Expect(darkMode).To(BeAssignableToTypeOf(false), "Dark mode should be a boolean")
+					
+					timezone, tzExists := prefMap["timezone"]
+					Expect(tzExists).To(BeTrue(), "Timezone field should exist")
+					Expect(timezone).To(BeAssignableToTypeOf(""), "Timezone should be a string")
+					
+					By("Verifying field values after partial update")
 					Expect(prefMap["language"]).To(Equal("en"), "Language should be updated")
 					Expect(prefMap["dark_mode"]).To(Equal(false), "Dark mode should be preserved")
 					Expect(prefMap["timezone"]).To(Equal("Asia/Tokyo"), "Timezone should be preserved")
+					
+					By("Verifying response structure integrity")
+					Expect(len(prefMap)).To(Equal(3), "Preferences should contain exactly 3 fields")
+					
+					By("Verifying field order consistency (if JSON maintains order)")
+					responseJSON := resp.Body.String()
+					languageIndex := strings.Index(responseJSON, `"language"`)
+					darkModeIndex := strings.Index(responseJSON, `"dark_mode"`)
+					timezoneIndex := strings.Index(responseJSON, `"timezone"`)
+					
+					Expect(languageIndex).To(BeNumerically(">", -1), "Language field should be present in JSON")
+					Expect(darkModeIndex).To(BeNumerically(">", -1), "Dark mode field should be present in JSON")
+					Expect(timezoneIndex).To(BeNumerically(">", -1), "Timezone field should be present in JSON")
 				})
 			})
 		})

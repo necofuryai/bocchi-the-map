@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
 	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 )
 
 var (
@@ -78,7 +79,7 @@ func (fm *FixtureManager) CreateSpotFixture(ctx context.Context, fixture SpotFix
 	}
 	
 	err := fm.db.Queries.CreateSpot(ctx, params)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create spot fixture: %v", err)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to create spot fixture: %v", err)
 	
 	return &entities.Spot{
 		ID:          fixture.ID,
@@ -107,7 +108,7 @@ func (fm *FixtureManager) CreateUserFixture(ctx context.Context, fixture UserFix
 	}
 	
 	err := fm.db.Queries.CreateUser(ctx, params)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create user fixture: %v", err)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to create user fixture: %v", err)
 	
 	return &entities.User{
 		ID:             fixture.ID,
@@ -128,7 +129,7 @@ func (fm *FixtureManager) CreateReviewFixture(ctx context.Context, fixture Revie
 	if fixture.RatingAspects != nil {
 		var err error
 		ratingAspectsJSON, err = json.Marshal(fixture.RatingAspects)
-		Expect(err).NotTo(HaveOccurred(), "Failed to marshal rating aspects")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to marshal rating aspects")
 	}
 	
 	params := database.CreateReviewParams{
@@ -141,7 +142,7 @@ func (fm *FixtureManager) CreateReviewFixture(ctx context.Context, fixture Revie
 	}
 	
 	err := fm.db.Queries.CreateReview(ctx, params)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create review fixture: %v", err)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Failed to create review fixture: %v", err)
 	
 	return &entities.Review{
 		ID:            fixture.ID,
@@ -218,15 +219,15 @@ func (fm *FixtureManager) DefaultUserFixtures() []UserFixture {
 }
 
 // SetupStandardFixtures creates a standard set of test data
-func (fm *FixtureManager) SetupStandardFixtures() {
+func (fm *FixtureManager) SetupStandardFixtures(ctx context.Context) {
 	// Create users first (for foreign key constraints)
 	for _, userFixture := range fm.DefaultUserFixtures() {
-		fm.CreateUserFixture(context.Background(), userFixture)
+		fm.CreateUserFixture(ctx, userFixture)
 	}
 	
 	// Create spots
 	for _, spotFixture := range fm.DefaultSpotFixtures() {
-		fm.CreateSpotFixture(context.Background(), spotFixture)
+		fm.CreateSpotFixture(ctx, spotFixture)
 	}
 }
 
@@ -251,10 +252,10 @@ func (fm *FixtureManager) SetupStandardFixturesWithReturn() ([]*entities.User, [
 }
 
 // CleanupFixtures removes all fixture data
-func (fm *FixtureManager) CleanupFixtures() {
+func (fm *FixtureManager) CleanupFixtures(t *testing.T) {
 	err := fm.db.CleanDatabase()
 	if err != nil {
 		// Log error but don't panic in cleanup
-		fmt.Printf("Warning: Failed to cleanup fixtures: %v\n", err)
+		t.Logf("Warning: Failed to cleanup fixtures: %v", err)
 	}
 }
