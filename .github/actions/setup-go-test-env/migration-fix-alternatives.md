@@ -22,23 +22,53 @@ rm -rf migrations_test
 - ✅ Clean and predictable test environment
 - ✅ Maintains idempotency
 
-## Solution 2: Using migrate -ignore-files Option (ALTERNATIVE)
+## Solution 2: Manual File Management (ALTERNATIVE)
 ```bash
-# Alternative approach using migrate's built-in ignore functionality
-migrate -path migrations -database "mysql://$TEST_DATABASE_URL" -ignore-files "production/*,*.md,explain_*.sql" up
+# Alternative approach: manually manage unwanted files before running migrations
+# Move or delete unwanted files temporarily
+mkdir -p backup_temp
+mv migrations/explain_*.sql backup_temp/ 2>/dev/null || true
+mv migrations/*.md backup_temp/ 2>/dev/null || true
+mv migrations/production backup_temp/ 2>/dev/null || true
+
+# Run migrations
+migrate -path migrations -database "mysql://$TEST_DATABASE_URL" up
+
+# Restore files
+mv backup_temp/* migrations/ 2>/dev/null || true
+mv backup_temp/production migrations/ 2>/dev/null || true
+rmdir backup_temp 2>/dev/null || true
 ```
 
 **Benefits:**
-- ✅ No temporary directory needed
-- ✅ Built-in migrate tool feature
-- ✅ Explicit ignore patterns
+- ✅ Works with any version of migrate tool
+- ✅ Full control over which files are included
+- ✅ No dependency on specific migrate features
 
 **Drawbacks:**
-- ⚠️ Requires newer version of migrate tool
-- ⚠️ May not be available in all migrate versions
-- ⚠️ Less explicit control over included files
+- ⚠️ More complex file management
+- ⚠️ Risk of data loss if backup fails
+- ⚠️ Requires careful error handling
 
-## Solution 3: Explicit File List (VERBOSE BUT SAFE)
+## Solution 3: Using Goose Migration Tool (TOOL ALTERNATIVE)
+```bash
+# Alternative migration tool that supports file exclusion patterns
+# Install goose: go install github.com/pressly/goose/v3/cmd/goose@latest
+goose -dir migrations mysql "$TEST_DATABASE_URL" up
+```
+
+**Benefits:**
+- ✅ Modern migration tool with better file handling
+- ✅ Built-in support for ignoring non-migration files
+- ✅ Better error handling and rollback capabilities
+- ✅ Active development and community support
+
+**Drawbacks:**
+- ⚠️ Requires changing migration tool
+- ⚠️ May need migration file format adjustments
+- ⚠️ Additional dependency
+
+## Solution 4: Explicit File List (VERBOSE BUT SAFE)
 ```bash
 # Most explicit approach - copy only specific migration files
 mkdir -p migrations_test
@@ -71,4 +101,6 @@ find migrations -maxdepth 1 -name "[0-9][0-9][0-9][0-9][0-9][0-9]_*.sql"
 # migrations/000002_token_blacklist.down.sql
 # migrations/000002_token_blacklist.up.sql
 # ... (numbered migration files only)
+# 
+# Total files found: 4 (or the exact number of numbered migration files)
 ```

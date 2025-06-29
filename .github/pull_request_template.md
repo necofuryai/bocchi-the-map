@@ -39,11 +39,13 @@
 - [ ] Updated API documentation (if API changes)
 - [ ] Updated type definitions or schemas
 - [ ] Added performance benchmarks (if performance-related changes)
+  <!-- Run benchmarks using `make benchmark` in the api/ directory or check docs/BENCHMARKS.md for detailed instructions -->
 
 ### 🎯 Quality Assurance
 - [ ] All commit messages follow [conventional commits](https://www.conventionalcommits.org/)
 - [ ] Code follows project style guidelines
 - [ ] No hardcoded secrets or sensitive information
+- [ ] Security vulnerability scan completed (if security-related changes)
 - [ ] Breaking changes are clearly documented
 
 ## 🔗 Related Issues
@@ -58,7 +60,7 @@ Closes #
 - [ ] Security considerations
 - [ ] Performance impact
 - [ ] Breaking changes
-- [ ] Database migration safety
+- [ ] Database migration safety (including rollback testing for schema changes)
 - [ ] Error handling
 
 ## 🤖 Automated Checks

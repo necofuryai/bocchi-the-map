@@ -36,7 +36,7 @@ echo "Waiting for MySQL... (attempt $((counter + 1))/$max_wait)"
 # Show more detailed connection attempt every 10 seconds
 if [ $((counter % 10)) -eq 0 ]; then
   echo "Attempting detailed MySQL connection test..."
-  mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" || true
+  MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-password}" mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" || true
   echo "Checking if MySQL port is accessible..."
   nc -z 127.0.0.1 3306 && echo "Port 3306 is open" || echo "Port 3306 is not accessible"
 fi
@@ -52,7 +52,7 @@ When timeout occurs, the script now provides:
 #### **Connection Diagnostics:**
 ```bash
 echo "MySQL connection attempt result:"
-mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" || true
+MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-password}" mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" || true
 echo "Port connectivity check:"
 nc -z 127.0.0.1 3306 && echo "Port 3306 is accessible" || echo "Port 3306 is NOT accessible"
 ```
@@ -87,13 +87,36 @@ echo "✅ MySQL is ready and accepting connections!"
 echo "Connection successful after $counter seconds"
 ```
 
+## Security Best Practices
+
+### Using MYSQL_PWD Environment Variable
+
+Instead of passing the password directly in the command line (which exposes it in process lists and logs), use the `MYSQL_PWD` environment variable:
+
+```bash
+# ❌ Insecure - password visible in process list
+mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password"
+
+# ✅ Secure - password set via environment variable with fallback
+MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-password}" mysqladmin ping -h"127.0.0.1" -P"3306" -u"root"
+
+# ✅ Best practice - using environment variable from secure source
+MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysqladmin ping -h"127.0.0.1" -P"3306" -u"root"
+```
+
+**Benefits:**
+- ✅ Password not visible in process lists (`ps aux`)
+- ✅ Reduced risk of password exposure in logs
+- ✅ Compatible with existing mysqladmin functionality
+- ✅ Can be sourced from secure environment variables
+
 ## Debug Output Examples
 
 ### Success Case:
 ```
 Starting MySQL readiness check...
 Connection details: host=127.0.0.1, port=3306, user=root
-+ mysqladmin ping -h127.0.0.1 -P3306 -uroot -p*** --silent
++ MYSQL_PWD=*** mysqladmin ping -h127.0.0.1 -P3306 -uroot --silent
 Waiting for MySQL... (attempt 1/60)
 Waiting for MySQL... (attempt 2/60)
 ...

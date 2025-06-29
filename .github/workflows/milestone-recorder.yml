@@ -39,7 +39,10 @@ jobs:
           fi
           
           # Analyze commits
-          COMMITS=$(git log --oneline "$COMMIT_RANGE" 2>/dev/null || echo "")
+          COMMITS=$(git log --oneline "$COMMIT_RANGE" 2>&1) || {
+            echo "⚠️ Git log failed for range $COMMIT_RANGE: $COMMITS" >&2
+            COMMITS=""
+          }
           
           # Check for significant changes
           MILESTONE_WORTHY=false
@@ -55,7 +58,8 @@ jobs:
           fi
           
           # Major fixes
-          if echo "$COMMITS" | grep -E "^[a-f0-9]+ fix:" | wc -l | grep -E "^[3-9]|[1-9][0-9]" > /dev/null; then
+          FIX_COUNT=$(echo "$COMMITS" | grep -c -E "^[a-f0-9]+ fix:" || echo "0")
+          if [ "$FIX_COUNT" -ge 3 ]; then
             MILESTONE_WORTHY=true
             if [ -n "$MILESTONE_TYPE" ]; then
               MILESTONE_TYPE="mixed"
@@ -142,27 +146,19 @@ $DESCRIPTION
           
           # Insert milestone at the beginning of the milestones section
           if [ -f "docs/IMPLEMENTATION_LOG.md" ]; then
-            # Create temporary file with new milestone
-            echo "$MILESTONE_ENTRY" > temp_milestone.md
-            
-            # Find insertion point (after the current status section)
-            if grep -n "## 📅 主要実装マイルストーン" docs/IMPLEMENTATION_LOG.md > /dev/null; then
-              # Insert after the milestone header
-              LINE_NUM=$(grep -n "## 📅 主要実装マイルストーン" docs/IMPLEMENTATION_LOG.md | cut -d: -f1)
-              head -n $LINE_NUM docs/IMPLEMENTATION_LOG.md > temp_log.md
-              echo "" >> temp_log.md
-              cat temp_milestone.md >> temp_log.md
-              tail -n +$((LINE_NUM + 1)) docs/IMPLEMENTATION_LOG.md >> temp_log.md
-              mv temp_log.md docs/IMPLEMENTATION_LOG.md
+            # Check if milestones section exists
+            if grep -q "## 📅 主要実装マイルストーン" docs/IMPLEMENTATION_LOG.md; then
+              # Insert after the milestone header using sed
+              sed -i "/## 📅 主要実装マイルストーン/a\\
+\\
+$MILESTONE_ENTRY" docs/IMPLEMENTATION_LOG.md
             else
               # If no milestones section, append to end
               echo "" >> docs/IMPLEMENTATION_LOG.md
               echo "## 📅 主要実装マイルストーン" >> docs/IMPLEMENTATION_LOG.md
               echo "" >> docs/IMPLEMENTATION_LOG.md
-              cat temp_milestone.md >> docs/IMPLEMENTATION_LOG.md
+              echo "$MILESTONE_ENTRY" >> docs/IMPLEMENTATION_LOG.md
             fi
-            
-            rm temp_milestone.md
             
             echo "✅ Milestone recorded in docs/IMPLEMENTATION_LOG.md"
           else

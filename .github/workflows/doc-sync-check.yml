@@ -4,7 +4,7 @@ name: Documentation Sync Check
 on:
   pull_request:
     branches: [main, develop]
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
 
 jobs:
@@ -22,9 +22,9 @@ jobs:
       - name: Get changed files
         id: changed-files
         run: |
-          # Get list of changed files
+          # Get list of changed files including renames and binary files
           echo "changed_files<<EOF" >> $GITHUB_OUTPUT
-          git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} >> $GITHUB_OUTPUT
+          git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Check for documentation requirements
@@ -39,20 +39,20 @@ jobs:
           CRITICAL_CHANGES=false
           
           # Check for API changes
-          if echo "$CHANGED_FILES" | grep -E "^api/(.*\.(go|sql)|migrations/)" > /dev/null; then
+          if echo "$CHANGED_FILES" | grep -E "^(api/|migrations/)" > /dev/null; then
             echo "🔧 API changes detected"
             DOC_SUGGESTIONS="$DOC_SUGGESTIONS- API changes detected - consider updating api/README.md\n"
             CRITICAL_CHANGES=true
           fi
           
           # Check for frontend changes
-          if echo "$CHANGED_FILES" | grep -E "^web/(.*\.(ts|tsx|js|jsx)|package\.json)" > /dev/null; then
+          if echo "$CHANGED_FILES" | grep -E "^web/" > /dev/null; then
             echo "🎨 Frontend changes detected"  
             DOC_SUGGESTIONS="$DOC_SUGGESTIONS- Frontend changes detected - consider updating web/README.md\n"
           fi
           
           # Check for infrastructure changes
-          if echo "$CHANGED_FILES" | grep -E "^(infra/.*\.tf|\.github/|Dockerfile)" > /dev/null; then
+          if echo "$CHANGED_FILES" | grep -E "^(infra/.*\.tf|\.github/.*\.(yml|yaml)|.*Dockerfile)" > /dev/null; then
             echo "🚀 Infrastructure changes detected"
             DOC_SUGGESTIONS="$DOC_SUGGESTIONS- Infrastructure changes detected - consider updating infra/README.md\n"
             CRITICAL_CHANGES=true
@@ -113,32 +113,86 @@ jobs:
             
             comment += '\n**Note:** This is an automated suggestion. Use your judgment on whether documentation updates are needed.\n';
             
-            // Look for existing comment to update instead of creating new ones
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
+            // Retry function for GitHub API calls with exponential backoff
+            const retryApiCall = async (apiCall, maxRetries = 3) => {
+              for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                  return await apiCall();
+                } catch (error) {
+                  console.log(`API call attempt ${attempt} failed:`, error.message);
+                  
+                  // Check if it's a rate limit error (status 403 with rate limit message)
+                  if (error.status === 403 && error.message.includes('rate limit')) {
+                    const resetTime = error.response?.headers['x-ratelimit-reset'];
+                    const waitTime = resetTime ? 
+                      Math.max(0, (parseInt(resetTime) * 1000) - Date.now()) + 1000 : // Wait until reset + 1s buffer
+                      Math.pow(2, attempt) * 1000; // Exponential backoff fallback
+                    
+                    console.log(`Rate limit exceeded. Waiting ${waitTime}ms before retry ${attempt}/${maxRetries}`);
+                    if (attempt < maxRetries) {
+                      await new Promise(resolve => setTimeout(resolve, waitTime));
+                      continue;
+                    }
+                  }
+                  
+                  // For other errors, use exponential backoff
+                  if (attempt < maxRetries) {
+                    const backoffTime = Math.pow(2, attempt) * 1000;
+                    console.log(`Retrying in ${backoffTime}ms (attempt ${attempt}/${maxRetries})`);
+                    await new Promise(resolve => setTimeout(resolve, backoffTime));
+                    continue;
+                  }
+                  
+                  // Last attempt failed
+                  throw error;
+                }
+              }
+            };
             
-            const existingComment = comments.find(c => 
-              c.user.login === 'github-actions[bot]' && 
-              c.body.includes('📚 Documentation Sync Check')
-            );
-            
-            if (existingComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existingComment.id,
-                body: comment
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: comment
-              });
+            try {
+              // Look for existing comment to update instead of creating new ones
+              console.log('Fetching existing comments...');
+              const { data: comments } = await retryApiCall(() => 
+                github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                })
+              );
+              
+              const existingComment = comments.find(c => 
+                c.user.login === 'github-actions[bot]' && 
+                c.body.includes('📚 Documentation Sync Check')
+              );
+              
+              if (existingComment) {
+                console.log(`Updating existing comment ID: ${existingComment.id}`);
+                await retryApiCall(() => 
+                  github.rest.issues.updateComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: existingComment.id,
+                    body: comment
+                  })
+                );
+                console.log('Successfully updated existing comment');
+              } else {
+                console.log('Creating new comment...');
+                await retryApiCall(() => 
+                  github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    body: comment
+                  })
+                );
+                console.log('Successfully created new comment');
+              }
+            } catch (error) {
+              console.error('Failed to manage PR comment after retries:', error);
+              // Set step output to indicate failure but don't fail the entire workflow
+              core.setOutput('comment_error', error.message);
+              core.warning(`Unable to post documentation suggestions comment: ${error.message}`);
             }
 
       - name: Set check status

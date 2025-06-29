@@ -52,4 +52,19 @@ mysql-root-password:
   default: 'temp_password_123'
 ```
 
-**Note**: Always remove temporary passwords before committing to production!
+⚠️ **CRITICAL SECURITY WARNING** ⚠️
+
+**DANGER**: This rollback configuration poses SEVERE security risks and is for EMERGENCY DEVELOPMENT USE ONLY:
+
+- 🚨 **NEVER use this in production environments**
+- 🚨 **NEVER commit this configuration to production branches**
+- 🚨 **NEVER leave this configuration active longer than absolutely necessary**
+- 🚨 **Weak passwords expose your database to immediate compromise**
+
+**IMMEDIATE ACTIONS REQUIRED AFTER ROLLBACK**:
+1. Reset MySQL password to a strong, randomly generated password
+2. Remove the temporary password configuration completely
+3. Update all dependent services with the new secure password
+4. Audit access logs for any unauthorized access attempts
+
+**Remember**: Default/weak passwords are the #1 cause of database breaches. Even in development, compromised systems can be used as attack vectors against production infrastructure.

@@ -34,9 +34,9 @@ This action has undergone several critical improvements for security, reliabilit
 ## Implementation Details
 
 For comprehensive technical implementation details and troubleshooting information, see the main project knowledge base:
-- **Technical Deep Dive**: `.claude/project-improvements.md` → "Cloud Run & Monitoring Integration Implementation" section
-- **Architecture Patterns**: `.claude/project-knowledge.md` → "Cloud Run & Monitoring Integration" section  
-- **Command Patterns**: `.claude/common-patterns.md` → "Cloud Run and Docker Deployment Patterns" section
+- **Technical Deep Dive**: [`.claude/project-improvements.md`](../../../.claude/project-improvements.md#cloud-run--monitoring-integration-implementation-2025-06-29) → "Cloud Run & Monitoring Integration Implementation" section
+- **Architecture Patterns**: [`.claude/project-knowledge.md`](../../../.claude/project-knowledge.md#cloud-run--monitoring-integration) → "Cloud Run & Monitoring Integration" section  
+- **Command Patterns**: [`.claude/common-patterns.md`](../../../.claude/common-patterns.md#cloud-run-and-docker-deployment-patterns) → "Cloud Run and Docker Deployment Patterns" section
 
 ## Quick Reference
 

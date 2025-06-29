@@ -61,10 +61,40 @@ jobs:
             echo '{"stats":{"expected":0,"passed":0,"failed":0,"flaky":0,"skipped":0}}' > e2e-results.json
           fi
           
-          # Parse test results
-          TOTAL_TESTS=$(node -p "JSON.parse(require('fs').readFileSync('e2e-results.json', 'utf8')).suites?.flatMap(s => s.specs || []).length || 0")
-          PASSED_TESTS=$(node -p "JSON.parse(require('fs').readFileSync('e2e-results.json', 'utf8')).suites?.flatMap(s => s.specs || []).filter(spec => spec.tests?.every(test => test.status === 'passed')).length || 0")
-          FAILED_TESTS=$(node -p "JSON.parse(require('fs').readFileSync('e2e-results.json', 'utf8')).suites?.flatMap(s => s.specs || []).filter(spec => spec.tests?.some(test => test.status === 'failed')).length || 0")
+          # Parse test results with recursive spec collection
+          TOTAL_TESTS=$(node -p "
+            const data = JSON.parse(require('fs').readFileSync('e2e-results.json', 'utf8'));
+            function collectSpecs(suites) {
+              if (!suites) return [];
+              return suites.flatMap(suite => [
+                ...(suite.specs || []),
+                ...collectSpecs(suite.suites)
+              ]);
+            }
+            collectSpecs(data.suites).length || 0
+          ")
+          PASSED_TESTS=$(node -p "
+            const data = JSON.parse(require('fs').readFileSync('e2e-results.json', 'utf8'));
+            function collectSpecs(suites) {
+              if (!suites) return [];
+              return suites.flatMap(suite => [
+                ...(suite.specs || []),
+                ...collectSpecs(suite.suites)
+              ]);
+            }
+            collectSpecs(data.suites).filter(spec => spec.tests?.every(test => test.status === 'passed')).length || 0
+          ")
+          FAILED_TESTS=$(node -p "
+            const data = JSON.parse(require('fs').readFileSync('e2e-results.json', 'utf8'));
+            function collectSpecs(suites) {
+              if (!suites) return [];
+              return suites.flatMap(suite => [
+                ...(suite.specs || []),
+                ...collectSpecs(suite.suites)
+              ]);
+            }
+            collectSpecs(data.suites).filter(spec => spec.tests?.some(test => test.status === 'failed')).length || 0
+          ")
           
           # Calculate success rate
           if [ "$TOTAL_TESTS" -gt 0 ]; then
@@ -99,15 +129,15 @@ jobs:
           MILESTONE_ACHIEVED=false
           MILESTONE_TYPE=""
           
-          if [ "$SUCCESS_RATE" -eq 100 ]; then
+          if (( SUCCESS_RATE == 100 )); then
             MILESTONE_ACHIEVED=true
             MILESTONE_TYPE="completion"
             echo "🎉 100% E2E test success achieved!"
-          elif [ "$SUCCESS_RATE" -ge 95 ]; then
+          elif (( SUCCESS_RATE >= 95 )); then
             MILESTONE_ACHIEVED=true
             MILESTONE_TYPE="near_completion"
             echo "🌟 95%+ E2E test success achieved!"
-          elif [ "$SUCCESS_RATE" -ge 90 ]; then
+          elif (( SUCCESS_RATE >= 90 )); then
             MILESTONE_ACHIEVED=true
             MILESTONE_TYPE="excellent"
             echo "✨ 90%+ E2E test success achieved!"
