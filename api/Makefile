@@ -155,11 +155,19 @@ docker-up:
 # Initialize database with appropriate SQL file based on environment
 db-init-production:
 	@echo "Initializing production database..."
-	@docker exec bocchi-the-map-mysql mysql -u root -p"$${MYSQL_ROOT_PASSWORD:-change_me_in_production}" < init-production.sql
+	@if [ -z "$$MYSQL_ROOT_PASSWORD" ]; then \
+		echo "Error: MYSQL_ROOT_PASSWORD environment variable is required for production"; \
+		exit 1; \
+	fi
+	@docker exec bocchi-the-map-mysql mysql -u root -p"$$MYSQL_ROOT_PASSWORD" < init-production.sql
 
 db-init-test:
 	@echo "Initializing test database..."
-	@docker exec bocchi-the-map-mysql mysql -u root -p"$${MYSQL_ROOT_PASSWORD:-change_me_in_production}" < init-test.sql
+	@if [ -z "$$MYSQL_ROOT_PASSWORD" ]; then \
+		echo "Error: MYSQL_ROOT_PASSWORD environment variable is required"; \
+		exit 1; \
+	fi
+	@docker exec bocchi-the-map-mysql mysql -u root -p"$$MYSQL_ROOT_PASSWORD" < init-test.sql
 
 docker-down:
 	@echo "Stopping development environment..."
