@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	FixedTestTime = time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
+	fixedTestTime = time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 )
 
 // FixtureManager manages test data fixtures
@@ -90,8 +90,8 @@ func (fm *FixtureManager) CreateSpotFixture(ctx context.Context, fixture SpotFix
 		Address:     fixture.Address,
 		AddressI18n: fixture.AddressI18n,
 		CountryCode: fixture.CountryCode,
-		CreatedAt:   FixedTestTime,
-		UpdatedAt:   FixedTestTime,
+		CreatedAt:   fixedTestTime,
+		UpdatedAt:   fixedTestTime,
 	}
 }
 
@@ -116,8 +116,8 @@ func (fm *FixtureManager) CreateUserFixture(ctx context.Context, fixture UserFix
 		AuthProvider:   entities.AuthProvider(fixture.AuthProvider),
 		AuthProviderID: fixture.AuthProviderID,
 		Preferences:    fixture.Preferences,
-		CreatedAt:      FixedTestTime,
-		UpdatedAt:      FixedTestTime,
+		CreatedAt:      fixedTestTime,
+		UpdatedAt:      fixedTestTime,
 	}
 }
 
@@ -150,8 +150,8 @@ func (fm *FixtureManager) CreateReviewFixture(ctx context.Context, fixture Revie
 		Rating:        fixture.Rating,
 		Comment:       fixture.Comment,
 		RatingAspects: fixture.RatingAspects,
-		CreatedAt:     FixedTestTime,
-		UpdatedAt:     FixedTestTime,
+		CreatedAt:     fixedTestTime,
+		UpdatedAt:     fixedTestTime,
 	}
 }
 
@@ -252,5 +252,9 @@ func (fm *FixtureManager) SetupStandardFixturesWithReturn() ([]*entities.User, [
 
 // CleanupFixtures removes all fixture data
 func (fm *FixtureManager) CleanupFixtures() {
-	fm.db.CleanDatabase()
+	err := fm.db.CleanDatabase()
+	if err != nil {
+		// Log error but don't panic in cleanup
+		fmt.Printf("Warning: Failed to cleanup fixtures: %v\n", err)
+	}
 }

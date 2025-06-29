@@ -46,7 +46,7 @@ func NewTestDatabase() (*TestDatabase, error) {
 }
 
 // CleanDatabase removes all test data while preserving schema
-func (td *TestDatabase) CleanDatabase() {
+func (td *TestDatabase) CleanDatabase() error {
 	ctx := context.Background()
 	
 	// Clean up in reverse order of dependencies
@@ -57,13 +57,21 @@ func (td *TestDatabase) CleanDatabase() {
 		"token_blacklist",
 	}
 	
+	var errors []error
+	
 	for _, table := range tables {
 		_, err := td.DB.ExecContext(ctx, fmt.Sprintf("DELETE FROM `%s`", table))
 		if err != nil {
-			// Log warning but don't fail - table might not exist in test
 			GinkgoWriter.Printf("Warning: Failed to clean table %s: %v\n", table, err)
+			errors = append(errors, fmt.Errorf("failed to clean table %s: %w", table, err))
 		}
 	}
+	
+	if len(errors) > 0 {
+		return fmt.Errorf("database cleanup failed with %d errors: %v", len(errors), errors)
+	}
+	
+	return nil
 }
 
 // Close closes the database connection
@@ -94,11 +102,13 @@ func (td *TestDatabase) WithTransaction(fn func(*sql.Tx)) {
 }
 
 // getTestDSN returns the test database connection string
+// Requires TEST_DATABASE_URL environment variable to be set for security.
+// Example: TEST_DATABASE_URL="user:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
 func getTestDSN() string {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
-		// Default test database configuration
-		dsn = "root:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+		panic("TEST_DATABASE_URL environment variable must be set for test database configuration. " +
+			"Example: TEST_DATABASE_URL=\"user:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true\"")
 	}
 	return dsn
 }

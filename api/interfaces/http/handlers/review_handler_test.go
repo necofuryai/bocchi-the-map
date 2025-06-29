@@ -35,7 +35,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		
 		// Create review client with test database
 		var err error
-		reviewClient, err = clients.NewReviewClient("internal", testDB.DB)
+		reviewClient, err = clients.NewReviewClient("internal", testSuite.TestDB.DB)
 		Expect(err).NotTo(HaveOccurred())
 		
 		// Create review handler
@@ -50,7 +50,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		reviewHandler.RegisterRoutes(api)
 		
 		// Setup authentication test data
-		authData = authHelper.NewAuthTestData()
+		authData = testSuite.AuthHelper.NewAuthTestData()
 		
 		// Create test user in database
 		userFixture = &helpers.UserFixture{
@@ -61,7 +61,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			AuthProviderID: authData.TestUser.AuthProviderID,
 			Preferences:    authData.TestUser.Preferences,
 		}
-		fixtureManager.CreateUserFixture(context.Background(), *userFixture)
+		testSuite.FixtureManager.CreateUserFixture(context.Background(), *userFixture)
 		
 		// Create test spot for reviews
 		spotFixture = &helpers.SpotFixture{
@@ -73,7 +73,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			Address:     "Test Address",
 			CountryCode: "JP",
 		}
-		fixtureManager.CreateSpotFixture(context.Background(), *spotFixture)
+		testSuite.FixtureManager.CreateSpotFixture(context.Background(), *spotFixture)
 	})
 
 	Describe("Review Creation", func() {
@@ -258,7 +258,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		Context("Given a duplicate review attempt", func() {
 			BeforeEach(func() {
 				By("Creating an existing review first")
-				fixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
+				testSuite.FixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
 					ID:     "existing-review-123",
 					SpotID: spotFixture.ID,
 					UserID: authData.ValidUserID,
@@ -301,12 +301,21 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 	})
 
 	Describe("Spot Review Retrieval", func() {
+		const (
+			totalTestReviews = 15
+			pageLimit        = 10
+			remainingReviews = 5
+			minRating        = 1
+			maxRating        = 5
+			expectedRatingsPerLevel = 3
+		)
+
 		BeforeEach(func() {
 			By("Creating multiple reviews for the test spot")
 			// Create additional users for diverse reviews
-			for i := 1; i <= 15; i++ {
+			for i := 1; i <= totalTestReviews; i++ {
 				userID := fmt.Sprintf("review-user-%d", i)
-				fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
+				testSuite.FixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 					ID:             userID,
 					Email:          fmt.Sprintf("reviewer%d@example.com", i),
 					DisplayName:    fmt.Sprintf("Reviewer %d", i),
@@ -315,8 +324,8 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 				})
 				
 				// Create reviews with varying ratings
-				rating := (i % 5) + 1 // Ratings from 1-5
-				fixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
+				rating := (i % maxRating) + minRating // Ratings from 1-5
+				testSuite.FixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
 					ID:      fmt.Sprintf("review-%d", i),
 					SpotID:  spotFixture.ID,
 					UserID:  userID,
@@ -330,7 +339,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			Context("When requesting spot reviews with pagination", func() {
 				It("Then paginated reviews and statistics should be returned", func() {
 					By("Sending request for first page of reviews")
-					req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/spots/%s/reviews?page=1&limit=10", spotFixture.ID), nil)
+					req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/spots/%s/reviews?page=1&limit=%d", spotFixture.ID, pageLimit), nil)
 					
 					resp := httptest.NewRecorder()
 					testServer.Config.Handler.ServeHTTP(resp, req)
@@ -348,7 +357,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					
 					reviewsArray, ok := reviews.([]interface{})
 					Expect(ok).To(BeTrue(), "Reviews should be an array")
-					Expect(len(reviewsArray)).To(Equal(10), "Should return 10 reviews per page")
+					Expect(len(reviewsArray)).To(Equal(pageLimit), "Should return page limit reviews per page")
 					
 					By("Verifying pagination information")
 					pagination, exists := responseBody["pagination"]
@@ -357,7 +366,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					paginationMap, ok := pagination.(map[string]interface{})
 					Expect(ok).To(BeTrue(), "Pagination should be an object")
 					Expect(paginationMap["page"]).To(Equal(float64(1)), "Current page should be 1")
-					Expect(paginationMap["total_count"]).To(Equal(float64(15)), "Total should be 15 reviews")
+					Expect(paginationMap["total_count"]).To(Equal(float64(totalTestReviews)), "Total should match created reviews")
 					Expect(paginationMap["total_pages"]).To(Equal(float64(2)), "Should have 2 pages total")
 					
 					By("Verifying review statistics")
@@ -366,9 +375,9 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					
 					statsMap, ok := statistics.(map[string]interface{})
 					Expect(ok).To(BeTrue(), "Statistics should be an object")
-					Expect(statsMap["total_reviews"]).To(Equal(float64(15)), "Total reviews count should be 15")
+					Expect(statsMap["total_reviews"]).To(Equal(float64(totalTestReviews)), "Total reviews count should match created reviews")
 					Expect(statsMap["average_rating"]).To(BeNumerically(">", 0), "Average rating should be calculated")
-					Expect(statsMap["average_rating"]).To(BeNumerically("<=", 5), "Average rating should not exceed 5")
+					Expect(statsMap["average_rating"]).To(BeNumerically("<=", maxRating), "Average rating should not exceed max rating")
 					
 					By("Verifying rating distribution")
 					distribution, exists := statsMap["rating_distribution"]
@@ -376,10 +385,10 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					
 					distMap, ok := distribution.(map[string]interface{})
 					Expect(ok).To(BeTrue(), "Rating distribution should be an object")
-					// Each rating (1-5) should have 3 reviews (15 total / 5 ratings)
-					for rating := 1; rating <= 5; rating++ {
+					// Each rating (1-5) should have equal distribution
+					for rating := minRating; rating <= maxRating; rating++ {
 						key := fmt.Sprintf("%d", rating)
-						Expect(distMap[key]).To(Equal(float64(3)), fmt.Sprintf("Rating %d should have 3 reviews", rating))
+						Expect(distMap[key]).To(Equal(float64(expectedRatingsPerLevel)), fmt.Sprintf("Rating %d should have %d reviews", rating, expectedRatingsPerLevel))
 					}
 				})
 			})
@@ -387,7 +396,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			Context("When requesting second page of reviews", func() {
 				It("Then correct page results should be returned", func() {
 					By("Sending request for second page")
-					req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/spots/%s/reviews?page=2&limit=10", spotFixture.ID), nil)
+					req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/spots/%s/reviews?page=2&limit=%d", spotFixture.ID, pageLimit), nil)
 					
 					resp := httptest.NewRecorder()
 					testServer.Config.Handler.ServeHTTP(resp, req)
@@ -405,7 +414,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					
 					reviewsArray, ok := reviews.([]interface{})
 					Expect(ok).To(BeTrue(), "Reviews should be an array")
-					Expect(len(reviewsArray)).To(Equal(5), "Should return remaining 5 reviews on page 2")
+					Expect(len(reviewsArray)).To(Equal(remainingReviews), "Should return remaining reviews on page 2")
 					
 					By("Verifying pagination for second page")
 					pagination, exists := responseBody["pagination"]
@@ -464,7 +473,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		Context("Given a spot with no reviews", func() {
 			BeforeEach(func() {
 				By("Creating a spot without reviews")
-				fixtureManager.CreateSpotFixture(context.Background(), helpers.SpotFixture{
+				testSuite.FixtureManager.CreateSpotFixture(context.Background(), helpers.SpotFixture{
 					ID:          "empty-spot",
 					Name:        "Spot Without Reviews",
 					Latitude:    35.6762,
@@ -517,7 +526,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		BeforeEach(func() {
 			By("Creating a user with multiple reviews")
 			reviewerUserID = "multi-reviewer-user"
-			fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
+			testSuite.FixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 				ID:             reviewerUserID,
 				Email:          "multireviewer@example.com",
 				DisplayName:    "Multi Reviewer",
@@ -528,7 +537,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 			// Create multiple spots and reviews for this user
 			for i := 1; i <= 8; i++ {
 				spotID := fmt.Sprintf("user-spot-%d", i)
-				fixtureManager.CreateSpotFixture(context.Background(), helpers.SpotFixture{
+				testSuite.FixtureManager.CreateSpotFixture(context.Background(), helpers.SpotFixture{
 					ID:          spotID,
 					Name:        fmt.Sprintf("User Spot %d", i),
 					Latitude:    35.6762 + float64(i)*0.001,
@@ -538,7 +547,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					CountryCode: "JP",
 				})
 				
-				fixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
+				testSuite.FixtureManager.CreateReviewFixture(context.Background(), helpers.ReviewFixture{
 					ID:      fmt.Sprintf("user-review-%d", i),
 					SpotID:  spotID,
 					UserID:  reviewerUserID,
@@ -614,7 +623,7 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 		Context("Given a user with no reviews", func() {
 			BeforeEach(func() {
 				By("Creating a user without reviews")
-				fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
+				testSuite.FixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 					ID:             "empty-reviewer",
 					Email:          "empty@example.com",
 					DisplayName:    "Empty Reviewer",

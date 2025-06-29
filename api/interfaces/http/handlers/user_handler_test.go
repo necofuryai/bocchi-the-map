@@ -35,11 +35,11 @@ var _ = Describe("UserHandler BDD Tests", func() {
 		
 		// Create user client with test database
 		var err error
-		userClient, err = clients.NewUserClient("internal", testDB.DB)
+		userClient, err = clients.NewUserClient("internal", testSuite.TestDB.DB)
 		Expect(err).NotTo(HaveOccurred())
 		
 		// Create auth middleware
-		authMiddleware = auth.NewAuthMiddleware("test-secret-key", testDB.Queries)
+		authMiddleware = auth.NewAuthMiddleware("test-secret-key", testSuite.TestDB.Queries)
 		
 		// Create user handler
 		userHandler = NewUserHandler(userClient)
@@ -53,7 +53,7 @@ var _ = Describe("UserHandler BDD Tests", func() {
 		userHandler.RegisterRoutesWithAuth(api, authMiddleware)
 		
 		// Setup authentication test data
-		authData = authHelper.NewAuthTestData()
+		authData = testSuite.AuthHelper.NewAuthTestData()
 	})
 
 	Describe("User Creation and Update via OAuth", func() {
@@ -110,7 +110,7 @@ var _ = Describe("UserHandler BDD Tests", func() {
 		Context("Given an existing user with OAuth provider ID", func() {
 			BeforeEach(func() {
 				By("Creating an existing user in the database")
-				fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
+				testSuite.FixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 					ID:             "existing-user-123",
 					Email:          "existing@example.com",
 					DisplayName:    "Existing User",
@@ -239,7 +239,7 @@ var _ = Describe("UserHandler BDD Tests", func() {
 	Describe("Current User Retrieval", func() {
 		BeforeEach(func() {
 			By("Creating test user for authentication testing")
-			fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
+			testSuite.FixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 				ID:             authData.ValidUserID,
 				Email:          authData.TestUser.Email,
 				DisplayName:    authData.TestUser.DisplayName,
@@ -343,7 +343,7 @@ var _ = Describe("UserHandler BDD Tests", func() {
 	Describe("User Preference Updates", func() {
 		BeforeEach(func() {
 			By("Creating test user for preference testing")
-			fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
+			testSuite.FixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 				ID:             authData.ValidUserID,
 				Email:          authData.TestUser.Email,
 				DisplayName:    authData.TestUser.DisplayName,

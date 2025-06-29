@@ -19,6 +19,8 @@ type AuthHelper struct {
 // NewAuthHelper creates a new authentication helper
 func NewAuthHelper() *AuthHelper {
 	return &AuthHelper{
+		// This JWT secret is hardcoded intentionally for testing purposes only
+		// NEVER use this secret in production environments
 		jwtSecret: "test-secret-key-for-bdd-testing",
 	}
 }

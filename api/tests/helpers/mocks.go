@@ -9,6 +9,16 @@ import (
 	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
 )
 
+const (
+	// DefaultMockAuthProviderID is the default auth provider ID used in mock scenarios
+	DefaultMockAuthProviderID = "mock_123"
+)
+
+// buildAuthKey constructs authentication key from provider and provider ID
+func buildAuthKey(provider entities.AuthProvider, providerID string) string {
+	return string(provider) + ":" + providerID
+}
+
 // MockSpotRepository provides a mock implementation for testing
 type MockSpotRepository struct {
 	mu              sync.RWMutex
@@ -42,8 +52,14 @@ func (m *MockSpotRepository) Create(ctx context.Context, spot *entities.Spot) er
 	}
 	
 	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	// Check if spot with the same ID already exists
+	if _, exists := m.spots[spot.ID]; exists {
+		return errors.New("spot with ID already exists")
+	}
+	
 	m.spots[spot.ID] = spot
-	m.mu.Unlock()
 	return nil
 }
 
@@ -67,13 +83,21 @@ func (m *MockSpotRepository) GetByID(ctx context.Context, id string) (*entities.
 func (m *MockSpotRepository) List(ctx context.Context, filters map[string]interface{}) ([]*entities.Spot, error) {
 	m.mu.RLock()
 	listFunc := m.listSpotsFunc
-	var result []*entities.Spot
+	var spotsCopy map[string]*entities.Spot
 	if listFunc == nil {
-		for _, spot := range m.spots {
-			result = append(result, spot)
+		spotsCopy = make(map[string]*entities.Spot, len(m.spots))
+		for id, spot := range m.spots {
+			spotsCopy[id] = spot
 		}
 	}
 	m.mu.RUnlock()
+	
+	var result []*entities.Spot
+	if listFunc == nil {
+		for _, spot := range spotsCopy {
+			result = append(result, spot)
+		}
+	}
 	
 	if listFunc != nil {
 		return listFunc(ctx, filters)
@@ -209,12 +233,23 @@ func (m *MockUserRepository) Create(ctx context.Context, user *entities.User) er
 	}
 	
 	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	// Check for duplicate email
+	if _, exists := m.usersByEmail[user.Email]; exists {
+		return errors.New("user with this email already exists")
+	}
+	
+	// Check for duplicate auth provider combination
+	authKey := buildAuthKey(user.AuthProvider, user.AuthProviderID)
+	if _, exists := m.usersByAuthProvider[authKey]; exists {
+		return errors.New("user with this auth provider already exists")
+	}
+	
+	// Insert the user
 	m.users[user.ID] = user
 	m.usersByEmail[user.Email] = user
-	
-	authKey := string(user.AuthProvider) + ":" + user.AuthProviderID
 	m.usersByAuthProvider[authKey] = user
-	m.mu.Unlock()
 	
 	return nil
 }
@@ -264,7 +299,7 @@ func (m *MockUserRepository) GetByAuthProvider(ctx context.Context, provider, pr
 		return getByAuthProviderFunc(ctx, provider, providerID)
 	}
 	
-	authKey := provider + ":" + providerID
+	authKey := buildAuthKey(entities.AuthProvider(provider), providerID)
 	m.mu.RLock()
 	user, exists := m.usersByAuthProvider[authKey]
 	m.mu.RUnlock()
@@ -300,8 +335,8 @@ func (m *MockUserRepository) Update(ctx context.Context, user *entities.User) er
 	}
 	
 	// Check for duplicate AuthProvider combination (if different from current user's)
-	newAuthKey := string(user.AuthProvider) + ":" + user.AuthProviderID
-	oldAuthKey := string(oldUser.AuthProvider) + ":" + oldUser.AuthProviderID
+	newAuthKey := buildAuthKey(user.AuthProvider, user.AuthProviderID)
+	oldAuthKey := buildAuthKey(oldUser.AuthProvider, oldUser.AuthProviderID)
 	if newAuthKey != oldAuthKey {
 		if existingUserByAuth, authExists := m.usersByAuthProvider[newAuthKey]; authExists && existingUserByAuth.ID != user.ID {
 			return errors.New("user with this auth provider already exists")
@@ -338,7 +373,7 @@ func (m *MockUserRepository) Delete(ctx context.Context, id string) error {
 	delete(m.users, id)
 	delete(m.usersByEmail, user.Email)
 	
-	authKey := string(user.AuthProvider) + ":" + user.AuthProviderID
+	authKey := buildAuthKey(user.AuthProvider, user.AuthProviderID)
 	delete(m.usersByAuthProvider, authKey)
 	m.mu.Unlock()
 	
@@ -389,7 +424,7 @@ func (m *MockUserRepository) SetUsers(users []*entities.User) {
 			m.usersByEmail[user.Email] = user
 		}
 		if user.AuthProvider != "" && user.AuthProviderID != "" {
-			authKey := string(user.AuthProvider) + ":" + user.AuthProviderID
+			authKey := buildAuthKey(user.AuthProvider, user.AuthProviderID)
 			m.usersByAuthProvider[authKey] = user
 		}
 	}
@@ -468,14 +503,8 @@ func DefaultHappyPathConfig() HappyPathConfig {
 	}
 }
 
-// ConfigureHappyPath sets up mocks for successful scenarios with optional configuration
-func (bdm *BehaviorDrivenMocks) ConfigureHappyPath(configs ...HappyPathConfig) {
-	config := DefaultHappyPathConfig()
-	if len(configs) > 0 {
-		config = configs[0]
-	}
-
-	// Spots always succeed
+// configureSpotMocks sets up spot-related mock behavior for happy path scenarios
+func (bdm *BehaviorDrivenMocks) configureSpotMocks(config HappyPathConfig) {
 	bdm.SpotRepo.SetCreateSpotFunc(func(ctx context.Context, spot *entities.Spot) error {
 		return nil
 	})
@@ -492,8 +521,10 @@ func (bdm *BehaviorDrivenMocks) ConfigureHappyPath(configs ...HappyPathConfig) {
 			Category:  config.SpotCategory,
 		}, nil
 	})
-	
-	// Users always succeed
+}
+
+// configureUserMocks sets up user-related mock behavior for happy path scenarios
+func (bdm *BehaviorDrivenMocks) configureUserMocks(config HappyPathConfig) {
 	bdm.UserRepo.SetCreateUserFunc(func(ctx context.Context, user *entities.User) error {
 		return nil
 	})
@@ -507,7 +538,7 @@ func (bdm *BehaviorDrivenMocks) ConfigureHappyPath(configs ...HappyPathConfig) {
 			Email:          config.UserEmail,
 			DisplayName:    config.DisplayName,
 			AuthProvider:   entities.AuthProvider(config.AuthProvider),
-			AuthProviderID: "mock_123",
+			AuthProviderID: DefaultMockAuthProviderID,
 			Preferences: entities.UserPreferences{
 				Language: config.Language,
 				DarkMode: config.DarkMode,
@@ -515,6 +546,17 @@ func (bdm *BehaviorDrivenMocks) ConfigureHappyPath(configs ...HappyPathConfig) {
 			},
 		}, nil
 	})
+}
+
+// ConfigureHappyPath sets up mocks for successful scenarios with optional configuration
+func (bdm *BehaviorDrivenMocks) ConfigureHappyPath(configs ...HappyPathConfig) {
+	config := DefaultHappyPathConfig()
+	if len(configs) > 0 {
+		config = configs[0]
+	}
+
+	bdm.configureSpotMocks(config)
+	bdm.configureUserMocks(config)
 }
 
 // ConfigureHappyPathWithCustomSpots sets up mocks with custom spot data generation
@@ -562,7 +604,7 @@ func (bdm *BehaviorDrivenMocks) ConfigureHappyPathWithMultipleScenarios(spotScen
 				Email:          config.UserEmail,
 				DisplayName:    config.DisplayName,
 				AuthProvider:   entities.AuthProvider(config.AuthProvider),
-				AuthProviderID: "mock_123",
+				AuthProviderID: DefaultMockAuthProviderID,
 				Preferences: entities.UserPreferences{
 					Language: config.Language,
 					DarkMode: config.DarkMode,

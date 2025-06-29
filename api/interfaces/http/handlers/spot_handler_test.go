@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 
@@ -24,6 +25,31 @@ const (
 	InvalidLongitude = 181.0
 )
 
+// calculateHaversineDistance calculates the distance between two points on Earth
+// using the Haversine formula. Returns distance in kilometers.
+func calculateHaversineDistance(lat1, lng1, lat2, lng2 float64) float64 {
+	const earthRadiusKm = 6371.0
+
+	// Convert degrees to radians
+	lat1Rad := lat1 * math.Pi / 180
+	lng1Rad := lng1 * math.Pi / 180
+	lat2Rad := lat2 * math.Pi / 180
+	lng2Rad := lng2 * math.Pi / 180
+
+	// Calculate differences
+	deltaLat := lat2Rad - lat1Rad
+	deltaLng := lng2Rad - lng1Rad
+
+	// Apply Haversine formula
+	a := math.Sin(deltaLat/2)*math.Sin(deltaLat/2) +
+		math.Cos(lat1Rad)*math.Cos(lat2Rad)*
+			math.Sin(deltaLng/2)*math.Sin(deltaLng/2)
+
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+
+	return earthRadiusKm * c
+}
+
 var _ = Describe("SpotHandler BDD Tests", func() {
 	var (
 		api        huma.API
@@ -38,7 +64,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 		
 		// Create spot client with test database
 		var err error
-		spotClient, err = clients.NewSpotClient("internal", testDB.DB)
+		spotClient, err = clients.NewSpotClient("internal", testSuite.TestDB.DB)
 		Expect(err).NotTo(HaveOccurred())
 		
 		// Create spot handler
@@ -53,10 +79,10 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 		spotHandler.RegisterRoutes(api)
 		
 		// Setup authentication test data
-		authData = authHelper.NewAuthTestData()
+		authData = testSuite.AuthHelper.NewAuthTestData()
 		
 		// Create test user in database
-		fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
+		testSuite.FixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 			ID:             authData.ValidUserID,
 			Email:          authData.TestUser.Email,
 			DisplayName:    authData.TestUser.DisplayName,
@@ -133,13 +159,22 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					testServer.Config.Handler.ServeHTTP(resp, req)
 					
 					By("Verifying the validation error response")
-					Expect(resp.Code).To(Equal(http.StatusBadRequest), "Expected status 400 Bad Request")
+					Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity), "Expected status 422 Unprocessable Entity")
 					
 					var errorResponse map[string]interface{}
 					err = json.Unmarshal(resp.Body.Bytes(), &errorResponse)
 					Expect(err).NotTo(HaveOccurred())
 					
-					Expect(errorResponse["title"]).To(ContainSubstring("validation"), "Should contain validation error")
+					Expect(errorResponse["title"]).To(Equal("Unprocessable Entity"))
+					Expect(errorResponse["detail"]).To(Equal("validation failed"))
+					
+					errors, exists := errorResponse["errors"].([]interface{})
+					Expect(exists).To(BeTrue(), "Response should contain errors array")
+					Expect(len(errors)).To(BeNumerically(">=", 1), "Should have at least one validation error")
+					
+					firstError := errors[0].(map[string]interface{})
+					Expect(firstError["message"]).To(Equal("expected required property name to be present"))
+					Expect(firstError["location"]).To(Equal("body"))
 				})
 			})
 
@@ -167,7 +202,22 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					testServer.Config.Handler.ServeHTTP(resp, req)
 					
 					By("Verifying the coordinate validation error")
-					Expect(resp.Code).To(Equal(http.StatusBadRequest), "Expected status 400 Bad Request")
+					Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity), "Expected status 422 Unprocessable Entity")
+					
+					var errorResponse map[string]interface{}
+					err = json.Unmarshal(resp.Body.Bytes(), &errorResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(errorResponse["title"]).To(Equal("Unprocessable Entity"))
+					Expect(errorResponse["detail"]).To(Equal("validation failed"))
+					
+					errors, exists := errorResponse["errors"].([]interface{})
+					Expect(exists).To(BeTrue(), "Response should contain errors array")
+					Expect(len(errors)).To(BeNumerically(">=", 1), "Should have at least one validation error")
+					
+					firstError := errors[0].(map[string]interface{})
+					Expect(firstError["message"]).To(Equal("expected number <= 90"))
+					Expect(firstError["location"]).To(Equal("body.latitude"))
 				})
 			})
 
@@ -195,7 +245,22 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					testServer.Config.Handler.ServeHTTP(resp, req)
 					
 					By("Verifying the longitude validation error")
-					Expect(resp.Code).To(Equal(http.StatusBadRequest), "Expected status 400 Bad Request")
+					Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity), "Expected status 422 Unprocessable Entity")
+					
+					var errorResponse map[string]interface{}
+					err = json.Unmarshal(resp.Body.Bytes(), &errorResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(errorResponse["title"]).To(Equal("Unprocessable Entity"))
+					Expect(errorResponse["detail"]).To(Equal("validation failed"))
+					
+					errors, exists := errorResponse["errors"].([]interface{})
+					Expect(exists).To(BeTrue(), "Response should contain errors array")
+					Expect(len(errors)).To(BeNumerically(">=", 1), "Should have at least one validation error")
+					
+					firstError := errors[0].(map[string]interface{})
+					Expect(firstError["message"]).To(Equal("expected number <= 180"))
+					Expect(firstError["location"]).To(Equal("body.longitude"))
 				})
 			})
 
@@ -223,7 +288,31 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					testServer.Config.Handler.ServeHTTP(resp, req)
 					
 					By("Verifying the country code validation error")
-					Expect(resp.Code).To(Equal(http.StatusBadRequest), "Expected status 400 Bad Request")
+					Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity), "Expected status 422 Unprocessable Entity")
+					
+					var errorResponse map[string]interface{}
+					err = json.Unmarshal(resp.Body.Bytes(), &errorResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(errorResponse["title"]).To(Equal("Unprocessable Entity"))
+					Expect(errorResponse["detail"]).To(Equal("validation failed"))
+					
+					errors, exists := errorResponse["errors"].([]interface{})
+					Expect(exists).To(BeTrue(), "Response should contain errors array")
+					Expect(len(errors)).To(BeNumerically(">=", 1), "Should have at least one validation error")
+					
+					// Country code "INVALID" should trigger multiple validation errors:
+					// 1. Length validation (expected length <= 2)
+					// 2. Pattern validation (expected string to match pattern ^[A-Z]{2}$)
+					errorMessages := make([]string, len(errors))
+					for i, err := range errors {
+						errMap := err.(map[string]interface{})
+						errorMessages[i] = errMap["message"].(string)
+						Expect(errMap["location"]).To(Equal("body.country_code"))
+					}
+					
+					Expect(errorMessages).To(ContainElement("expected length <= 2"))
+					Expect(errorMessages).To(ContainElement("expected string to match pattern ^[A-Z]{2}$"))
 				})
 			})
 		})
@@ -273,7 +362,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 				Address:   "Existing Address",
 				CountryCode: "JP",
 			}
-			fixtureManager.CreateSpotFixture(context.Background(), *existingSpot)
+			testSuite.FixtureManager.CreateSpotFixture(context.Background(), *existingSpot)
 		})
 
 		Context("Given a valid spot ID", func() {
@@ -322,7 +411,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 	Describe("Listing spots", func() {
 		BeforeEach(func() {
 			By("Creating multiple test spots")
-			fixtureManager.SetupStandardFixtures()
+			testSuite.FixtureManager.SetupStandardFixtures()
 		})
 
 		Context("Given existing spots in the database", func() {
@@ -415,12 +504,9 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 						Expect(spotLng).To(BeNumerically("~", 139.6503, 0.0001), "Longitude should match Tokyo coordinates")
 						
 						// Calculate and verify the actual distance is within the specified radius
-						// Using Haversine formula approximation for verification
-						// Distance from search point (35.6762, 139.6503) to itself should be 0
-						deltaLat := spotLat - 35.6762
-						deltaLng := spotLng - 139.6503
-						distanceApprox := (deltaLat*deltaLat + deltaLng*deltaLng) * 111000 // Rough km conversion
-						Expect(distanceApprox).To(BeNumerically("<", 100), "Distance should be very small for same coordinates")
+						// Using proper Haversine formula for accurate distance calculation
+						distance := calculateHaversineDistance(35.6762, 139.6503, spotLat, spotLng)
+						Expect(distance).To(BeNumerically("<", 0.1), "Distance should be very small for same coordinates")
 					}
 				})
 				
@@ -489,7 +575,8 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 		Context("Given no spots in the database", func() {
 			BeforeEach(func() {
 				By("Ensuring database is clean")
-				testDB.CleanDatabase()
+				err := testSuite.TestDB.CleanDatabase()
+				Expect(err).NotTo(HaveOccurred(), "Failed to clean database: %v", err)
 			})
 
 			Context("When a user requests to list spots", func() {

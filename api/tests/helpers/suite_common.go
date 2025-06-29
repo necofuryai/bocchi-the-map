@@ -23,7 +23,7 @@ func NewCommonTestSuite() *CommonTestSuite {
 	// Initialize test resources
 	testDB, err := NewTestDatabase()
 	if err != nil {
-		panic(fmt.Sprintf("Failed to initialize test database: %v", err))
+		panic(fmt.Sprintf("Failed to initialize test database during NewTestDatabase() operation: %v. This may be due to database connection issues, migration failures, or missing test database configuration.", err))
 	}
 	fixtureManager := NewFixtureManager(testDB)
 	authHelper := NewAuthHelper()
@@ -49,7 +49,10 @@ func (suite *CommonTestSuite) PrepareCleanTestData() {
 	By("Preparing clean test data")
 	
 	// Clean database before each test for isolation
-	suite.TestDB.CleanDatabase()
+	err := suite.TestDB.CleanDatabase()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to clean database: %v", err))
+	}
 }
 
 // CleanupTestData performs test data cleanup

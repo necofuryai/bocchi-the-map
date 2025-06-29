@@ -36,11 +36,11 @@ var _ = Describe("AuthHandler BDD Tests", func() {
 		
 		// Create user client with test database
 		var err error
-		userClient, err = clients.NewUserClient("internal", testDB.DB)
+		userClient, err = clients.NewUserClient("internal", testSuite.TestDB.DB)
 		Expect(err).NotTo(HaveOccurred())
 		
 		// Create auth middleware
-		authMiddleware = auth.NewAuthMiddleware("test-secret-key", testDB.Queries)
+		authMiddleware = auth.NewAuthMiddleware("test-secret-key", testSuite.TestDB.Queries)
 		
 		// Create rate limiter (5 requests per 5 minutes for testing)
 		rateLimiter = auth.NewRateLimiter(5, 300)
@@ -57,10 +57,10 @@ var _ = Describe("AuthHandler BDD Tests", func() {
 		authHandler.RegisterRoutesWithRateLimit(api, rateLimiter)
 		
 		// Setup authentication test data
-		authData = authHelper.NewAuthTestData()
+		authData = testSuite.AuthHelper.NewAuthTestData()
 		
 		// Create test user in database for token generation
-		fixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
+		testSuite.FixtureManager.CreateUserFixture(context.Background(), helpers.UserFixture{
 			ID:             authData.ValidUserID,
 			Email:          authData.TestUser.Email,
 			DisplayName:    authData.TestUser.DisplayName,
