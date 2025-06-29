@@ -1,4 +1,4 @@
-// +build e2e
+//go:build e2e
 
 package e2e
 
@@ -10,12 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Global test resources shared across all BDD tests
-var (
-	testDB      *helpers.TestDatabase
-	fixtureManager *helpers.FixtureManager
-	authHelper  *helpers.AuthHelper
-)
+// Global test suite for E2E tests
+var testSuite *helpers.CommonTestSuite
 
 func TestE2EScenarios(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -23,41 +19,29 @@ func TestE2EScenarios(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	By("Setting up test environment")
+	By("Setting up E2E test environment")
 	
-	// Ensure test database is available
-	helpers.EnsureTestDatabase()
+	testSuite = helpers.NewCommonTestSuite()
 	
-	// Initialize test resources
-	testDB = helpers.NewTestDatabase()
-	fixtureManager = helpers.NewFixtureManager(testDB)
-	authHelper = helpers.NewAuthHelper()
-	
-	By("Test environment setup completed")
+	By("E2E test environment setup completed")
 })
 
 var _ = AfterSuite(func() {
-	By("Cleaning up test environment")
+	By("Cleaning up E2E test environment")
 	
-	if testDB != nil {
-		testDB.Close()
+	if testSuite != nil {
+		testSuite.Cleanup()
 	}
 	
-	By("Test environment cleanup completed")
+	By("E2E test environment cleanup completed")
 })
 
 // BeforeEach hook for test isolation
 var _ = BeforeEach(func() {
-	By("Preparing clean test data")
-	
-	// Clean database before each test for isolation
-	testDB.CleanDatabase()
+	testSuite.PrepareCleanTestData()
 })
 
 // AfterEach hook for test cleanup
 var _ = AfterEach(func() {
-	By("Cleaning up test data")
-	
-	// Cleanup is handled by BeforeEach, but can add specific cleanup here
-	fixtureManager.CleanupFixtures()
+	testSuite.CleanupTestData()
 })

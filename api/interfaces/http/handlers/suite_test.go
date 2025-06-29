@@ -1,4 +1,4 @@
-// +build integration
+//go:build integration
 
 package handlers
 
@@ -10,12 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Global test resources shared across handler integration tests
-var (
-	testDB         *helpers.TestDatabase
-	fixtureManager *helpers.FixtureManager
-	authHelper     *helpers.AuthHelper
-)
+// Global test suite for handler integration tests
+var testSuite *helpers.CommonTestSuite
 
 func TestHandlers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -25,13 +21,7 @@ func TestHandlers(t *testing.T) {
 var _ = BeforeSuite(func() {
 	By("Setting up handler integration test environment")
 	
-	// Ensure test database is available
-	helpers.EnsureTestDatabase()
-	
-	// Initialize test resources
-	testDB = helpers.NewTestDatabase()
-	fixtureManager = helpers.NewFixtureManager(testDB)
-	authHelper = helpers.NewAuthHelper()
+	testSuite = helpers.NewCommonTestSuite()
 	
 	By("Handler integration test environment setup completed")
 })
@@ -39,8 +29,8 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	By("Cleaning up handler integration test environment")
 	
-	if testDB != nil {
-		testDB.Close()
+	if testSuite != nil {
+		testSuite.Cleanup()
 	}
 	
 	By("Handler integration test environment cleanup completed")
@@ -48,16 +38,10 @@ var _ = AfterSuite(func() {
 
 // BeforeEach hook for test isolation
 var _ = BeforeEach(func() {
-	By("Preparing clean test data for handler tests")
-	
-	// Clean database before each test for isolation
-	testDB.CleanDatabase()
+	testSuite.PrepareCleanTestData()
 })
 
 // AfterEach hook for test cleanup
 var _ = AfterEach(func() {
-	By("Cleaning up handler test data")
-	
-	// Cleanup is handled by BeforeEach, but can add specific cleanup here
-	fixtureManager.CleanupFixtures()
+	testSuite.CleanupTestData()
 })
