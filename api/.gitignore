@@ -1,6 +1,8 @@
 # Binaries
 main
 api
+api_new
+api_test
 bin/
 *.exe
 *.exe~
