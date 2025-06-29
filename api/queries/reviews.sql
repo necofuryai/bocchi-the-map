@@ -88,6 +88,7 @@ INNER JOIN (
     AVG(r.rating) AS avg_rating,
     COUNT(r.id) AS total_reviews
   FROM reviews r
+  WHERE r.rating >= ?
   GROUP BY r.spot_id
   HAVING COUNT(r.id) >= ?
 ) ra ON s.id = ra.spot_id
