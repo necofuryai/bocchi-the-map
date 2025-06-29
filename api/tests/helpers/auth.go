@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -124,12 +126,15 @@ func (ah *AuthHelper) NewAuthTestData() *AuthTestData {
 	}
 }
 
+var fallbackCounter int64
+
 // generateRandomID generates a random ID for testing
 func generateRandomID() string {
 	bytes := make([]byte, 8)
 	if _, err := rand.Read(bytes); err != nil {
-		// Fallback to timestamp if crypto/rand fails
-		return time.Now().Format("20060102150405.000000")
+		// Fallback to timestamp with counter to ensure uniqueness
+		counter := atomic.AddInt64(&fallbackCounter, 1)
+		return fmt.Sprintf("%s_%d", time.Now().Format("20060102150405.000000"), counter)
 	}
 	return hex.EncodeToString(bytes)
 }

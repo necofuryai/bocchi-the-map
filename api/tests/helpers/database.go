@@ -49,6 +49,14 @@ func NewTestDatabase() (*TestDatabase, error) {
 func (td *TestDatabase) CleanDatabase() error {
 	ctx := context.Background()
 	
+	// Define allowed tables for cleanup to prevent SQL injection
+	allowedTables := map[string]bool{
+		"reviews":         true,
+		"spots":           true,
+		"users":           true,
+		"token_blacklist": true,
+	}
+	
 	// Clean up in reverse order of dependencies
 	tables := []string{
 		"reviews",
@@ -60,6 +68,12 @@ func (td *TestDatabase) CleanDatabase() error {
 	var errors []error
 	
 	for _, table := range tables {
+		// Validate table name against whitelist
+		if !allowedTables[table] {
+			return fmt.Errorf("table '%s' is not allowed for cleanup operations", table)
+		}
+		
+		// Use backticks for table names - safe since validated against whitelist
 		_, err := td.DB.ExecContext(ctx, fmt.Sprintf("DELETE FROM `%s`", table))
 		if err != nil {
 			GinkgoWriter.Printf("Warning: Failed to clean table %s: %v\n", table, err)
@@ -107,7 +121,7 @@ func (td *TestDatabase) WithTransaction(fn func(*sql.Tx)) {
 func getTestDSN() string {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
-		panic("TEST_DATABASE_URL environment variable must be set for test database configuration. " +
+		Skip("TEST_DATABASE_URL environment variable must be set for test database configuration. " +
 			"Example: TEST_DATABASE_URL=\"user:password@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true\"")
 	}
 	return dsn

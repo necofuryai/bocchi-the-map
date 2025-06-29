@@ -82,25 +82,15 @@ func (m *MockSpotRepository) GetByID(ctx context.Context, id string) (*entities.
 
 func (m *MockSpotRepository) List(ctx context.Context, filters map[string]interface{}) ([]*entities.Spot, error) {
 	m.mu.RLock()
-	listFunc := m.listSpotsFunc
-	var spotsCopy map[string]*entities.Spot
-	if listFunc == nil {
-		spotsCopy = make(map[string]*entities.Spot, len(m.spots))
-		for id, spot := range m.spots {
-			spotsCopy[id] = spot
-		}
-	}
-	m.mu.RUnlock()
+	defer m.mu.RUnlock()
 	
-	var result []*entities.Spot
-	if listFunc == nil {
-		for _, spot := range spotsCopy {
-			result = append(result, spot)
-		}
+	if m.listSpotsFunc != nil {
+		return m.listSpotsFunc(ctx, filters)
 	}
 	
-	if listFunc != nil {
-		return listFunc(ctx, filters)
+	result := make([]*entities.Spot, 0, len(m.spots))
+	for _, spot := range m.spots {
+		result = append(result, spot)
 	}
 	
 	return result, nil
