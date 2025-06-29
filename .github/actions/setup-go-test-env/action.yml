@@ -93,4 +93,8 @@ runs:
         TEST_DATABASE_URL: "root:${{ inputs.mysql-root-password }}@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
       run: |
         go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-        migrate -path migrations -database "mysql://$TEST_DATABASE_URL" up
+        # Create temporary directory with only main migration files (exclude production subdirectory)
+        mkdir -p migrations_test
+        find migrations -maxdepth 1 -name "*.sql" -exec cp {} migrations_test/ \;
+        migrate -path migrations_test -database "mysql://$TEST_DATABASE_URL" up
+        rm -rf migrations_test
