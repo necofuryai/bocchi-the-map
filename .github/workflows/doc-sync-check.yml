@@ -151,9 +151,13 @@ jobs:
                       error.message.includes('rate limit')) {
                     const resetTime =
                       error.response?.headers['x-ratelimit-reset'];
-                    const waitTime = resetTime ?
-                      Math.max(0, (parseInt(resetTime) * 1000) -
-                        Date.now()) + 1000 : // Wait until reset + 1s buffer
+                    const resetTimeMs = resetTime && 
+                      /^\d+$/.test(resetTime) && 
+                      !isNaN(parseInt(resetTime, 10)) ?
+                      parseInt(resetTime, 10) * 1000 : null;
+                    const waitTime = resetTimeMs ?
+                      Math.max(0, resetTimeMs - Date.now()) + 1000 :
+                      // Wait until reset + 1s buffer
                       Math.pow(2, attempt) * 1000;
                       // Exponential backoff fallback
 
@@ -244,9 +248,7 @@ jobs:
             }
 
       - name: Set check status
-        if: >-
-          steps.doc-check.outputs.critical_changes == 'true' &&
-          steps.doc-check.outputs.doc_updated == 'false'
+        if: steps.doc-check.outputs.critical_changes == 'true' && steps.doc-check.outputs.doc_updated == 'false'
         run: |
           echo "⚠️ Critical changes detected without documentation updates"
           echo "Consider updating documentation before merging"

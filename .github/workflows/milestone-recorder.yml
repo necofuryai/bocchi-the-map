@@ -36,14 +36,13 @@ jobs:
             COMMIT_RANGE="${{ github.event.before }}..${{ github.event.after }}"
           else
             # For merged PRs
-            COMMIT_RANGE="${{ github.event.pull_request.base.sha }}.." \
-              "${{ github.event.pull_request.head.sha }}"
+            COMMIT_RANGE="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
           fi
 
           # Analyze commits
           COMMITS=$(git log --oneline "$COMMIT_RANGE" 2>&1) || {
             echo "⚠️ Git log failed for range $COMMIT_RANGE: $COMMITS" >&2
-            COMMITS=""
+            exit 1
           }
 
           # Check for significant changes
@@ -143,13 +142,21 @@ jobs:
           esac
 
           # Prepare milestone entry
-          printf -v MILESTONE_ENTRY \
-            "## %s %s - %s\n\n### 実装内容\n%s\n\n" \
-            "### リポジトリ情報\n- **ブランチ**: %s\n" \
-            "- **コミット**: %s\n" \
-            "- **実装者**: Automated milestone recording\n\n---\n\n" \
-            "$EMOJI" "$CURRENT_DATE" "$TITLE" "$DESCRIPTION" \
-            "${{ github.ref_name }}" "${{ github.sha }}"
+          MILESTONE_ENTRY=$(cat <<EOF
+## $EMOJI $CURRENT_DATE - $TITLE
+
+### 実装内容
+$DESCRIPTION
+
+### リポジトリ情報
+- **ブランチ**: ${{ github.ref_name }}
+- **コミット**: ${{ github.sha }}
+- **実装者**: Automated milestone recording
+
+---
+
+EOF
+)
 
           # Insert milestone at the beginning of the milestones section
           if [ -f "docs/IMPLEMENTATION_LOG.md" ]; then

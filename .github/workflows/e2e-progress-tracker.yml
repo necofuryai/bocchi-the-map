@@ -107,15 +107,15 @@ jobs:
           MILESTONE_ACHIEVED=false
           MILESTONE_TYPE=""
 
-          if (( SUCCESS_RATE == 100 )); then
+          if [ "$SUCCESS_RATE" -eq 100 ]; then
             MILESTONE_ACHIEVED=true
             MILESTONE_TYPE="completion"
             echo "🎉 100% E2E test success achieved!"
-          elif (( SUCCESS_RATE >= 95 )); then
+          elif [ "$SUCCESS_RATE" -ge 95 ]; then
             MILESTONE_ACHIEVED=true
             MILESTONE_TYPE="near_completion"
             echo "🌟 95%+ E2E test success achieved!"
-          elif (( SUCCESS_RATE >= 90 )); then
+          elif [ "$SUCCESS_RATE" -ge 90 ]; then
             MILESTONE_ACHIEVED=true
             MILESTONE_TYPE="excellent"
             echo "✨ 90%+ E2E test success achieved!"
@@ -170,109 +170,13 @@ jobs:
       - name: Record milestone if achieved
         if: steps.progress-check.outputs.milestone_achieved == 'true'
         run: |
-          set -e
-
-          MILESTONE_TYPE="${{ steps.progress-check.outputs.milestone_type }}"
-          SUCCESS_RATE=${{ steps.analyze.outputs.success_rate }}
-          CURRENT_DATE="${{ steps.analyze.outputs.current_date }}"
-          TOTAL_TESTS=${{ steps.analyze.outputs.total_tests }}
-          PASSED_TESTS=${{ steps.analyze.outputs.passed_tests }}
-
-          case "$MILESTONE_TYPE" in
-            "completion")
-              EMOJI="🎉"
-              TITLE="E2Eテスト100%達成"
-              DESCRIPTION="### 🎯 完全な成功達成!" \
-                $'\n\n' \
-                "すべてのE2Eテストが成功し、" \
-                "アプリケーションの品質が最高水準に達しました！" \
-                $'\n\n' \
-                "**達成指標:**" \
-                $'\n' \
-                "- ✅ 総テスト数: $TOTAL_TESTS" \
-                $'\n' \
-                "- ✅ 成功テスト: $PASSED_TESTS" \
-                $'\n' \
-                "- ✅ 失敗テスト: 0" \
-                $'\n' \
-                "- 🎯 **成功率: 100%**" \
-                $'\n\n' \
-                "**技術的成果:**" \
-                $'\n' \
-                "- フロントエンド品質の完全保証" \
-                $'\n' \
-                "- ユーザーワークフローの完全な動作確認" \
-                $'\n' \
-                "- リリース準備完了状態の確立"
-              ;;
-            "near_completion")
-              EMOJI="🌟"
-              TITLE="E2Eテスト95%以上達成"
-              DESCRIPTION="### 🌟 優秀な品質レベル達成!" \
-                $'\n\n' \
-                "**達成指標:**" \
-                $'\n' \
-                "- ✅ 総テスト数: $TOTAL_TESTS" \
-                $'\n' \
-                "- ✅ 成功テスト: $PASSED_TESTS" \
-                $'\n' \
-                "- ⚠️ 残り修正: $((TOTAL_TESTS - PASSED_TESTS))" \
-                $'\n' \
-                "- 🎯 **成功率: $SUCCESS_RATE%**" \
-                $'\n\n' \
-                "**次のステップ:**" \
-                $'\n' \
-                "- 残りの少数テストの修正完了" \
-                $'\n' \
-                "- 100%達成への最終段階"
-              ;;
-            "excellent")
-              EMOJI="✨"
-              TITLE="E2Eテスト90%以上達成"
-              DESCRIPTION="### ✨ 高品質レベル達成!" \
-                $'\n\n' \
-                "**達成指標:**" \
-                $'\n' \
-                "- ✅ 総テスト数: $TOTAL_TESTS" \
-                $'\n' \
-                "- ✅ 成功テスト: $PASSED_TESTS" \
-                $'\n' \
-                "- 🔧 修正対象: $((TOTAL_TESTS - PASSED_TESTS))" \
-                $'\n' \
-                "- 🎯 **成功率: $SUCCESS_RATE%**"
-              ;;
-          esac
-
-          # Insert milestone into implementation log
-          if [ -f "docs/IMPLEMENTATION_LOG.md" ]; then
-            printf -v MILESTONE_ENTRY \
-              "## %s %s - %s\n\n%s\n\n" \
-              "### 自動記録情報\n- **測定日時**: %s\n" \
-              "- **測定方法**: GitHub Actions自動実行\n" \
-              "- **Playwright Version**: Latest\n\n---\n\n" \
-              "$EMOJI" "$CURRENT_DATE" "$TITLE" "$DESCRIPTION" \
-              "${{ steps.analyze.outputs.current_datetime }}"
-
-            # Insert milestone
-            if grep -n "## 📅 主要実装マイルストーン" \
-              docs/IMPLEMENTATION_LOG.md > /dev/null; then
-              LINE_NUM=$(grep -n "## 📅 主要実装マイルストーン" \
-                docs/IMPLEMENTATION_LOG.md | cut -d: -f1)
-              head -n $LINE_NUM docs/IMPLEMENTATION_LOG.md > temp_log.md
-              echo "" >> temp_log.md
-              echo "$MILESTONE_ENTRY" >> temp_log.md
-              tail -n +$((LINE_NUM + 1)) docs/IMPLEMENTATION_LOG.md >> \
-                temp_log.md
-              mv temp_log.md docs/IMPLEMENTATION_LOG.md
-            else
-              echo "" >> docs/IMPLEMENTATION_LOG.md
-              echo "## 📅 主要実装マイルストーン" >> docs/IMPLEMENTATION_LOG.md
-              echo "" >> docs/IMPLEMENTATION_LOG.md
-              echo "$MILESTONE_ENTRY" >> docs/IMPLEMENTATION_LOG.md
-            fi
-
-            echo "🎉 E2E milestone recorded!"
-          fi
+          ./scripts/record-milestone.sh \
+            "${{ steps.progress-check.outputs.milestone_type }}" \
+            "${{ steps.analyze.outputs.success_rate }}" \
+            "${{ steps.analyze.outputs.current_date }}" \
+            "${{ steps.analyze.outputs.total_tests }}" \
+            "${{ steps.analyze.outputs.passed_tests }}" \
+            "${{ steps.analyze.outputs.current_datetime }}"
 
       - name: Commit progress updates
         run: |
@@ -294,12 +198,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            FULL_COMMIT_MSG="$COMMIT_MSG" \
-              $'\n\n' \
-              "🤖 Generated with [Claude Code](https://claude.ai/code)" \
-              $'\n\n' \
-              "Co-Authored-By: Claude <noreply@anthropic.com>"
-            git commit -m "$FULL_COMMIT_MSG"
+            git commit -m "$COMMIT_MSG"
 
             git push origin ${{ github.ref_name }}
             echo "✅ Progress committed and pushed"
