@@ -25,10 +25,10 @@ function parseE2EResults(resultsFile) {
 
   const totalTests = specs.length || 0;
   const passedTests = specs.filter(spec => 
-    spec.tests?.every(test => test.status === 'passed')
+    Array.isArray(spec.tests) && spec.tests.every(test => test.status === 'passed')
   ).length || 0;
   const failedTests = specs.filter(spec => 
-    spec.tests?.some(test => test.status === 'failed')
+    Array.isArray(spec.tests) && spec.tests.some(test => test.status === 'failed')
   ).length || 0;
 
   const successRate = totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
