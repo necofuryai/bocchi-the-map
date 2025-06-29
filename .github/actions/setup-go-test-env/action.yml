@@ -18,10 +18,10 @@ runs:
   using: 'composite'
   steps:
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v4
       with:
         go-version: ${{ inputs.go-version }}
 
@@ -72,9 +72,16 @@ runs:
     - name: Wait for MySQL to be ready
       shell: bash
       run: |
+        counter=0
+        max_wait=60
         until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"password" --silent; do
           echo 'Waiting for MySQL...'
           sleep 1
+          counter=$((counter + 1))
+          if [ $counter -ge $max_wait ]; then
+            echo "Error: MySQL failed to start within $max_wait seconds"
+            exit 1
+          fi
         done
 
     - name: Install migration tool and run migrations
