@@ -19,6 +19,79 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// Test helper functions
+func verifyPaginationInfo(paginationMap map[string]interface{}, expectedPage, expectedTotal, expectedTotalPages int) {
+	Expect(paginationMap["page"]).To(Equal(float64(expectedPage)), fmt.Sprintf("Current page should be %d", expectedPage))
+	Expect(paginationMap["total_count"]).To(Equal(float64(expectedTotal)), fmt.Sprintf("Total should be %d", expectedTotal))
+	if expectedTotalPages > 0 {
+		Expect(paginationMap["total_pages"]).To(Equal(float64(expectedTotalPages)), fmt.Sprintf("Should have %d pages total", expectedTotalPages))
+	}
+}
+
+func verifyReviewStatistics(statsMap map[string]interface{}, expectedTotal int, expectedAvgMin, expectedAvgMax float64) {
+	Expect(statsMap["total_reviews"]).To(Equal(float64(expectedTotal)), fmt.Sprintf("Total reviews count should be %d", expectedTotal))
+	if expectedTotal > 0 {
+		Expect(statsMap["average_rating"]).To(BeNumerically(">=", expectedAvgMin), "Average rating should be above minimum")
+		Expect(statsMap["average_rating"]).To(BeNumerically("<=", expectedAvgMax), "Average rating should not exceed maximum")
+	} else {
+		Expect(statsMap["average_rating"]).To(Equal(float64(0)), "Average rating should be 0 for no reviews")
+	}
+}
+
+func verifyRatingDistribution(statsMap map[string]interface{}, expectedRatingsPerLevel int) {
+	distribution, exists := statsMap["rating_distribution"]
+	Expect(exists).To(BeTrue(), "Rating distribution should be present")
+	
+	distMap, ok := distribution.(map[string]interface{})
+	Expect(ok).To(BeTrue(), "Rating distribution should be an object")
+	
+	for rating := 1; rating <= 5; rating++ {
+		key := fmt.Sprintf("%d", rating)
+		Expect(distMap[key]).To(Equal(float64(expectedRatingsPerLevel)), fmt.Sprintf("Rating %d should have %d reviews", rating, expectedRatingsPerLevel))
+	}
+}
+
+func verifyResponseBody(resp *httptest.ResponseRecorder) map[string]interface{} {
+	var responseBody map[string]interface{}
+	err := json.Unmarshal(resp.Body.Bytes(), &responseBody)
+	Expect(err).NotTo(HaveOccurred())
+	return responseBody
+}
+
+func verifyReviewsArray(responseBody map[string]interface{}, expectedLength int) []interface{} {
+	reviews, exists := responseBody["reviews"]
+	Expect(exists).To(BeTrue(), "Reviews array should be present")
+	
+	reviewsArray, ok := reviews.([]interface{})
+	Expect(ok).To(BeTrue(), "Reviews should be an array")
+	
+	if expectedLength >= 0 {
+		Expect(len(reviewsArray)).To(Equal(expectedLength), fmt.Sprintf("Should have %d reviews", expectedLength))
+	}
+	
+	return reviewsArray
+}
+
+func verifyPaginationExists(responseBody map[string]interface{}) map[string]interface{} {
+	pagination, exists := responseBody["pagination"]
+	Expect(exists).To(BeTrue(), "Pagination info should be present")
+	
+	paginationMap, ok := pagination.(map[string]interface{})
+	Expect(ok).To(BeTrue(), "Pagination should be an object")
+	
+	return paginationMap
+}
+
+func verifyStatisticsExists(responseBody map[string]interface{}) map[string]interface{} {
+	statistics, exists := responseBody["statistics"]
+	Expect(exists).To(BeTrue(), "Statistics should be present")
+	
+	statsMap, ok := statistics.(map[string]interface{})
+	Expect(ok).To(BeTrue(), "Statistics should be an object")
+	
+	return statsMap
+}
+
 var _ = Describe("ReviewHandler BDD Tests", func() {
 	var (
 		api           huma.API
@@ -347,49 +420,21 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					By("Verifying the successful response")
 					Expect(resp.Code).To(Equal(http.StatusOK), "Expected status 200 OK")
 					
-					var responseBody map[string]interface{}
-					err := json.Unmarshal(resp.Body.Bytes(), &responseBody)
-					Expect(err).NotTo(HaveOccurred())
+					responseBody := verifyResponseBody(resp)
 					
 					By("Verifying the paginated reviews")
-					reviews, exists := responseBody["reviews"]
-					Expect(exists).To(BeTrue(), "Reviews array should be present")
-					
-					reviewsArray, ok := reviews.([]interface{})
-					Expect(ok).To(BeTrue(), "Reviews should be an array")
-					Expect(len(reviewsArray)).To(Equal(pageLimit), "Should return page limit reviews per page")
+					verifyReviewsArray(responseBody, pageLimit)
 					
 					By("Verifying pagination information")
-					pagination, exists := responseBody["pagination"]
-					Expect(exists).To(BeTrue(), "Pagination info should be present")
-					
-					paginationMap, ok := pagination.(map[string]interface{})
-					Expect(ok).To(BeTrue(), "Pagination should be an object")
-					Expect(paginationMap["page"]).To(Equal(float64(1)), "Current page should be 1")
-					Expect(paginationMap["total_count"]).To(Equal(float64(totalTestReviews)), "Total should match created reviews")
-					Expect(paginationMap["total_pages"]).To(Equal(float64(2)), "Should have 2 pages total")
+					paginationMap := verifyPaginationExists(responseBody)
+					verifyPaginationInfo(paginationMap, 1, totalTestReviews, 2)
 					
 					By("Verifying review statistics")
-					statistics, exists := responseBody["statistics"]
-					Expect(exists).To(BeTrue(), "Statistics should be present")
-					
-					statsMap, ok := statistics.(map[string]interface{})
-					Expect(ok).To(BeTrue(), "Statistics should be an object")
-					Expect(statsMap["total_reviews"]).To(Equal(float64(totalTestReviews)), "Total reviews count should match created reviews")
-					Expect(statsMap["average_rating"]).To(BeNumerically(">", 0), "Average rating should be calculated")
-					Expect(statsMap["average_rating"]).To(BeNumerically("<=", maxRating), "Average rating should not exceed max rating")
+					statsMap := verifyStatisticsExists(responseBody)
+					verifyReviewStatistics(statsMap, totalTestReviews, 0.1, maxRating)
 					
 					By("Verifying rating distribution")
-					distribution, exists := statsMap["rating_distribution"]
-					Expect(exists).To(BeTrue(), "Rating distribution should be present")
-					
-					distMap, ok := distribution.(map[string]interface{})
-					Expect(ok).To(BeTrue(), "Rating distribution should be an object")
-					// Each rating (1-5) should have equal distribution
-					for rating := minRating; rating <= maxRating; rating++ {
-						key := fmt.Sprintf("%d", rating)
-						Expect(distMap[key]).To(Equal(float64(expectedRatingsPerLevel)), fmt.Sprintf("Rating %d should have %d reviews", rating, expectedRatingsPerLevel))
-					}
+					verifyRatingDistribution(statsMap, expectedRatingsPerLevel)
 				})
 			})
 
@@ -404,25 +449,14 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					By("Verifying the successful response")
 					Expect(resp.Code).To(Equal(http.StatusOK), "Expected status 200 OK")
 					
-					var responseBody map[string]interface{}
-					err := json.Unmarshal(resp.Body.Bytes(), &responseBody)
-					Expect(err).NotTo(HaveOccurred())
+					responseBody := verifyResponseBody(resp)
 					
 					By("Verifying second page results")
-					reviews, exists := responseBody["reviews"]
-					Expect(exists).To(BeTrue(), "Reviews array should be present")
-					
-					reviewsArray, ok := reviews.([]interface{})
-					Expect(ok).To(BeTrue(), "Reviews should be an array")
-					Expect(len(reviewsArray)).To(Equal(remainingReviews), "Should return remaining reviews on page 2")
+					verifyReviewsArray(responseBody, remainingReviews)
 					
 					By("Verifying pagination for second page")
-					pagination, exists := responseBody["pagination"]
-					Expect(exists).To(BeTrue(), "Pagination info should be present")
-					
-					paginationMap, ok := pagination.(map[string]interface{})
-					Expect(ok).To(BeTrue(), "Pagination should be an object")
-					Expect(paginationMap["page"]).To(Equal(float64(2)), "Current page should be 2")
+					paginationMap := verifyPaginationExists(responseBody)
+					verifyPaginationInfo(paginationMap, 2, totalTestReviews, -1) // -1 to skip total_pages check
 				})
 			})
 		})
@@ -495,26 +529,14 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					By("Verifying the successful empty response")
 					Expect(resp.Code).To(Equal(http.StatusOK), "Expected status 200 OK")
 					
-					var responseBody map[string]interface{}
-					err := json.Unmarshal(resp.Body.Bytes(), &responseBody)
-					Expect(err).NotTo(HaveOccurred())
+					responseBody := verifyResponseBody(resp)
 					
 					By("Verifying empty reviews list")
-					reviews, exists := responseBody["reviews"]
-					Expect(exists).To(BeTrue(), "Reviews array should be present")
-					
-					reviewsArray, ok := reviews.([]interface{})
-					Expect(ok).To(BeTrue(), "Reviews should be an array")
-					Expect(len(reviewsArray)).To(Equal(0), "Should be empty")
+					verifyReviewsArray(responseBody, 0)
 					
 					By("Verifying zero statistics")
-					statistics, exists := responseBody["statistics"]
-					Expect(exists).To(BeTrue(), "Statistics should be present")
-					
-					statsMap, ok := statistics.(map[string]interface{})
-					Expect(ok).To(BeTrue(), "Statistics should be an object")
-					Expect(statsMap["total_reviews"]).To(Equal(float64(0)), "Total reviews should be 0")
-					Expect(statsMap["average_rating"]).To(Equal(float64(0)), "Average rating should be 0")
+					statsMap := verifyStatisticsExists(responseBody)
+					verifyReviewStatistics(statsMap, 0, 0, 0)
 				})
 			})
 		})
@@ -569,16 +591,10 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					By("Verifying the successful response")
 					Expect(resp.Code).To(Equal(http.StatusOK), "Expected status 200 OK")
 					
-					var responseBody map[string]interface{}
-					err := json.Unmarshal(resp.Body.Bytes(), &responseBody)
-					Expect(err).NotTo(HaveOccurred())
+					responseBody := verifyResponseBody(resp)
 					
 					By("Verifying user's reviews")
-					reviews, exists := responseBody["reviews"]
-					Expect(exists).To(BeTrue(), "Reviews array should be present")
-					
-					reviewsArray, ok := reviews.([]interface{})
-					Expect(ok).To(BeTrue(), "Reviews should be an array")
+					reviewsArray := verifyReviewsArray(responseBody, -1) // -1 to skip exact length check
 					Expect(len(reviewsArray)).To(BeNumerically(">=", 1), "Should contain user's reviews")
 					Expect(len(reviewsArray)).To(BeNumerically("<=", 8), "Should not exceed total reviews")
 					
@@ -595,12 +611,8 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					}
 					
 					By("Verifying pagination information")
-					pagination, exists := responseBody["pagination"]
-					Expect(exists).To(BeTrue(), "Pagination info should be present")
-					
-					paginationMap, ok := pagination.(map[string]interface{})
-					Expect(ok).To(BeTrue(), "Pagination should be an object")
-					Expect(paginationMap["total_count"]).To(Equal(float64(8)), "Total should be 8 reviews")
+					paginationMap := verifyPaginationExists(responseBody)
+					verifyPaginationInfo(paginationMap, 1, 8, -1) // -1 to skip total_pages check
 				})
 			})
 		})
@@ -643,25 +655,14 @@ var _ = Describe("ReviewHandler BDD Tests", func() {
 					By("Verifying the successful empty response")
 					Expect(resp.Code).To(Equal(http.StatusOK), "Expected status 200 OK")
 					
-					var responseBody map[string]interface{}
-					err := json.Unmarshal(resp.Body.Bytes(), &responseBody)
-					Expect(err).NotTo(HaveOccurred())
+					responseBody := verifyResponseBody(resp)
 					
 					By("Verifying empty reviews list")
-					reviews, exists := responseBody["reviews"]
-					Expect(exists).To(BeTrue(), "Reviews array should be present")
-					
-					reviewsArray, ok := reviews.([]interface{})
-					Expect(ok).To(BeTrue(), "Reviews should be an array")
-					Expect(len(reviewsArray)).To(Equal(0), "Should be empty")
+					verifyReviewsArray(responseBody, 0)
 					
 					By("Verifying zero pagination count")
-					pagination, exists := responseBody["pagination"]
-					Expect(exists).To(BeTrue(), "Pagination info should be present")
-					
-					paginationMap, ok := pagination.(map[string]interface{})
-					Expect(ok).To(BeTrue(), "Pagination should be an object")
-					Expect(paginationMap["total_count"]).To(Equal(float64(0)), "Total count should be zero")
+					paginationMap := verifyPaginationExists(responseBody)
+					verifyPaginationInfo(paginationMap, 1, 0, -1) // -1 to skip total_pages check
 				})
 			})
 		})

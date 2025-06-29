@@ -35,17 +35,17 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 		
 		// Create all clients
 		var err error
-		userClient, err = clients.NewUserClient("internal", testDB.DB)
+		userClient, err = clients.NewUserClient("internal", testSuite.TestDB.DB)
 		Expect(err).NotTo(HaveOccurred())
 		
-		spotClient, err = clients.NewSpotClient("internal", testDB.DB)
+		spotClient, err = clients.NewSpotClient("internal", testSuite.TestDB.DB)
 		Expect(err).NotTo(HaveOccurred())
 		
-		reviewClient, err = clients.NewReviewClient("internal", testDB.DB)
+		reviewClient, err = clients.NewReviewClient("internal", testSuite.TestDB.DB)
 		Expect(err).NotTo(HaveOccurred())
 		
 		// Create middleware and rate limiter
-		authMiddleware = auth.NewAuthMiddleware("test-secret-key", testDB.Queries)
+		authMiddleware = auth.NewAuthMiddleware("test-secret-key", testSuite.TestDB.Queries)
 		rateLimiter = auth.NewRateLimiter(10, 300) // More lenient for integration tests
 		
 		// Setup complete API with all handlers
@@ -347,13 +347,7 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				resp = httptest.NewRecorder()
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
-				cookies := resp.Result().Cookies()
-				for _, cookie := range cookies {
-					if cookie.Name == "bocchi_access_token" {
-						user1Token = cookie.Value
-						break
-					}
-				}
+				user1Token = extractBocchiAccessToken(resp)
 				
 				By("Setting up User 2: Content Discoverer")
 				// Create User 2
@@ -389,13 +383,7 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				resp = httptest.NewRecorder()
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
-				cookies = resp.Result().Cookies()
-				for _, cookie := range cookies {
-					if cookie.Name == "bocchi_access_token" {
-						user2Token = cookie.Value
-						break
-					}
-				}
+				user2Token = extractBocchiAccessToken(resp)
 				
 				By("User 1 creates a community spot")
 				spotRequestBody := map[string]interface{}{
@@ -415,7 +403,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var spotResponse map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &spotResponse)
+				err = json.Unmarshal(resp.Body.Bytes(), &spotResponse)
+				Expect(err).NotTo(HaveOccurred())
 				communitySpotID = spotResponse["id"].(string)
 				
 				By("User 1 writes the first review")
@@ -439,7 +428,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var spotsResponse map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &spotsResponse)
+				err = json.Unmarshal(resp.Body.Bytes(), &spotsResponse)
+				Expect(err).NotTo(HaveOccurred())
 				
 				spots := spotsResponse["spots"].([]interface{})
 				Expect(len(spots)).To(BeNumerically(">=", 1), "Should find at least one spot")
@@ -463,7 +453,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var reviewsResponse map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &reviewsResponse)
+				err = json.Unmarshal(resp.Body.Bytes(), &reviewsResponse)
+				Expect(err).NotTo(HaveOccurred())
 				
 				reviews := reviewsResponse["reviews"].([]interface{})
 				Expect(len(reviews)).To(Equal(1), "Should find User 1's review")
@@ -493,7 +484,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var updatedSpotResponse map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &updatedSpotResponse)
+				err = json.Unmarshal(resp.Body.Bytes(), &updatedSpotResponse)
+				Expect(err).NotTo(HaveOccurred())
 				
 				Expect(updatedSpotResponse["review_count"]).To(Equal(float64(2)), "Should have 2 reviews")
 				Expect(updatedSpotResponse["average_rating"]).To(Equal(float64(4.5)), "Average should be (4+5)/2 = 4.5")
@@ -524,7 +516,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var userResponse map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &userResponse)
+				err = json.Unmarshal(resp.Body.Bytes(), &userResponse)
+				Expect(err).NotTo(HaveOccurred())
 				userID := userResponse["id"].(string)
 				
 				// Generate token
@@ -534,7 +527,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 					"auth_provider_id": "google_consistency_789",
 				}
 				
-				bodyBytes, _ = json.Marshal(tokenRequestBody)
+				bodyBytes, err = json.Marshal(tokenRequestBody)
+				Expect(err).NotTo(HaveOccurred())
 				req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
 				req.Header.Set("Content-Type", "application/json")
 				resp = httptest.NewRecorder()
@@ -559,7 +553,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 					"country_code": "JP",
 				}
 				
-				bodyBytes, _ = json.Marshal(spotRequestBody)
+				bodyBytes, err = json.Marshal(spotRequestBody)
+				Expect(err).NotTo(HaveOccurred())
 				req = httptest.NewRequest(http.MethodPost, "/api/v1/spots", bytes.NewReader(bodyBytes))
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("Authorization", "Bearer "+userToken)
@@ -567,7 +562,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var spotResponse map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &spotResponse)
+				err = json.Unmarshal(resp.Body.Bytes(), &spotResponse)
+				Expect(err).NotTo(HaveOccurred())
 				spotID := spotResponse["id"].(string)
 				
 				By("Testing that reviews maintain referential integrity")
@@ -578,7 +574,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 					"comment": "This should fail",
 				}
 				
-				bodyBytes, _ = json.Marshal(invalidReviewRequestBody)
+				bodyBytes, err = json.Marshal(invalidReviewRequestBody)
+				Expect(err).NotTo(HaveOccurred())
 				req = httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(bodyBytes))
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("Authorization", "Bearer "+userToken)
@@ -594,7 +591,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 					"comment": "Valid review with proper relationships",
 				}
 				
-				bodyBytes, _ = json.Marshal(validReviewRequestBody)
+				bodyBytes, err = json.Marshal(validReviewRequestBody)
+				Expect(err).NotTo(HaveOccurred())
 				req = httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(bodyBytes))
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("Authorization", "Bearer "+userToken)
@@ -611,7 +609,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 					"comment": "Duplicate review attempt",
 				}
 				
-				bodyBytes, _ = json.Marshal(duplicateReviewRequestBody)
+				bodyBytes, err = json.Marshal(duplicateReviewRequestBody)
+				Expect(err).NotTo(HaveOccurred())
 				req = httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(bodyBytes))
 				req.Header.Set("Content-Type", "application/json")
 				req.Header.Set("Authorization", "Bearer "+userToken)
@@ -627,7 +626,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var finalSpotResponse map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &finalSpotResponse)
+				err = json.Unmarshal(resp.Body.Bytes(), &finalSpotResponse)
+				Expect(err).NotTo(HaveOccurred())
 				
 				Expect(finalSpotResponse["review_count"]).To(Equal(float64(1)), "Spot should show correct review count")
 				Expect(finalSpotResponse["average_rating"]).To(Equal(float64(3)), "Spot should show correct average rating")
@@ -638,7 +638,8 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				testServer.Config.Handler.ServeHTTP(resp, req)
 				
 				var userReviewsResponse map[string]interface{}
-				json.Unmarshal(resp.Body.Bytes(), &userReviewsResponse)
+				err = json.Unmarshal(resp.Body.Bytes(), &userReviewsResponse)
+				Expect(err).NotTo(HaveOccurred())
 				
 				reviews := userReviewsResponse["reviews"].([]interface{})
 				Expect(len(reviews)).To(Equal(1), "User should have exactly 1 review")
@@ -652,3 +653,14 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 		})
 	})
 })
+
+// extractBocchiAccessToken extracts the bocchi_access_token from response cookies
+func extractBocchiAccessToken(resp *httptest.ResponseRecorder) string {
+	cookies := resp.Result().Cookies()
+	for _, cookie := range cookies {
+		if cookie.Name == "bocchi_access_token" {
+			return cookie.Value
+		}
+	}
+	return ""
+}
