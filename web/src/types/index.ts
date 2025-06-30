@@ -65,3 +65,49 @@ export interface POIProperties {
   min_zoom?: number // snake_case for TileJSON specification compliance
 }
 
+// Auth0 related types
+export interface Auth0User {
+  sub: string
+  name?: string
+  email?: string
+  email_verified?: boolean
+  picture?: string
+  nickname?: string
+  given_name?: string
+  family_name?: string
+  locale?: string
+  updated_at?: string
+}
+
+export interface Auth0Session {
+  user: Auth0User
+  accessToken?: string
+  idToken?: string
+  refreshToken?: string
+}
+
+export interface Auth0Context {
+  user?: Auth0User
+  isLoading: boolean
+  error?: Error
+  checkSession: () => Promise<void>
+  loginWithRedirect: (options?: any) => Promise<void>
+  logout: (options?: any) => void
+}
+
+// Auth page component types
+export interface AuthPageProps {
+  redirectTo?: string
+  returnTo?: string
+}
+
+export interface LoginPageState {
+  isLoading: boolean
+  error?: string
+}
+
+export interface LogoutPageState {
+  isLoggingOut: boolean
+  showConfirmation: boolean
+}
+
