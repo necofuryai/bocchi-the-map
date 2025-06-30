@@ -1,0 +1,216 @@
+---
+name: E2E Test Progress Tracker
+
+on:
+  workflow_run:
+    workflows: ["E2E Tests", "Playwright Tests"]
+    types: [completed]
+  schedule:
+    # Run weekly to track progress trends
+    - cron: '0 9 * * 1'  # Every Monday at 9 AM UTC
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: 'Force update progress tracking'
+        required: false
+        default: 'false'
+
+jobs:
+  track-e2e-progress:
+    name: Track E2E Test Progress
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Run E2E tests and capture results
+        working-directory: web
+        continue-on-error: true
+        run: |
+          # Install Playwright browsers
+          npx playwright install --with-deps
+
+          # Run E2E tests with JSON reporter and capture exit code
+          EXIT_CODE=0
+          npx playwright test --reporter=json > \
+            ../e2e-results.json || EXIT_CODE=$?
+          echo "JSON_TEST_EXIT_CODE=$EXIT_CODE" >> $GITHUB_ENV
+
+          # Also generate HTML report for artifacts and capture exit code
+          HTML_EXIT_CODE=0
+          npx playwright test --reporter=html || HTML_EXIT_CODE=$?
+          echo "HTML_TEST_EXIT_CODE=$HTML_EXIT_CODE" >> $GITHUB_ENV
+
+          # Log exit codes for debugging
+          echo "E2E Test Exit Codes:"
+          echo "  JSON reporter exit code: $EXIT_CODE"
+          echo "  HTML reporter exit code: $HTML_EXIT_CODE"
+
+          if [ $EXIT_CODE -ne 0 ] || [ $HTML_EXIT_CODE -ne 0 ]; then
+            echo "⚠️ E2E tests failed with non-zero exit codes"
+          else
+            echo "✅ E2E tests completed successfully"
+          fi
+
+      - name: Analyze E2E test results
+        id: analyze
+        run: |
+          set -e
+
+          if [ ! -f "e2e-results.json" ]; then
+            echo "No E2E results found, creating placeholder"
+            echo '{"stats":{"expected":0,"passed":0,"failed":0,' \
+              '"flaky":0,"skipped":0}}' > e2e-results.json
+          fi
+
+          # Parse test results using external script
+          eval $(node scripts/parse-e2e-results.js e2e-results.json)
+
+          # Get current date
+          CURRENT_DATE=$(date '+%Y-%m-%d')
+          CURRENT_DATETIME=$(date '+%Y-%m-%d %H:%M:%S UTC')
+
+          echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+          echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+          echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+          echo "success_rate=$SUCCESS_RATE" >> $GITHUB_OUTPUT
+          echo "current_date=$CURRENT_DATE" >> $GITHUB_OUTPUT
+          echo "current_datetime=$CURRENT_DATETIME" >> $GITHUB_OUTPUT
+
+          echo "📊 E2E Test Results:"
+          echo "   Total: $TOTAL_TESTS"
+          echo "   Passed: $PASSED_TESTS"
+          echo "   Failed: $FAILED_TESTS"
+          echo "   Success Rate: $SUCCESS_RATE%"
+
+      - name: Check for significant progress
+        id: progress-check
+        run: |
+          SUCCESS_RATE=${{ steps.analyze.outputs.success_rate }}
+
+          # Define milestones
+          MILESTONE_ACHIEVED=false
+          MILESTONE_TYPE=""
+
+          if [ "$SUCCESS_RATE" -eq 100 ]; then
+            MILESTONE_ACHIEVED=true
+            MILESTONE_TYPE="completion"
+            echo "🎉 100% E2E test success achieved!"
+          elif [ "$SUCCESS_RATE" -ge 95 ]; then
+            MILESTONE_ACHIEVED=true
+            MILESTONE_TYPE="near_completion"
+            echo "🌟 95%+ E2E test success achieved!"
+          elif [ "$SUCCESS_RATE" -ge 90 ]; then
+            MILESTONE_ACHIEVED=true
+            MILESTONE_TYPE="excellent"
+            echo "✨ 90%+ E2E test success achieved!"
+          fi
+
+          echo "milestone_achieved=$MILESTONE_ACHIEVED" >> $GITHUB_OUTPUT
+          echo "milestone_type=$MILESTONE_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Update progress tracking file
+        run: |
+          set -e
+
+          CURRENT_DATE="${{ steps.analyze.outputs.current_date }}"
+          CURRENT_DATETIME="${{ steps.analyze.outputs.current_datetime }}"
+          TOTAL_TESTS=${{ steps.analyze.outputs.total_tests }}
+          PASSED_TESTS=${{ steps.analyze.outputs.passed_tests }}
+          FAILED_TESTS=${{ steps.analyze.outputs.failed_tests }}
+          SUCCESS_RATE=${{ steps.analyze.outputs.success_rate }}
+
+          # Create or update progress tracking file
+          PROGRESS_FILE="docs/e2e-test-progress.md"
+
+          if [ ! -f "$PROGRESS_FILE" ]; then
+            {
+              echo "# E2E Test Progress Tracking"
+              echo ""
+              echo "This file tracks the progress of End-to-End " \
+                "(E2E) test implementation and success rates."
+              echo ""
+              echo "## Current Status"
+              echo ""
+              echo "**Target:** 100% E2E test success rate"
+              echo "**Current Progress:** " \
+                "Automatically updated by GitHub Actions"
+              echo ""
+              echo "## Progress History"
+              echo ""
+              echo "| Date | Total Tests | Passed | Failed | " \
+                "Success Rate | Notes |"
+              echo "|------|-------------|--------|--------|" \
+                "--------------|-------|"
+            } > "$PROGRESS_FILE"
+          fi
+
+          # Add current progress entry
+          echo "| $CURRENT_DATE | $TOTAL_TESTS | $PASSED_TESTS | " \
+            "$FAILED_TESTS | $SUCCESS_RATE% | Automated tracking |" >> \
+            "$PROGRESS_FILE"
+
+          echo "✅ Updated progress tracking in $PROGRESS_FILE"
+
+      - name: Record milestone if achieved
+        if: steps.progress-check.outputs.milestone_achieved == 'true'
+        run: |
+          ./scripts/record-milestone.sh \
+            "${{ steps.progress-check.outputs.milestone_type }}" \
+            "${{ steps.analyze.outputs.success_rate }}" \
+            "${{ steps.analyze.outputs.current_date }}" \
+            "${{ steps.analyze.outputs.total_tests }}" \
+            "${{ steps.analyze.outputs.passed_tests }}" \
+            "${{ steps.analyze.outputs.current_datetime }}"
+
+      - name: Commit progress updates
+        run: |
+          git config --local user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          git add docs/e2e-test-progress.md
+
+          if [ "${{ steps.progress-check.outputs.milestone_achieved }}" \
+            == "true" ]; then
+            git add docs/IMPLEMENTATION_LOG.md
+            COMMIT_MSG="docs: record E2E test milestone - " \
+              "${{ steps.analyze.outputs.success_rate }}% success rate"
+          else
+            COMMIT_MSG="docs: update E2E test progress tracking"
+          fi
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "$COMMIT_MSG"
+
+            git push origin ${{ github.ref_name }}
+            echo "✅ Progress committed and pushed"
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-progress-results
+          path: |
+            e2e-results.json
+            web/playwright-report/
+            docs/e2e-test-progress.md
+          if-no-files-found: ignore

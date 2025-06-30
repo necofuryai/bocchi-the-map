@@ -1,0 +1,7 @@
+---
+services:
+  mysql:
+    volumes:
+      - ./init-test.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    tmpfs:
+      - /var/lib/mysql

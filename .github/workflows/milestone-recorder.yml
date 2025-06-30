@@ -1,0 +1,241 @@
+---
+name: Milestone Recorder
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [closed]
+    branches: [main, develop]
+
+jobs:
+  record-milestone:
+    name: Record Implementation Milestone
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'push') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.merged == true)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Analyze changes for milestone recording
+        id: analyze
+        run: |
+          set -e
+
+          echo "🔍 Analyzing changes for milestone significance..."
+
+          # Get commit range for analysis
+          if [ "${{ github.event_name }}" == "push" ]; then
+            COMMIT_RANGE="${{ github.event.before }}..${{ github.event.after }}"
+          else
+            # For merged PRs
+            COMMIT_RANGE="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          fi
+
+          # Analyze commits
+          COMMITS=$(git log --oneline "$COMMIT_RANGE" 2>&1) || {
+            echo "⚠️ Git log failed for range $COMMIT_RANGE: $COMMITS" >&2
+            exit 1
+          }
+
+          # Check for significant changes
+          MILESTONE_WORTHY=false
+          MILESTONE_TYPE=""
+          MILESTONE_DESCRIPTION=""
+
+          # Feature additions
+          if echo "$COMMITS" | grep -E "^[a-f0-9]+ feat:" > /dev/null; then
+            MILESTONE_WORTHY=true
+            MILESTONE_TYPE="feature"
+            FEATURES=$(echo "$COMMITS" | \
+              grep -E "^[a-f0-9]+ feat:" | \
+              sed 's/^[a-f0-9]* feat: /• /')
+            MILESTONE_DESCRIPTION="New Features:\n$FEATURES"
+          fi
+
+          # Major fixes
+          FIX_COUNT=$(echo "$COMMITS" | \
+            grep -c -E "^[a-f0-9]+ fix:" || echo "0")
+          if [ "$FIX_COUNT" -ge 3 ]; then
+            MILESTONE_WORTHY=true
+            if [ -n "$MILESTONE_TYPE" ]; then
+              MILESTONE_TYPE="mixed"
+            else
+              MILESTONE_TYPE="fixes"
+            fi
+            FIXES=$(echo "$COMMITS" | \
+              grep -E "^[a-f0-9]+ fix:" | head -5 | \
+              sed 's/^[a-f0-9]* fix: /• /')
+            if [ -n "$MILESTONE_DESCRIPTION" ]; then
+              MILESTONE_DESCRIPTION="$MILESTONE_DESCRIPTION" \
+                "\n\nMajor Fixes:\n$FIXES"
+            else
+              MILESTONE_DESCRIPTION="Major Fixes:\n$FIXES"
+            fi
+          fi
+
+          # Infrastructure improvements
+          if echo "$COMMITS" | \
+            grep -E "^[a-f0-9]+ (ci|build|improve):" > /dev/null; then
+            INFRA_CHANGES=$(echo "$COMMITS" | \
+              grep -E "^[a-f0-9]+ (ci|build|improve):" | \
+              head -3 | sed 's/^[a-f0-9]* [^:]*: /• /')
+            if [ -n "$MILESTONE_DESCRIPTION" ]; then
+              MILESTONE_DESCRIPTION="$MILESTONE_DESCRIPTION" \
+                "\n\nInfrastructure Improvements:\n$INFRA_CHANGES"
+            elif [ $(echo "$INFRA_CHANGES" | wc -l) -ge 2 ]; then
+              MILESTONE_WORTHY=true
+              MILESTONE_TYPE="infrastructure"
+              MILESTONE_DESCRIPTION="Infrastructure Improvements:" \
+                "\n$INFRA_CHANGES"
+            fi
+          fi
+
+          # Get current date
+          CURRENT_DATE=$(date '+%Y年%m月%d日')
+
+          echo "milestone_worthy=$MILESTONE_WORTHY" >> $GITHUB_OUTPUT
+          echo "milestone_type=$MILESTONE_TYPE" >> $GITHUB_OUTPUT
+          echo "current_date=$CURRENT_DATE" >> $GITHUB_OUTPUT
+          echo "milestone_description<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$MILESTONE_DESCRIPTION" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update implementation log
+        if: steps.analyze.outputs.milestone_worthy == 'true'
+        run: |
+          set -e
+
+          MILESTONE_TYPE="${{ steps.analyze.outputs.milestone_type }}"
+          CURRENT_DATE="${{ steps.analyze.outputs.current_date }}"
+          DESCRIPTION="${{ steps.analyze.outputs.milestone_description }}"
+
+          # Create milestone entry
+          case "$MILESTONE_TYPE" in
+            "feature")
+              EMOJI="✨"
+              TITLE="新機能実装"
+              ;;
+            "fixes")
+              EMOJI="🔧"
+              TITLE="重要な修正・改善"
+              ;;
+            "infrastructure")
+              EMOJI="🚀"
+              TITLE="インフラ・CI/CD改善"
+              ;;
+            "mixed")
+              EMOJI="📈"
+              TITLE="機能追加・修正・改善"
+              ;;
+            *)
+              EMOJI="📝"
+              TITLE="実装更新"
+              ;;
+          esac
+
+          # Prepare milestone entry
+          MILESTONE_ENTRY=$(cat <<EOF
+## $EMOJI $CURRENT_DATE - $TITLE
+
+### 実装内容
+$DESCRIPTION
+
+### リポジトリ情報
+- **ブランチ**: ${{ github.ref_name }}
+- **コミット**: ${{ github.sha }}
+- **実装者**: Automated milestone recording
+
+---
+
+EOF
+)
+
+          # Insert milestone at the beginning of the milestones section
+          if [ -f "docs/IMPLEMENTATION_LOG.md" ]; then
+            # Check if milestones section exists
+            if grep -q "## 📅 主要実装マイルストーン" docs/IMPLEMENTATION_LOG.md; then
+              # Insert after milestone header using awk for portability
+              awk -v entry="$MILESTONE_ENTRY" '
+              /## 📅 主要実装マイルストーン/ {
+                print
+                print ""
+                print entry
+                next
+              }
+              { print }
+              ' docs/IMPLEMENTATION_LOG.md > \
+                docs/IMPLEMENTATION_LOG.md.tmp && \
+                mv docs/IMPLEMENTATION_LOG.md.tmp \
+                docs/IMPLEMENTATION_LOG.md
+            else
+              # If no milestones section, append to end
+              echo "" >> docs/IMPLEMENTATION_LOG.md
+              echo "## 📅 主要実装マイルストーン" >> docs/IMPLEMENTATION_LOG.md
+              echo "" >> docs/IMPLEMENTATION_LOG.md
+              echo "$MILESTONE_ENTRY" >> docs/IMPLEMENTATION_LOG.md
+            fi
+
+            echo "✅ Milestone recorded in docs/IMPLEMENTATION_LOG.md"
+          else
+            echo "⚠️ docs/IMPLEMENTATION_LOG.md not found," \
+              "skipping milestone recording"
+          fi
+
+      - name: Commit milestone update
+        if: steps.analyze.outputs.milestone_worthy == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          if git diff --quiet docs/IMPLEMENTATION_LOG.md; then
+            echo "No changes to commit"
+          else
+            git add docs/IMPLEMENTATION_LOG.md
+            COMMIT_MSG="docs: record milestone for " \
+              "${{ steps.analyze.outputs.milestone_type }} updates" \
+              $'\n\n' \
+              "🤖 Generated with [Claude Code](https://claude.ai/code)" \
+              $'\n\n' \
+              "Co-Authored-By: Claude <noreply@anthropic.com>"
+            git commit -m "$COMMIT_MSG"
+
+            # Push the changes
+            git push origin ${{ github.ref_name }}
+
+            echo "✅ Milestone committed and pushed"
+          fi
+
+      - name: Create summary comment
+        if: >-
+          steps.analyze.outputs.milestone_worthy == 'true' &&
+          github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const milestoneType = '${{ steps.analyze.outputs.milestone_type }}';
+            const currentDate = '${{ steps.analyze.outputs.current_date }}';
+
+            const comment = "## 🎉 Milestone Recorded!\n\n" +
+              "✅ **Significant changes detected** - " +
+              "A milestone has been automatically recorded " +
+              "in `docs/IMPLEMENTATION_LOG.md`\n\n" +
+              "**Milestone Type:** " + milestoneType + "\n" +
+              "**Date:** " + currentDate + "\n\n" +
+              "This helps maintain our implementation history " +
+              "and project documentation integrity.\n\n" +
+              "🤖 *Automated milestone recording by GitHub Actions*";
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });

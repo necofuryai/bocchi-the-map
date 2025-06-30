@@ -636,7 +636,7 @@ type MonitoringConfig struct {
 **Docker Build Pattern:**
 ```dockerfile
 # Multi-stage build for security and efficiency
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 # ... build steps
 FROM alpine:latest
 # Security: non-root user, minimal base, health checks

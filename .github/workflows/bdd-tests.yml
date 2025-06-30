@@ -1,0 +1,244 @@
+---
+name: BDD Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'api/**'
+      - '.github/workflows/bdd-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - '.github/workflows/bdd-tests.yml'
+
+env:
+  GO_VERSION: '1.24'
+  MYSQL_VERSION: '8.0'
+
+jobs:
+  bdd-tests:
+    name: BDD Tests with Ginkgo
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: bocchi_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Test Environment
+        uses: ./.github/actions/setup-go-test-env
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          install-ginkgo: 'true'
+          working-directory: 'api'
+          mysql-root-password: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+
+      - name: Run BDD Tests
+        working-directory: api
+        env:
+          CGO_ENABLED: 1
+        run: |
+          make test-bdd-coverage
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bdd-test-results
+          path: |
+            api/coverage.out
+            api/tests/
+          if-no-files-found: ignore
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: api/coverage.out
+          flags: bdd-tests
+          name: bdd-coverage
+          fail_ci_if_error: true
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: bdd-tests
+    if: github.event_name == 'pull_request'
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: bocchi_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Test Environment
+        uses: ./.github/actions/setup-go-test-env
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          install-ginkgo: 'true'
+          working-directory: 'api'
+          mysql-root-password: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+
+      - name: Run Integration Tests Only
+        working-directory: api
+        env:
+          CGO_ENABLED: 1
+        run: |
+          go test -tags=integration -v \
+            ./tests/integration/... \
+            ./interfaces/http/handlers/... \
+            2>&1 | tee test_output.log
+
+      - name: Comment PR with test results
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read test output to extract test results and suites
+            let testOutput = '';
+            try {
+              testOutput = fs.readFileSync('api/test_output.log', 'utf8');
+            } catch (error) {
+              console.error('Could not read test output file:', {
+                message: error.message,
+                code: error.code,
+                errno: error.errno,
+                syscall: error.syscall,
+                path: error.path,
+                stack: error.stack
+              });
+            }
+
+            // Parse test results to detect failures and successes
+            const parseTestResults = (output) => {
+              const lines = output.split('\n');
+              let passedTests = 0;
+              let failedTests = 0;
+              let failedSuites = [];
+              let passedSuites = [];
+              const suites = [];
+
+              for (const line of lines) {
+                // Count Go test results
+                if (line.match(/^PASS:/)) {
+                  passedTests++;
+                } else if (line.match(/^FAIL:/)) {
+                  failedTests++;
+                }
+
+                // Track Ginkgo suite results
+                const suiteMatch = line.match(
+                  /Running Suite: (.+) -/
+                );
+                if (suiteMatch) {
+                  suites.push(suiteMatch[1].trim());
+                }
+
+                // Check for individual test failures
+                if (line.match(/--- FAIL:|FAIL\s+Test/)) {
+                  failedTests++;
+                }
+
+                // Check for test success
+                if (line.match(/--- PASS:|PASS\s+Test/)) {
+                  passedTests++;
+                }
+
+                // Track suite pass/fail status
+                if (line.match(
+                  /Ginkgo ran \d+ suites? in .* and found no failures/
+                )) {
+                  passedSuites.push(...suites);
+                } else if (line.match(/Test Suite Failed/)) {
+                  failedSuites.push(...suites);
+                }
+              }
+
+              // If no specific suites found, use default
+              const allSuites = suites.length > 0 ? suites : [
+                'HTTP Handlers Integration Test Suite'
+              ];
+
+              return {
+                passed: passedTests,
+                failed: failedTests,
+                suites: allSuites,
+                passedSuites,
+                failedSuites,
+                hasFailures: failedTests > 0 ||
+                  output.includes('FAIL') ||
+                  output.includes('Test Suite Failed')
+              };
+            };
+
+            const results = parseTestResults(testOutput);
+
+            // Build dynamic comment based on actual results
+            let comment = '## 🧪 BDD Integration Test Results\n\n';
+
+            if (results.hasFailures) {
+              comment += '❌ **Integration tests failed!**\n\n';
+              comment += `**Results Summary:**\n`;
+              comment += `- ✅ Passed: ${results.passed}\n`;
+              comment += `- ❌ Failed: ${results.failed}\n\n`;
+
+              if (results.failedSuites.length > 0) {
+                comment += '**Failed Test Suites:**\n';
+                for (const suite of results.failedSuites) {
+                  comment += `- ❌ ${suite}\n`;
+                }
+                comment += '\n';
+              }
+            } else {
+              comment += '✅ **All integration tests passed!**\n\n';
+              comment += `**Results Summary:**\n`;
+              comment += `- ✅ Passed: ${results.passed}\n`;
+              comment += `- ❌ Failed: ${results.failed}\n\n`;
+            }
+
+            comment += '**Test Suites Executed:**\n';
+            for (const suite of results.suites) {
+              const status = results.failedSuites.includes(suite) ?
+                '❌' : '✅';
+              comment += `- ${status} ${suite}\n`;
+            }
+
+            comment += '\n**Test Environment:**\n';
+            comment += `- Go Version: ${{ env.GO_VERSION }}\n`;
+            comment += `- MySQL Version: ${{ env.MYSQL_VERSION }}\n`;
+            comment += '- Framework: Ginkgo v2 with Gomega\n';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

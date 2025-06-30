@@ -4,7 +4,7 @@
 
 [![Alpha](https://img.shields.io/badge/Status-Alpha-orange?style=flat)](https://github.com/necofuryai/bocchi-the-map)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.2-000000?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel)](https://vercel.com/)
@@ -56,7 +56,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 ### Prerequisites
 ```bash
 # Required
-go install golang.org/dl/go1.21@latest  # Go 1.21+
+go install golang.org/dl/go1.24@latest  # Go 1.24+
 node --version                          # Node.js 20+
 terraform --version                     # Terraform 1.5+
 
@@ -87,6 +87,23 @@ pnpm dev                    # Starts on :3000 with Turbopack
 
 # Visit http://localhost:3000 🎉
 ```
+
+### Database Setup
+
+The project uses environment-specific database initialization files:
+
+- **Development/Testing**: `init-test.sql` - Used automatically with `docker-compose up`
+- **Production**: `init-production.sql` - Used with production docker-compose configuration
+
+```bash
+# Start database for development/testing
+docker-compose up -d
+
+# Start database for production
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+The database configuration supports both local development and production environments with appropriate schema initialization for each context.
 
 ### Testing
 
@@ -286,9 +303,15 @@ gh pr create --title "feat: your amazing feature"
 - [ ] **Mobile App** - React Native with shared business logic
 - [ ] **API v2** - GraphQL federation for microservices
 
-## 🔐 Latest Security Update (2025-06-28)
+## 🔐 Latest Updates (2025-06-29)
 
-**Critical Authentication Fix Deployed** 🚨
+**Database Migration & CI/CD Improvements** 🚧
+- **Migration Fixes**: Resolved idx_location index conflicts in reviews table migrations
+- **GitHub Actions**: Enhanced BDD test security with database URL consistency and debug logging
+- **Production Ready**: All migration files synchronized between development and production
+- **CI Stability**: Improved test environment setup with better error handling and security measures
+
+**Previous Security Update (2025-06-28)** 🚨
 - **Issue**: Huma v2 authentication middleware had silent context propagation failure
 - **Impact**: Protected API endpoints were not properly authenticating users
 - **Resolution**: Implemented proper `huma.WithValue()` context handling pattern

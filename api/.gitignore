@@ -1,6 +1,7 @@
 # Binaries
 main
 api
+api_*
 bin/
 *.exe
 *.exe~

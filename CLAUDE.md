@@ -44,9 +44,16 @@ This project systematically manages knowledge through the following files in the
 
 For the most recent implementation details and architectural decisions, see:
 
-- **📋 Latest Implementation Status**: `.claude/project-improvements.md` → "Cloud Run & Monitoring Integration Implementation (2025-06-24)" section
+### Architecture & Design Decisions
 - **🏗️ Architecture Patterns**: `.claude/project-knowledge.md` → "Cloud Run & Monitoring Integration" section  
+- **📋 Latest Implementation Status**: `.claude/project-improvements.md` → "Cloud Run & Monitoring Integration Implementation (2025-06-29)" section
+
+### Deployment & Operations
 - **🛠️ Deployment Commands**: `.claude/common-patterns.md` → "Cloud Run and Docker Deployment Patterns" section
+- **🔧 GitHub Actions Fixes**: `.github/actions/setup-go-test-env/README.md` → Recent security, debugging, and migration improvements
+
+### Documentation & Tracking
+- **📝 Implementation Milestones**: `docs/IMPLEMENTATION_LOG.md` → Current system status and major achievements
 
 ## Development Principles
 

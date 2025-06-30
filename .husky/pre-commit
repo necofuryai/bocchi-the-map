@@ -1,0 +1,33 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Documentation sync reminder based on staged file changes
+echo "🔍 Checking for documentation sync requirements..."
+
+
+# Check for changes in critical files that might need documentation updates
+CHANGED_FILES="$(git diff --cached --name-only)"
+
+# API changes
+if echo "$CHANGED_FILES" | grep -E "^api/(.*\.(go|sql)|migrations/.*\.up\.sql)" > /dev/null; then
+  echo "🔧 API changes detected - consider updating:"
+  echo "   • api/README.md for new endpoints or significant changes"
+  echo "   • Database schema documentation if migrations were added"
+fi
+
+# Frontend changes
+if echo "$CHANGED_FILES" | grep -E "^web/(.*\.(ts|tsx|js|jsx)|package\.json)" > /dev/null; then
+  echo "🎨 Frontend changes detected - consider updating:"
+  echo "   • web/README.md for new components or setup changes"
+  echo "   • Performance documentation if optimizations were made"
+fi
+
+# Infrastructure changes
+if echo "$CHANGED_FILES" | grep -E "^(infra/.*\.tf|\.github/(workflows/.*\.(yml|yaml)|actions/.*\.(yml|yaml)|.*\.json)|Dockerfile)" > /dev/null; then
+  echo "🚀 Infrastructure changes detected - consider updating:"
+  echo "   • infra/README.md for new deployment procedures"
+  echo "   • Main README.md for setup requirement changes"
+fi
+
+echo "✅ Documentation check complete. Proceeding with commit..."
+echo ""

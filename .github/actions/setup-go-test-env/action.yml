@@ -1,0 +1,153 @@
+---
+name: 'Setup Go Test Environment'
+description: 'Sets up Go environment with dependencies, protoc, and code generation for testing'
+inputs:
+  go-version:
+    description: 'Go version to use'
+    required: true
+    default: '1.24'
+  install-ginkgo:
+    description: 'Whether to install Ginkgo CLI'
+    required: false
+    default: 'true'
+  working-directory:
+    description: 'Working directory for Go operations'
+    required: false
+    default: 'api'
+  mysql-root-password:
+    description: 'MySQL root password for database connection'
+    required: true
+  protoc-version:
+    description: 'Protoc version to use'
+    required: false
+    default: '23.x'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install Go dependencies
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      run: |
+        go mod download
+        go mod tidy
+
+    - name: Install Ginkgo CLI
+      if: ${{ inputs.install-ginkgo == 'true' }}
+      shell: bash
+      run: go install github.com/onsi/ginkgo/v2/ginkgo@latest
+
+    - name: Install sqlc
+      shell: bash
+      run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        version: ${{ inputs.protoc-version }}
+        repo-token: ${{ github.token }}
+
+    - name: Install protoc-gen-go
+      shell: bash
+      run: |
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+    - name: Generate code
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      run: |
+        make proto
+        make sqlc
+
+    - name: Wait for MySQL to be ready
+      shell: bash
+      run: |
+        set -o xtrace  # Enable command tracing for debugging
+
+        echo "Starting MySQL readiness check..."
+        echo "Connection details: host=127.0.0.1, port=3306, user=root"
+
+        counter=0
+        max_wait=60
+
+        until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"${{ inputs.mysql-root-password }}" --silent; do
+          echo "Waiting for MySQL... (attempt $((counter + 1))/$max_wait)"
+
+          # Show more detailed connection attempt every 10 seconds
+          if [ $((counter % 10)) -eq 0 ]; then
+            echo "Attempting detailed MySQL connection test..."
+            mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"${{ inputs.mysql-root-password }}" || true
+            echo "Checking if MySQL port is accessible..."
+            nc -z 127.0.0.1 3306 && echo "Port 3306 is open" || echo "Port 3306 is not accessible"
+          fi
+
+          sleep 1
+          counter=$((counter + 1))
+
+          if [ $counter -ge $max_wait ]; then
+            echo "==============================================="
+            echo "ERROR: MySQL failed to start within $max_wait seconds"
+            echo "==============================================="
+            echo "Diagnostic information:"
+            echo "Current time: $(date)"
+            echo "MySQL connection attempt result:"
+            mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"${{ inputs.mysql-root-password }}" || true
+            echo ""
+            echo "Port connectivity check:"
+            nc -z 127.0.0.1 3306 && echo "Port 3306 is accessible" || echo "Port 3306 is NOT accessible"
+            echo ""
+            echo "Network connections:"
+            netstat -tlpn | grep :3306 || echo "No process listening on port 3306"
+            echo ""
+            echo "Available Docker containers:"
+            docker ps -a || echo "Could not list Docker containers"
+            echo ""
+            echo "MySQL container logs (if available):"
+            # Try to get logs from MySQL service container
+            MYSQL_CONTAINER=$(docker ps --filter "ancestor=mysql:8.0" --format "{{.ID}}" | head -1)
+            if [ -n "$MYSQL_CONTAINER" ]; then
+              echo "Found MySQL container: $MYSQL_CONTAINER"
+              docker logs --tail 50 "$MYSQL_CONTAINER" || echo "Could not retrieve MySQL container logs"
+            else
+              echo "MySQL container not found, trying alternative approach..."
+              docker logs $(docker ps -q --filter "ancestor=mysql:8.0") 2>/dev/null || echo "No MySQL container logs available"
+            fi
+            echo "==============================================="
+            exit 1
+          fi
+        done
+
+        echo "✅ MySQL is ready and accepting connections!"
+        echo "Connection successful after $counter seconds"
+
+    - name: Install migration tool and run migrations
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        TEST_DATABASE_URL: "root:${{ inputs.mysql-root-password }}@tcp(localhost:3306)/bocchi_test?parseTime=true&multiStatements=true"
+      run: |
+        # Export TEST_DATABASE_URL for use in subsequent workflow steps
+        echo "TEST_DATABASE_URL=$TEST_DATABASE_URL" >> $GITHUB_ENV
+
+        go install -tags 'mysql' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+        # Create temporary directory with only numbered migration files (exclude production subdirectory and utility files)
+        mkdir -p migrations_test
+        find migrations -maxdepth 1 -name "[0-9][0-9][0-9][0-9][0-9][0-9]_*.sql" -exec cp {} migrations_test/ \;
+        migrate -path migrations_test -database "mysql://$TEST_DATABASE_URL" up
+        rm -rf migrations_test

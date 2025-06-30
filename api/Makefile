@@ -1,5 +1,14 @@
 .PHONY: all proto sqlc clean test build run deps dev migrate-up migrate-down docs
 
+# Define ginkgo command with fallback logic
+GINKGO_CMD := $(shell if command -v ginkgo >/dev/null 2>&1; then echo "ginkgo"; elif [ -f "$$(go env GOPATH)/bin/ginkgo" ]; then echo "$$(go env GOPATH)/bin/ginkgo"; else echo ""; fi)
+
+define check_ginkgo
+	@if [ -z "$(GINKGO_CMD)" ]; then \
+		echo "Error: ginkgo is not installed. Install with: go install github.com/onsi/ginkgo/v2/ginkgo@latest" ; exit 1 ; \
+	fi
+endef
+
 # Generate SQL code
 sqlc:
 	@command -v sqlc >/dev/null 2>&1 || { \
@@ -24,10 +33,59 @@ clean:
 	@echo "Cleaning generated files..."
 	@rm -rf gen/
 
-# Run tests
+# Run unit tests (default Go test)
 test:
-	@echo "Running tests..."
+	@echo "Running unit tests..."
 	@go test -v ./...
+
+# Run integration tests (handler tests)
+test-integration:
+	@echo "Running integration tests..."
+	@go test -tags=integration -v ./interfaces/http/handlers ./pkg/auth
+
+# Run E2E tests
+test-e2e:
+	@echo "Running E2E tests..."
+	@go test -tags=e2e -v ./tests/e2e
+
+# Run all BDD tests (integration + e2e)
+test-bdd:
+	@echo "Running all BDD tests (integration + e2e)..."
+	@$(MAKE) test-integration
+	@$(MAKE) test-e2e
+
+# Run BDD tests with coverage
+test-bdd-coverage:
+	@echo "Running BDD tests with coverage..."
+	@go test -tags=integration -cover -coverprofile=integration_coverage.out -v ./interfaces/http/handlers ./pkg/auth
+	@go test -tags=e2e -cover -coverprofile=e2e_coverage.out -v ./tests/e2e
+	@echo "Merging coverage files..."
+	@command -v gocovmerge >/dev/null 2>&1 || { \
+		echo "Error: gocovmerge is not installed. Install with: go install github.com/wadey/gocovmerge@latest" ; exit 1 ; }
+	@gocovmerge integration_coverage.out e2e_coverage.out > combined_coverage.out
+	@echo "Combined coverage report generated: combined_coverage.out"
+
+# Clean up intermediate coverage files
+clean-coverage:
+	@echo "Cleaning up coverage files..."
+	@rm -f integration_coverage.out e2e_coverage.out combined_coverage.out
+	@echo "Coverage files cleaned up"
+
+# Run specific BDD test suite
+test-bdd-suite:
+	@echo "Running specific BDD test suite..."
+	@if [ -z "$(SUITE)" ]; then \
+		echo "Usage: make test-bdd-suite SUITE=interfaces/http/handlers/spot_handler_test.go"; \
+		exit 1; \
+	fi
+	$(call check_ginkgo)
+	$(GINKGO_CMD) run -v $(SUITE)
+
+# Run BDD tests in watch mode for development
+test-bdd-watch:
+	@echo "Running BDD tests in watch mode..."
+	$(call check_ginkgo)
+	$(GINKGO_CMD) watch -r --label-filter="!slow" ./interfaces/http/handlers ./tests/e2e
 
 # Build the application
 build:
@@ -62,7 +120,7 @@ migrate-up:
 		echo "Example: export DATABASE_URL='mysql://user:password@host:port/database'"; \
 		exit 1; \
 	fi
-	@migrate -path migrations_new -database "$(DATABASE_URL)" up
+	@migrate -path migrations -database "$(DATABASE_URL)" up
 
 migrate-down:
 	@echo "Rolling back database migration..."
@@ -71,7 +129,7 @@ migrate-down:
 		echo "Example: export DATABASE_URL='mysql://user:password@host:port/database'"; \
 		exit 1; \
 	fi
-	@migrate -path migrations_new -database "$(DATABASE_URL)" down
+	@migrate -path migrations -database "$(DATABASE_URL)" down
 
 migrate-create:
 	@echo "Creating new migration..."
@@ -80,7 +138,7 @@ migrate-create:
 		echo "Usage: make migrate-create NAME=migration_name"; \
 		exit 1; \
 	fi
-	@migrate create -ext sql -dir migrations_new -seq $(NAME)
+	@migrate create -ext sql -dir migrations -seq $(NAME)
 
 # Generate OpenAPI documentation
 docs:
@@ -93,6 +151,23 @@ docker-up:
 	@docker-compose up -d mysql
 	@echo "Waiting for MySQL to be ready..."
 	@sleep 10
+
+# Initialize database with appropriate SQL file based on environment
+db-init-production:
+	@echo "Initializing production database..."
+	@if [ -z "$$MYSQL_ROOT_PASSWORD" ]; then \
+		echo "Error: MYSQL_ROOT_PASSWORD environment variable is required for production"; \
+		exit 1; \
+	fi
+	@docker exec bocchi-the-map-mysql mysql -u root -p"$$MYSQL_ROOT_PASSWORD" < init-production.sql
+
+db-init-test:
+	@echo "Initializing test database..."
+	@if [ -z "$$MYSQL_ROOT_PASSWORD" ]; then \
+		echo "Error: MYSQL_ROOT_PASSWORD environment variable is required"; \
+		exit 1; \
+	fi
+	@docker exec bocchi-the-map-mysql mysql -u root -p"$$MYSQL_ROOT_PASSWORD" < init-test.sql
 
 docker-down:
 	@echo "Stopping development environment..."
