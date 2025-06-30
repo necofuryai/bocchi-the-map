@@ -1,16 +1,12 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import Image from "next/image"
-import { MapPinIcon, MenuIcon, SearchIcon, UserIcon, HelpCircle } from "lucide-react"
-import { useSession, signIn, signOut } from "next-auth/react"
+import { useState } from "react"
+import { MapPinIcon, MenuIcon, SearchIcon, HelpCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -21,17 +17,6 @@ import {
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const { data: session, status } = useSession()
-
-  const handleSignIn = useCallback(() => {
-    // Explicitly ignore the Promise to avoid unhandled exceptions
-    void signIn(undefined, { callbackUrl: '/' })
-  }, [])
-
-  const handleSignOut = useCallback(() => {
-    void signOut({ callbackUrl: '/' })
-  }, [])
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -103,54 +88,9 @@ export function Header() {
               </div>
             </PopoverContent>
           </Popover>
-          {status === "loading" ? (
-            <Button variant="ghost" size="sm" disabled>
-              読み込み中...
-            </Button>
-          ) : session ? (
-            <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" aria-label="ユーザーメニューを開く" aria-expanded={userMenuOpen}>
-                  {session.user?.image ? (
-                    <Image 
-                      src={session.user.image} 
-                      alt="ユーザーアバター" 
-                      width={24}
-                      height={24}
-                      className="h-6 w-6 rounded-full mr-2"
-                    />
-                  ) : (
-                    <UserIcon className="h-5 w-5 mr-2" aria-hidden="true" />
-                  )}
-                  {session.user?.name || session.user?.email}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>マイアカウント</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem aria-label="プロフィールページを表示">
-                  プロフィール
-                </DropdownMenuItem>
-                <DropdownMenuItem aria-label="レビュー履歴ページを表示">
-                  レビュー履歴
-                </DropdownMenuItem>
-                <DropdownMenuItem aria-label="お気に入りスポット一覧ページを表示">
-                  お気に入り
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  aria-label="アカウントからログアウトする"
-                  onClick={handleSignOut}
-                >
-                  ログアウト
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button onClick={handleSignIn} variant="default" size="sm">
-              ログイン
-            </Button>
-          )}
+          <Button variant="default" size="sm">
+            ログイン
+          </Button>
         </div>
       </div>
     </header>

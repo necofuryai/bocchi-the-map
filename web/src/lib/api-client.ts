@@ -1,4 +1,3 @@
-import { refreshAPIToken, clearAPITokens } from './auth'
 
 // API base URL configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -52,49 +51,14 @@ export class APIClient {
       }
     }
 
-    // Handle 401 Unauthorized - try to refresh token
+    // Handle 401 Unauthorized - authentication required
     if (response.status === 401) {
-      // Prevent infinite refresh loops
-      const isRefreshRequest = endpoint.includes('/refresh')
-      if (isRefreshRequest) {
-        clearAPITokens()
-        return {
-          error: {
-            message: 'Token refresh failed',
-            details: 'Refresh token is invalid or expired',
-          },
-          status: 401,
-        }
-      }
-
-      const refreshSuccess = await refreshAPIToken()
-      if (refreshSuccess) {
-        // Retry the request with refreshed HttpOnly cookies
-        try {
-          response = await fetch(`${this.baseURL}${endpoint}`, {
-            ...options,
-            headers,
-            credentials: 'include', // Include cookies for authentication
-          })
-        } catch (error) {
-          return {
-            error: {
-              message: 'Network error on retry',
-              details: error instanceof Error ? error.message : String(error),
-            },
-            status: 0,
-          }
-        }
-      } else {
-        // Refresh failed, clear tokens
-        clearAPITokens()
-        return {
-          error: {
-            message: 'Authentication failed',
-            details: 'Token refresh failed',
-          },
-          status: 401,
-        }
+      return {
+        error: {
+          message: 'Authentication required',
+          details: 'Please log in to access this resource',
+        },
+        status: 401,
       }
     }
 

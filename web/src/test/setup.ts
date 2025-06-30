@@ -23,16 +23,6 @@ vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(() => new URLSearchParams()),
 }))
 
-// Mock next-auth
-vi.mock('next-auth/react', () => ({
-  useSession: vi.fn(() => ({
-    data: null,
-    status: 'unauthenticated',
-  })),
-  signIn: vi.fn(),
-  signOut: vi.fn(),
-  SessionProvider: ({ children }: { children: ReactNode }) => children,
-}))
 
 // Mock MapLibre GL JS
 vi.mock('maplibre-gl', () => ({
