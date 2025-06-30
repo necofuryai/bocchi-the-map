@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "isolatedModules": true
+  },
+  "exclude": [
+    "node_modules",
+    "web/**/*",
+    "api/**/*",
+    "scripts/**/*",
+    "bin/**/*",
+    "sample-01/**/*",
+    "01-login/**/*",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "dist",
+    "build",
+    ".next"
+  ],
+  "include": []
+}
