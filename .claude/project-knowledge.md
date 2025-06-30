@@ -64,7 +64,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - `Map component` - Main MapLibre GL JS wrapper with PMTiles support
 - `POI Features` - Point of interest rendering and interaction logic
-- `Auth Provider` - Auth.js session management
+- `Auth Provider` - Auth0 Universal Login session management
 - `Theme Provider` - Dark/light mode using next-themes
 
 ## Key Design Principles

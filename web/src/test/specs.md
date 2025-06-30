@@ -2,11 +2,11 @@
 
 ## Feature: User Authentication
 
-### Scenario: User can sign in with Google OAuth
+### Scenario: User can sign in with Auth0 Universal Login
 
 **Given** the user is on the login page  
-**When** the user clicks the "Sign in with Google" button  
-**Then** the user should be redirected to Google's OAuth flow  
+**When** the user clicks the "Sign in" button  
+**Then** the user should be redirected to Auth0's Universal Login flow  
 **And** after successful authentication, the user should be redirected back to the app  
 **And** the user should be logged in  
 

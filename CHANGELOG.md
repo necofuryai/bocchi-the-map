@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Authentication Migration**: Migrated from Auth.js/Supabase Auth to Auth0 Universal Login
+- Auth0 integration provides enhanced enterprise security and comprehensive OAuth provider support
+- Updated all documentation to reflect Auth0 authentication system
+
 ### Fixed
 - Resolved idx_location index conflicts in reviews table migrations
 - Enhanced BDD test security with database URL consistency and debug logging

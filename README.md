@@ -295,7 +295,7 @@ gh pr create --title "feat: your amazing feature"
 ## 🎯 Roadmap
 
 - [x] **MVP** - Core spot discovery and reviews ✅
-- [x] **Authentication System** - OAuth + JWT with proper security ✅ 
+- [x] **Authentication System** - Auth0 + JWT with enterprise security ✅ 
 - [x] **Production Infrastructure** - Cloud Run + monitoring ✅
 - [x] **Huma v2 Integration** - Type-safe APIs with auto-docs ✅
 - [ ] **Social Features** - Follow users, curated lists
@@ -320,7 +320,7 @@ gh pr create --title "feat: your amazing feature"
 **Enhanced Security Features:**
 - ✅ Proper JWT token validation and user context propagation
 - ✅ Protected endpoints (`/api/v1/users/me`, preferences, reviews) secured
-- ✅ OAuth integration with Google and X (Twitter) providers
+- ✅ Auth0 Universal Login with comprehensive OAuth provider support
 - ✅ Microservice-ready authentication architecture
 
 ## 📈 Analytics & Monitoring

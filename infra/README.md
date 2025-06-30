@@ -319,7 +319,7 @@ resource "google_secret_manager_secret" "app_secrets" {
   for_each = toset([
     "tidb-password",
     "jwt-secret", 
-    "oauth-client-secret",
+    "auth0-client-secret",
     "encryption-key"
   ])
   

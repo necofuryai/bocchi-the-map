@@ -4,7 +4,7 @@
 
 **本番レディ状態**: ✅ 認証・レビューシステム・監視・Cloud Run完全統合済み
 
-- **🔐 認証**: JWT + Auth.js + httpOnly cookies + rate limiting
+- **🔐 認証**: JWT + Auth0 + httpOnly cookies + rate limiting
 - **📊 レビュー**: 統一gRPCアーキテクチャ + 地理検索 + 評価統計
 - **🚀 本番環境**: Cloud Run + Docker + セキュリティ強化
 - **📈 監視**: New Relic + Sentry + 包括的ロギング
@@ -156,7 +156,7 @@
 
 ## 📋 完了済み主要機能
 
-- ✅ **認証**: JWT + Auth.js統合完了
+- ✅ **認証**: JWT + Auth0統合完了
 - ✅ **レビューシステム**: CRUD + 地理検索 + 統計
 - ✅ **本番インフラ**: Cloud Run + 監視
 - ✅ **データベース**: MySQL + マイグレーション + インデックス最適化
