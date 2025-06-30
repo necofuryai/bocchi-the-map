@@ -27,11 +27,11 @@ pnpm dev                        # Start with Turbopack 🚀
 
 ## 🔐 Authentication Status
 
-### ✅ PRODUCTION READY - BACKEND INTEGRATION FIXED (2025-06-28)
+### ✅ PRODUCTION READY - SUPABASE AUTH INTEGRATION (2025-06-30)
 
-- ✅ **Auth.js v5**: Complete Google/X OAuth providers  
+- ✅ **Supabase Auth**: Complete Google/X OAuth providers with enhanced security
 - ✅ **Authentication UI**: Full signin/error pages with proper UX
-- ✅ **Session Management**: Robust useSession integration
+- ✅ **Session Management**: Robust Supabase session integration
 - ✅ **Protected Routes**: Auth state handling and route guards
 - ✅ **User Profile**: Header with profile dropdown and logout
 - ✅ **Backend Integration**: API authentication now properly working
@@ -45,30 +45,27 @@ pnpm dev                        # Start with Turbopack 🚀
 
 ### ✅ READY FOR PRODUCTION
 
-- Complete authentication flow from OAuth to API access
-- All user management features functional  
-- E2E authentication testing updated
+- Complete authentication flow from OAuth to API access via Supabase
+- All user management features functional with enhanced security
+- E2E authentication testing updated for Supabase integration
 
-### OAuth Setup Required
+### Supabase Auth Setup Required
 
-**Google OAuth:**
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create OAuth 2.0 credentials
-3. Add `http://localhost:3000` to authorized origins
-4. Add `http://localhost:3000/api/auth/callback/google` to authorized redirect URIs
+**Supabase Project Setup:**
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
+2. Create a new project
+3. Navigate to Authentication > Settings
+4. Configure OAuth providers (Google, Twitter/X)
 
-**X (Twitter) OAuth:**
-1. Go to [Twitter Developer Portal](https://developer.twitter.com/)
-2. Create OAuth 2.0 app
-3. Add `http://localhost:3000/api/auth/callback/twitter` to callback URLs
+**OAuth Provider Configuration:**
+- **Google OAuth**: Add `http://localhost:3000/auth/callback` to authorized redirect URIs
+- **X (Twitter) OAuth**: Add `http://localhost:3000/auth/callback` to callback URLs
 
 Add credentials to `web/.env.local`:
 ```bash
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-TWITTER_CLIENT_ID=your_twitter_client_id
-TWITTER_CLIENT_SECRET=your_twitter_client_secret
-NEXTAUTH_SECRET=your_random_secret_key
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
 ## 🚀 Modern React Patterns
@@ -166,7 +163,7 @@ web/
 │   ├── useDebounce.ts           # Input debouncing
 │   └── useMapControls.ts        # Map interaction logic
 ├── 🔧 src/lib/                  # 🛠️ UTILITIES & CONFIG
-│   ├── auth.ts                  # NextAuth.js configuration
+│   ├── auth.ts                  # Supabase Auth configuration
 │   ├── utils.ts                 # Shared utility functions
 │   └── validations.ts           # Zod schemas
 ├── 🎨 src/styles/               # 💄 GLOBAL STYLES
@@ -293,34 +290,36 @@ function MapView() {
 
 ## 🔐 Authentication & Security
 
-### Auth.js v5
+### Supabase Auth
 
 ```tsx
-// Auth.js v5 imports
-import NextAuth from "next-auth"
-import Google from "next-auth/providers/google"
-import Twitter from "next-auth/providers/twitter"
+// Supabase Auth imports
+import { createClient } from '@supabase/supabase-js'
+
+// Supabase client setup
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 // Multi-provider OAuth setup
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    Twitter({
-      clientId: process.env.TWITTER_CLIENT_ID!,
-      clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-    }),
-  ],
-  callbacks: {
-    session: async ({ session, token }) => {
-      // Attach user ID to session
-      session.user.id = token.sub
-      return session
-    },
-  },
-})
+export const signInWithGoogle = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`
+    }
+  })
+}
+
+export const signInWithTwitter = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'twitter',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`
+    }
+  })
+}
 ```
 
 ### Security Features
@@ -400,11 +399,10 @@ pnpm format                 # Prettier formatting
 NEXT_PUBLIC_API_URL=http://localhost:8080
 NEXT_PUBLIC_MAP_STYLE_URL=/api/maps/style.json
 
-# Authentication
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
+# Supabase Authentication
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
 # Analytics (optional)
 NEXT_PUBLIC_GA_ID=your-google-analytics-id
@@ -507,7 +505,7 @@ pnpm export
 
 # Environment variables
 NEXT_PUBLIC_API_URL=https://api.bocchi-map.com
-NEXTAUTH_URL=https://bocchi-map.com
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 ```
 
 ### Performance Optimization

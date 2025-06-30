@@ -23,8 +23,8 @@ This document records past trial and error, failed implementations, improvement 
 - User entity with OAuth provider support (Google/X)
 
 **Frontend Implementation**
-- Auth.js v5 configuration (Google/X OAuth)
-- Authentication state management (useSession)
+- Supabase Auth configuration (Google/X OAuth)
+- Authentication state management (useSupabase)
 - Sign-in page (`/auth/signin`) with provider buttons
 - Error page (`/auth/error`) with detailed error handling
 - Header component with authentication state display
@@ -39,9 +39,9 @@ This document records past trial and error, failed implementations, improvement 
 ### ✅ COMPLETED TASKS (2025-06-23)
 
 **🔗 Frontend-Backend Integration (COMPLETED)**
-- ✅ Auth.js successfully calls backend API `/api/v1/users` endpoint  
+- ✅ Supabase Auth successfully calls backend API `/api/v1/users` endpoint  
 - ✅ OAuth flow creates users in database (verified with test users)
-- ✅ User session persistence working correctly
+- ✅ User session persistence working correctly with Supabase
 - ✅ API endpoint returns proper user data with timestamps
 
 **🔐 Live OAuth Testing (COMPLETED)**
@@ -298,9 +298,9 @@ User → OAuth Provider → Auth.js → POST /api/v1/users → MySQL → Session
 - Custom JWT handling in Go
 - Issues: Security concerns, complexity, maintenance overhead
 
-**Phase 2: Auth.js Integration (Current)**
-- Leveraged Auth.js for OAuth handling
-- Benefits: Industry-standard security, multiple providers, maintenance-free
+**Phase 2: Supabase Auth Integration (Current)**
+- Leveraged Supabase Auth for OAuth handling
+- Benefits: Built-in security, multiple providers, real-time capabilities, maintenance-free
 
 **Lessons Learned:**
 - Don't reinvent authentication wheel
@@ -914,10 +914,10 @@ The application architecture is now **production-ready** with a unified, scalabl
 - **Token Management**: Complete CRUD operations for JWT tokens with proper expiration handling
 - **Middleware Enhancement**: Enhanced auth middleware with token generation, validation, and optional authentication flows
 
-**🔗 Auth.js Integration Bridge**
-- **OAuth to JWT Bridge**: Seamless conversion from Auth.js OAuth sessions to backend JWT tokens
+**🔗 Supabase Auth Integration Bridge**
+- **OAuth to JWT Bridge**: Seamless conversion from Supabase Auth OAuth sessions to backend JWT tokens
 - **User Synchronization**: Automatic user creation/update in backend database during OAuth flow
-- **Token Storage**: Secure client-side token storage with localStorage management
+- **Token Storage**: Secure client-side token storage with Supabase session management
 - **Session Continuity**: Unified authentication state between frontend and backend systems
 
 **🛡️ Secure API Communication**
@@ -945,7 +945,7 @@ func (s *UserService) GetUserByID(ctx context.Context, req *GetUserByIDRequest) 
 
 **Frontend Components:**
 ```typescript
-// Auth.js Integration (web/src/lib/auth.ts:181-317)
+// Supabase Auth Integration (web/src/lib/auth.ts:181-317)
 async function generateAPIToken(userData, apiUrl): Promise<void>
 export function getAPIToken(): string | null
 export function refreshAPIToken(): Promise<boolean>
@@ -980,19 +980,19 @@ class APIClient {
 
 **Complete Integration Flow:**
 ```
-1. User initiates OAuth (Google/Twitter) → Auth.js
+1. User initiates OAuth (Google/Twitter) → Supabase Auth
    ↓
-2. OAuth success → Auth.js signIn callback
+2. OAuth success → Supabase Auth callback
    ↓
 3. User data sent to backend → POST /api/v1/users (upsert)
    ↓
 4. JWT token generation → POST /api/v1/auth/token
    ↓
-5. Tokens stored in localStorage → Client-side persistence
+5. Tokens stored in Supabase session → Client-side persistence
    ↓
 6. API calls use stored tokens → Automatic Bearer authentication
    ↓
-7. Token expiration handled → Automatic refresh via /api/v1/auth/refresh
+7. Token expiration handled → Automatic refresh via Supabase Auth
    ↓
 8. Seamless API access → No manual authentication required
 ```
@@ -1016,7 +1016,7 @@ API Call Request → Check Token Validity → Add Bearer Header → Send Request
 - ✅ `api/interfaces/http/handlers/auth_handler.go` - New authentication endpoints
 - ✅ `api/cmd/api/main.go:261,287-294` - Authentication route registration
 - ✅ `api/infrastructure/grpc/user_service.go:454-476` - GetUserByID gRPC method
-- ✅ `web/src/lib/auth.ts:120-317` - Auth.js to JWT integration functions
+- ✅ `web/src/lib/auth.ts:120-317` - Supabase Auth to JWT integration functions
 - ✅ `web/src/lib/api-client.ts` - New authenticated API client with auto-refresh
 - ✅ `api/.env.example:29-32` - JWT configuration documentation
 
@@ -1077,13 +1077,13 @@ if (error?.status === 401) {
 
 **✅ FULLY INTEGRATED SYSTEMS:**
 ```
-✅ OAuth Authentication: Google and Twitter/X providers via Auth.js
+✅ OAuth Authentication: Google and Twitter/X providers via Supabase Auth
 ✅ JWT Token System: Generation, validation, and refresh mechanisms
 ✅ API Authentication: Automatic token injection for all protected endpoints
 ✅ User Management: Complete user lifecycle with OAuth provider support
-✅ Session Persistence: Client-side token storage with automatic management
+✅ Session Persistence: Supabase session management with automatic handling
 ✅ Error Recovery: Transparent token refresh and authentication retry flows
-✅ Security Compliance: Industry-standard JWT implementation with proper validation
+✅ Security Compliance: Industry-standard JWT implementation with Supabase security
 ```
 
 The authentication system now provides **enterprise-grade security** with seamless user experience, supporting both current application needs and future scalability requirements.

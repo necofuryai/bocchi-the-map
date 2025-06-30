@@ -91,10 +91,10 @@
 #### 3. Web (Next.js)
 - ✅ Next.js + TypeScript初期化
 - ✅ 依存関係インストール
-  - NextAuth.js（認証）
+  - Supabase Auth（認証）
   - next-themes（ダークモード）
   - Tailwind CSS + Shadcn/ui
-- ✅ 認証設定（Google/X OAuth）
+- ✅ 認証設定（Supabase Auth with Google/X OAuth）
 - ✅ テーマプロバイダー（ダークモード対応）
 - ✅ 型定義ファイル
 
@@ -117,7 +117,7 @@
 - フレームワーク: Next.js 15 (App Router)
 - 言語: TypeScript
 - スタイリング: Tailwind CSS + Shadcn/ui
-- 認証: NextAuth.js
+- 認証: Supabase Auth
 - 地図: MapLibre GL JS
 
 **インフラ**

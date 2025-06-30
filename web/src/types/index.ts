@@ -65,23 +65,3 @@ export interface POIProperties {
   min_zoom?: number // snake_case for TileJSON specification compliance
 }
 
-// Auth.js v5 type extension
-declare module "next-auth" {
-  interface User {
-    /** OAuth プロバイダー (例: 'google') */
-    provider?: string
-    /** プロバイダー側のアカウント ID */
-    providerAccountId?: string
-  }
-
-  interface Session {
-    user: {
-      id?: string
-      email?: string
-      name?: string
-      image?: string
-      provider?: string
-      providerAccountId?: string
-    }
-  }
-}

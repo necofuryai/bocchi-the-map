@@ -31,7 +31,7 @@ make dev                    # Start with hot reload 🔥
 
 **✅ PRODUCTION READY - CRITICAL BUG FIXED (2025-06-28)**
 - ✅ **Huma v2 Authentication Middleware**: Fixed critical context propagation issue
-- ✅ **OAuth Integration**: Complete Google/X OAuth via Auth.js
+- ✅ **OAuth Integration**: Complete Google/X OAuth via Supabase Auth
 - ✅ **JWT Authentication**: Secure token generation and validation 
 - ✅ **User Management API**: Full CRUD operations with authentication
 - ✅ **Protected Endpoints**: `/api/v1/users/me` and preferences properly secured

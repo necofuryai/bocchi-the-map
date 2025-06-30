@@ -13,47 +13,46 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a full-stack monorepo application built with modern technologies: Go backend with Onion Architecture, Next.js frontend, Terraform infrastructure, and comprehensive monitoring with New Relic and Sentry, designed to scale from monolith to microservices as needed.
 
-## Bocchi The Map - おひとりさま向けスポットレビューアプリ (Solo Spot Review App)
+## Knowledge Management Structure
 
-This project systematically manages knowledge through the following files in the hidden `.claude/` directory:
+This project systematically manages knowledge through the following files:
 
 **Important**: The `.claude/` directory is a hidden directory. Use `bash ls -la .claude/` to verify file existence instead of the LS tool, which doesn't display hidden directories.
 
-### `.claude/context.md`
+### Core Knowledge Files (`.claude/` directory)
+
+#### `.claude/context.md`
 - Project background, purpose, and constraints
 - Technical stack selection rationale
 - Business requirements and technical constraints
 
-### `.claude/project-knowledge.md`
+#### `.claude/project-knowledge.md`
 - Implementation patterns and design decision insights
-- Architecture selection rationale
+- Architecture selection rationale (see "Cloud Run & Monitoring Integration" section)
 - Patterns to avoid and anti-patterns
 
-### `.claude/project-improvements.md`
+#### `.claude/project-improvements.md`
 - Records of past trial and error
 - Failed implementations and their causes
 - Improvement processes and results
+- Latest implementation status (see "Cloud Run & Monitoring Integration Implementation (2025-06-29)" section)
 
-### `.claude/common-patterns.md`
+#### `.claude/common-patterns.md`
 - Frequently used command patterns
 - Standard implementation templates
+- Deployment commands (see "Cloud Run and Docker Deployment Patterns" section)
+
+### Additional Documentation
+
+#### `docs/IMPLEMENTATION_LOG.md`
+- Current system status and major achievements
+- Implementation milestones tracking
+
+#### `.github/actions/setup-go-test-env/README.md`
+- Recent security, debugging, and migration improvements
+- GitHub Actions configuration details
 
 **Important**: When making new implementations or important decisions, please update the corresponding files.
-
-## Quick Reference for Latest Updates
-
-For the most recent implementation details and architectural decisions, see:
-
-### Architecture & Design Decisions
-- **🏗️ Architecture Patterns**: `.claude/project-knowledge.md` → "Cloud Run & Monitoring Integration" section  
-- **📋 Latest Implementation Status**: `.claude/project-improvements.md` → "Cloud Run & Monitoring Integration Implementation (2025-06-29)" section
-
-### Deployment & Operations
-- **🛠️ Deployment Commands**: `.claude/common-patterns.md` → "Cloud Run and Docker Deployment Patterns" section
-- **🔧 GitHub Actions Fixes**: `.github/actions/setup-go-test-env/README.md` → Recent security, debugging, and migration improvements
-
-### Documentation & Tracking
-- **📝 Implementation Milestones**: `docs/IMPLEMENTATION_LOG.md` → Current system status and major achievements
 
 ## Development Principles
 
