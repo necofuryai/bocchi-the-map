@@ -12,221 +12,266 @@ import (
 	"time"
 )
 
-// User query parameter structs
+const addToBlacklist = `-- name: AddToBlacklist :exec
+INSERT INTO token_blacklist (jti, token_type, expires_at) 
+VALUES (?, ?, ?)
+`
 
-type GetUserByProviderIDParams struct {
-	AuthProvider   UsersAuthProvider `json:"auth_provider"`
-	AuthProviderID string            `json:"auth_provider_id"`
+type AddToBlacklistParams struct {
+	Jti       string                  `json:"jti"`
+	TokenType TokenBlacklistTokenType `json:"token_type"`
+	ExpiresAt time.Time               `json:"expires_at"`
 }
+
+// Token blacklist queries for logout and security
+func (q *Queries) AddToBlacklist(ctx context.Context, arg AddToBlacklistParams) error {
+	_, err := q.db.ExecContext(ctx, addToBlacklist, arg.Jti, arg.TokenType, arg.ExpiresAt)
+	return err
+}
+
+const blacklistAccessToken = `-- name: BlacklistAccessToken :exec
+INSERT INTO token_blacklist (jti, token_type, expires_at) 
+VALUES (?, 'access', ?)
+`
+
+type BlacklistAccessTokenParams struct {
+	Jti       string    `json:"jti"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) BlacklistAccessToken(ctx context.Context, arg BlacklistAccessTokenParams) error {
+	_, err := q.db.ExecContext(ctx, blacklistAccessToken, arg.Jti, arg.ExpiresAt)
+	return err
+}
+
+const blacklistRefreshToken = `-- name: BlacklistRefreshToken :exec
+INSERT INTO token_blacklist (jti, token_type, expires_at) 
+VALUES (?, 'refresh', ?)
+`
+
+type BlacklistRefreshTokenParams struct {
+	Jti       string    `json:"jti"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+func (q *Queries) BlacklistRefreshToken(ctx context.Context, arg BlacklistRefreshTokenParams) error {
+	_, err := q.db.ExecContext(ctx, blacklistRefreshToken, arg.Jti, arg.ExpiresAt)
+	return err
+}
+
+const cleanupExpiredTokens = `-- name: CleanupExpiredTokens :exec
+DELETE FROM token_blacklist WHERE expires_at <= NOW()
+`
+
+func (q *Queries) CleanupExpiredTokens(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, cleanupExpiredTokens)
+	return err
+}
+
+const createUser = `-- name: CreateUser :exec
+INSERT INTO users (
+    id, email, name, nickname, picture, provider, provider_id, 
+    email_verified, preferences, created_at, updated_at
+) VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
+)
+`
 
 type CreateUserParams struct {
-	ID             string            `json:"id"`
-	Email          string            `json:"email"`
-	DisplayName    string            `json:"display_name"`
-	AvatarUrl      sql.NullString    `json:"avatar_url"`
-	AuthProvider   UsersAuthProvider `json:"auth_provider"`
-	AuthProviderID string            `json:"auth_provider_id"`
-	Preferences    json.RawMessage   `json:"preferences"`
+	ID            string          `json:"id"`
+	Email         string          `json:"email"`
+	Name          sql.NullString  `json:"name"`
+	Nickname      sql.NullString  `json:"nickname"`
+	Picture       sql.NullString  `json:"picture"`
+	Provider      string          `json:"provider"`
+	ProviderID    string          `json:"provider_id"`
+	EmailVerified bool            `json:"email_verified"`
+	Preferences   json.RawMessage `json:"preferences"`
 }
 
-type UpsertUserParams struct {
-	ID             string            `json:"id"`
-	Email          string            `json:"email"`
-	DisplayName    string            `json:"display_name"`
-	AvatarUrl      sql.NullString    `json:"avatar_url"`
-	AuthProvider   UsersAuthProvider `json:"auth_provider"`
-	AuthProviderID string            `json:"auth_provider_id"`
-	Preferences    json.RawMessage   `json:"preferences"`
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
+	_, err := q.db.ExecContext(ctx, createUser,
+		arg.ID,
+		arg.Email,
+		arg.Name,
+		arg.Nickname,
+		arg.Picture,
+		arg.Provider,
+		arg.ProviderID,
+		arg.EmailVerified,
+		arg.Preferences,
+	)
+	return err
 }
+
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users WHERE id = ?
+`
+
+func (q *Queries) DeleteUser(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteUser, id)
+	return err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, name, nickname, picture, provider, provider_id, email_verified, preferences, created_at, updated_at FROM users WHERE email = ? LIMIT 1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Nickname,
+		&i.Picture,
+		&i.Provider,
+		&i.ProviderID,
+		&i.EmailVerified,
+		&i.Preferences,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+
+SELECT id, email, name, nickname, picture, provider, provider_id, email_verified, preferences, created_at, updated_at FROM users WHERE id = ? LIMIT 1
+`
+
+// User management queries for Bocchi The Map API
+// These queries support Auth0 integration and user profile management
+func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Nickname,
+		&i.Picture,
+		&i.Provider,
+		&i.ProviderID,
+		&i.EmailVerified,
+		&i.Preferences,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByProviderID = `-- name: GetUserByProviderID :one
+SELECT id, email, name, nickname, picture, provider, provider_id, email_verified, preferences, created_at, updated_at FROM users WHERE provider = ? AND provider_id = ? LIMIT 1
+`
+
+type GetUserByProviderIDParams struct {
+	Provider   string `json:"provider"`
+	ProviderID string `json:"provider_id"`
+}
+
+func (q *Queries) GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByProviderID, arg.Provider, arg.ProviderID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Nickname,
+		&i.Picture,
+		&i.Provider,
+		&i.ProviderID,
+		&i.EmailVerified,
+		&i.Preferences,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const isTokenBlacklisted = `-- name: IsTokenBlacklisted :one
+SELECT EXISTS(
+    SELECT 1 FROM token_blacklist 
+    WHERE jti = ? AND expires_at > NOW()
+) as is_blacklisted
+`
+
+func (q *Queries) IsTokenBlacklisted(ctx context.Context, jti string) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isTokenBlacklisted, jti)
+	var is_blacklisted bool
+	err := row.Scan(&is_blacklisted)
+	return is_blacklisted, err
+}
+
+const updateUserAvatar = `-- name: UpdateUserAvatar :exec
+UPDATE users SET picture = ?, updated_at = NOW() WHERE id = ?
+`
 
 type UpdateUserAvatarParams struct {
-	AvatarUrl sql.NullString `json:"avatar_url"`
-	ID        string         `json:"id"`
+	Picture sql.NullString `json:"picture"`
+	ID      string         `json:"id"`
 }
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserAvatar, arg.Picture, arg.ID)
+	return err
+}
+
+const updateUserPreferences = `-- name: UpdateUserPreferences :exec
+UPDATE users SET preferences = ?, updated_at = NOW() WHERE id = ?
+`
 
 type UpdateUserPreferencesParams struct {
 	Preferences json.RawMessage `json:"preferences"`
 	ID          string          `json:"id"`
 }
 
-// Token blacklist parameter structs
-
-type AddToBlacklistParams struct {
-	Jti       string                  `json:"jti"`
-	UserID    string                  `json:"user_id"`
-	TokenType TokenBlacklistTokenType `json:"token_type"`
-	ExpiresAt time.Time               `json:"expires_at"`
-	Reason    sql.NullString          `json:"reason"`
-}
-
-type BlacklistAccessTokenParams struct {
-	Jti       string    `json:"jti"`
-	UserID    string    `json:"user_id"`
-	ExpiresAt time.Time `json:"expires_at"`
-}
-
-type BlacklistRefreshTokenParams struct {
-	Jti       string    `json:"jti"`
-	UserID    string    `json:"user_id"`
-	ExpiresAt time.Time `json:"expires_at"`
-}
-
-// Query implementations
-
-func (q *Queries) GetUserByID(ctx context.Context, id string) (User, error) {
-	row := q.db.QueryRowContext(ctx, "SELECT * FROM users WHERE id = ? LIMIT 1", id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.DisplayName,
-		&i.AvatarUrl,
-		&i.AuthProvider,
-		&i.AuthProviderID,
-		&i.Preferences,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, "SELECT * FROM users WHERE email = ? LIMIT 1", email)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.DisplayName,
-		&i.AvatarUrl,
-		&i.AuthProvider,
-		&i.AuthProviderID,
-		&i.Preferences,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-func (q *Queries) GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, "SELECT * FROM users WHERE auth_provider = ? AND auth_provider_id = ? LIMIT 1", arg.AuthProvider, arg.AuthProviderID)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.DisplayName,
-		&i.AvatarUrl,
-		&i.AuthProvider,
-		&i.AuthProviderID,
-		&i.Preferences,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.ExecContext(ctx, `
-		INSERT INTO users (
-			id, email, display_name, avatar_url, auth_provider, auth_provider_id, 
-			preferences, created_at, updated_at
-		) VALUES (
-			?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
-		)`, 
-		arg.ID,
-		arg.Email,
-		arg.DisplayName,
-		arg.AvatarUrl,
-		arg.AuthProvider,
-		arg.AuthProviderID,
-		arg.Preferences,
-	)
+func (q *Queries) UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) error {
+	_, err := q.db.ExecContext(ctx, updateUserPreferences, arg.Preferences, arg.ID)
 	return err
+}
+
+const upsertUser = `-- name: UpsertUser :exec
+INSERT INTO users (
+    id, email, name, nickname, picture, provider, provider_id, 
+    email_verified, preferences, created_at, updated_at
+) VALUES (
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
+)
+ON DUPLICATE KEY UPDATE
+    email = VALUES(email),
+    name = VALUES(name),
+    nickname = VALUES(nickname),
+    picture = VALUES(picture),
+    email_verified = VALUES(email_verified),
+    preferences = VALUES(preferences),
+    updated_at = NOW()
+`
+
+type UpsertUserParams struct {
+	ID            string          `json:"id"`
+	Email         string          `json:"email"`
+	Name          sql.NullString  `json:"name"`
+	Nickname      sql.NullString  `json:"nickname"`
+	Picture       sql.NullString  `json:"picture"`
+	Provider      string          `json:"provider"`
+	ProviderID    string          `json:"provider_id"`
+	EmailVerified bool            `json:"email_verified"`
+	Preferences   json.RawMessage `json:"preferences"`
 }
 
 func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) error {
-	_, err := q.db.ExecContext(ctx, `
-		INSERT INTO users (
-			id, email, display_name, avatar_url, auth_provider, auth_provider_id, 
-			preferences, created_at, updated_at
-		) VALUES (
-			?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
-		)
-		ON DUPLICATE KEY UPDATE
-			email = VALUES(email),
-			display_name = VALUES(display_name),
-			avatar_url = VALUES(avatar_url),
-			preferences = VALUES(preferences),
-			updated_at = NOW()`,
+	_, err := q.db.ExecContext(ctx, upsertUser,
 		arg.ID,
 		arg.Email,
-		arg.DisplayName,
-		arg.AvatarUrl,
-		arg.AuthProvider,
-		arg.AuthProviderID,
+		arg.Name,
+		arg.Nickname,
+		arg.Picture,
+		arg.Provider,
+		arg.ProviderID,
+		arg.EmailVerified,
 		arg.Preferences,
 	)
-	return err
-}
-
-func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
-	_, err := q.db.ExecContext(ctx, "UPDATE users SET avatar_url = ?, updated_at = NOW() WHERE id = ?", arg.AvatarUrl, arg.ID)
-	return err
-}
-
-func (q *Queries) UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) error {
-	_, err := q.db.ExecContext(ctx, "UPDATE users SET preferences = ?, updated_at = NOW() WHERE id = ?", arg.Preferences, arg.ID)
-	return err
-}
-
-// Token blacklist query implementations
-
-func (q *Queries) AddToBlacklist(ctx context.Context, arg AddToBlacklistParams) error {
-	_, err := q.db.ExecContext(ctx, `
-		INSERT INTO token_blacklist (jti, user_id, token_type, expires_at, revoked_at, reason) 
-		VALUES (?, ?, ?, ?, NOW(), ?)`,
-		arg.Jti,
-		arg.UserID,
-		arg.TokenType,
-		arg.ExpiresAt,
-		arg.Reason,
-	)
-	return err
-}
-
-func (q *Queries) BlacklistAccessToken(ctx context.Context, arg BlacklistAccessTokenParams) error {
-	_, err := q.db.ExecContext(ctx, `
-		INSERT INTO token_blacklist (jti, user_id, token_type, expires_at, revoked_at, reason) 
-		VALUES (?, ?, 'access', ?, NOW(), 'logout')`,
-		arg.Jti,
-		arg.UserID,
-		arg.ExpiresAt,
-	)
-	return err
-}
-
-func (q *Queries) BlacklistRefreshToken(ctx context.Context, arg BlacklistRefreshTokenParams) error {
-	_, err := q.db.ExecContext(ctx, `
-		INSERT INTO token_blacklist (jti, user_id, token_type, expires_at, revoked_at, reason) 
-		VALUES (?, ?, 'refresh', ?, NOW(), 'logout')`,
-		arg.Jti,
-		arg.UserID,
-		arg.ExpiresAt,
-	)
-	return err
-}
-
-func (q *Queries) IsTokenBlacklisted(ctx context.Context, jti string) (bool, error) {
-	row := q.db.QueryRowContext(ctx, `
-		SELECT EXISTS(
-			SELECT 1 FROM token_blacklist 
-			WHERE jti = ? AND expires_at > NOW()
-		) as is_blacklisted`, jti)
-	var isBlacklisted bool
-	err := row.Scan(&isBlacklisted)
-	return isBlacklisted, err
-}
-
-func (q *Queries) CleanupExpiredTokens(ctx context.Context) error {
-	_, err := q.db.ExecContext(ctx, "DELETE FROM token_blacklist WHERE expires_at <= NOW()")
 	return err
 }

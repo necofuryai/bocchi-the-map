@@ -8,48 +8,50 @@ SELECT * FROM users WHERE id = ? LIMIT 1;
 SELECT * FROM users WHERE email = ? LIMIT 1;
 
 -- name: GetUserByProviderID :one
-SELECT * FROM users WHERE auth_provider = ? AND auth_provider_id = ? LIMIT 1;
+SELECT * FROM users WHERE provider = ? AND provider_id = ? LIMIT 1;
 
 -- name: CreateUser :exec
 INSERT INTO users (
-    id, email, display_name, avatar_url, auth_provider, auth_provider_id, 
-    preferences, created_at, updated_at
+    id, email, name, nickname, picture, provider, provider_id, 
+    email_verified, preferences, created_at, updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
 );
 
 -- name: UpsertUser :exec
 INSERT INTO users (
-    id, email, display_name, avatar_url, auth_provider, auth_provider_id, 
-    preferences, created_at, updated_at
+    id, email, name, nickname, picture, provider, provider_id, 
+    email_verified, preferences, created_at, updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
+    ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
 )
 ON DUPLICATE KEY UPDATE
     email = VALUES(email),
-    display_name = VALUES(display_name),
-    avatar_url = VALUES(avatar_url),
+    name = VALUES(name),
+    nickname = VALUES(nickname),
+    picture = VALUES(picture),
+    email_verified = VALUES(email_verified),
     preferences = VALUES(preferences),
     updated_at = NOW();
 
 -- name: UpdateUserAvatar :exec
-UPDATE users SET avatar_url = ?, updated_at = NOW() WHERE id = ?;
+UPDATE users SET picture = ?, updated_at = NOW() WHERE id = ?;
 
 -- name: UpdateUserPreferences :exec
 UPDATE users SET preferences = ?, updated_at = NOW() WHERE id = ?;
 
 -- Token blacklist queries for logout and security
 -- name: AddToBlacklist :exec
-INSERT INTO token_blacklist (jti, user_id, token_type, expires_at, revoked_at, reason) 
-VALUES (?, ?, ?, ?, NOW(), ?);
+INSERT INTO token_blacklist (jti, token_type, expires_at) 
+VALUES (?, ?, ?);
 
 -- name: BlacklistAccessToken :exec
-INSERT INTO token_blacklist (jti, user_id, token_type, expires_at, revoked_at, reason) 
-VALUES (?, ?, 'access', ?, NOW(), 'logout');
+INSERT INTO token_blacklist (jti, token_type, expires_at) 
+VALUES (?, 'access', ?);
 
 -- name: BlacklistRefreshToken :exec
-INSERT INTO token_blacklist (jti, user_id, token_type, expires_at, revoked_at, reason) 
-VALUES (?, ?, 'refresh', ?, NOW(), 'logout');
+INSERT INTO token_blacklist (jti, token_type, expires_at) 
+VALUES (?, 'refresh', ?);
 
 -- name: IsTokenBlacklisted :one
 SELECT EXISTS(
@@ -59,3 +61,6 @@ SELECT EXISTS(
 
 -- name: CleanupExpiredTokens :exec
 DELETE FROM token_blacklist WHERE expires_at <= NOW();
+
+-- name: DeleteUser :exec
+DELETE FROM users WHERE id = ?;

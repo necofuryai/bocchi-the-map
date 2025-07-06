@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/masyusakai/bocchi-the-map/api/internal/domain/entities"
-	"github.com/masyusakai/bocchi-the-map/api/internal/domain/rating"
-	"github.com/masyusakai/bocchi-the-map/api/pb"
+	"github.com/necofuryai/bocchi-the-map/api/internal/domain/entities"
+	"github.com/necofuryai/bocchi-the-map/api/internal/domain/rating"
+	"github.com/necofuryai/bocchi-the-map/api/pb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

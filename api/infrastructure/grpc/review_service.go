@@ -99,7 +99,7 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 
 	// Check if user already reviewed this spot
 	_, err := s.queries.GetReviewByUserAndSpot(ctx, database.GetReviewByUserAndSpotParams{
-		UserID: userID,
+		UserID: sql.NullString{String: userID, Valid: true},
 		SpotID: req.SpotID,
 	})
 	if err == nil {
@@ -131,7 +131,7 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 	err = s.queries.CreateReview(ctx, database.CreateReviewParams{
 		ID:            reviewID,
 		SpotID:        req.SpotID,
-		UserID:        userID,
+		UserID:        sql.NullString{String: userID, Valid: true},
 		Rating:        req.Rating,
 		Comment:       comment,
 		RatingAspects: ratingAspectsJSON,
@@ -281,14 +281,14 @@ func (s *ReviewService) GetUserReviews(ctx context.Context, req *GetUserReviewsR
 	offset := (page - 1) * pageSize
 
 	// Get total count of reviews by this user
-	totalCount, err := s.queries.CountReviewsByUser(ctx, req.UserID)
+	totalCount, err := s.queries.CountReviewsByUser(ctx, sql.NullString{String: req.UserID, Valid: true})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to count user reviews")
 	}
 
 	// Get reviews from database
 	dbReviews, err := s.queries.ListReviewsByUser(ctx, database.ListReviewsByUserParams{
-		UserID: req.UserID,
+		UserID: sql.NullString{String: req.UserID, Valid: true},
 		Limit:  pageSize,
 		Offset: offset,
 	})
@@ -357,7 +357,7 @@ func (s *ReviewService) convertDatabaseReviewToGRPC(dbReview database.Review) *R
 	return &Review{
 		ID:            dbReview.ID,
 		SpotID:        dbReview.SpotID,
-		UserID:        dbReview.UserID,
+		UserID:        dbReview.UserID.String,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
 		RatingAspects: parseRatingAspects(dbReview.RatingAspects),
@@ -371,7 +371,7 @@ func (s *ReviewService) convertDatabaseReviewRowToGRPC(dbReview database.ListRev
 	return &Review{
 		ID:            dbReview.ID,
 		SpotID:        dbReview.SpotID,
-		UserID:        dbReview.UserID,
+		UserID:        dbReview.UserID.String,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
 		RatingAspects: parseRatingAspects(dbReview.RatingAspects),
@@ -385,7 +385,7 @@ func (s *ReviewService) convertDatabaseUserReviewRowToGRPC(dbReview database.Lis
 	return &Review{
 		ID:            dbReview.ID,
 		SpotID:        dbReview.SpotID,
-		UserID:        dbReview.UserID,
+		UserID:        dbReview.UserID.String,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
 		RatingAspects: parseRatingAspects(dbReview.RatingAspects),

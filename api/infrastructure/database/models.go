@@ -54,58 +54,16 @@ func (ns NullTokenBlacklistTokenType) Value() (driver.Value, error) {
 	return string(ns.TokenBlacklistTokenType), nil
 }
 
-type UsersAuthProvider string
-
-const (
-	UsersAuthProviderGoogle  UsersAuthProvider = "google"
-	UsersAuthProviderTwitter UsersAuthProvider = "twitter"
-	UsersAuthProviderX       UsersAuthProvider = "x"
-)
-
-func (e *UsersAuthProvider) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = UsersAuthProvider(s)
-	case string:
-		*e = UsersAuthProvider(s)
-	default:
-		return fmt.Errorf("unsupported scan type for UsersAuthProvider: %T", src)
-	}
-	return nil
-}
-
-type NullUsersAuthProvider struct {
-	UsersAuthProvider UsersAuthProvider `json:"users_auth_provider"`
-	Valid             bool              `json:"valid"` // Valid is true if UsersAuthProvider is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullUsersAuthProvider) Scan(value interface{}) error {
-	if value == nil {
-		ns.UsersAuthProvider, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.UsersAuthProvider.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullUsersAuthProvider) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.UsersAuthProvider), nil
-}
-
 type Review struct {
 	ID            string          `json:"id"`
 	SpotID        string          `json:"spot_id"`
-	UserID        string          `json:"user_id"`
+	ReviewerName  string          `json:"reviewer_name"`
 	Rating        int32           `json:"rating"`
 	Comment       sql.NullString  `json:"comment"`
 	RatingAspects json.RawMessage `json:"rating_aspects"`
 	CreatedAt     time.Time       `json:"created_at"`
 	UpdatedAt     time.Time       `json:"updated_at"`
+	UserID        sql.NullString  `json:"user_id"`
 }
 
 type Spot struct {
@@ -127,21 +85,21 @@ type Spot struct {
 type TokenBlacklist struct {
 	ID        int64                   `json:"id"`
 	Jti       string                  `json:"jti"`
-	UserID    string                  `json:"user_id"`
 	TokenType TokenBlacklistTokenType `json:"token_type"`
 	ExpiresAt time.Time               `json:"expires_at"`
-	RevokedAt sql.NullTime            `json:"revoked_at"`
-	Reason    sql.NullString          `json:"reason"`
+	CreatedAt time.Time               `json:"created_at"`
 }
 
 type User struct {
-	ID             string            `json:"id"`
-	Email          string            `json:"email"`
-	DisplayName    string            `json:"display_name"`
-	AvatarUrl      sql.NullString    `json:"avatar_url"`
-	AuthProvider   UsersAuthProvider `json:"auth_provider"`
-	AuthProviderID string            `json:"auth_provider_id"`
-	Preferences    json.RawMessage   `json:"preferences"`
-	CreatedAt      time.Time         `json:"created_at"`
-	UpdatedAt      time.Time         `json:"updated_at"`
+	ID            string          `json:"id"`
+	Email         string          `json:"email"`
+	Name          sql.NullString  `json:"name"`
+	Nickname      sql.NullString  `json:"nickname"`
+	Picture       sql.NullString  `json:"picture"`
+	Provider      string          `json:"provider"`
+	ProviderID    string          `json:"provider_id"`
+	EmailVerified bool            `json:"email_verified"`
+	Preferences   json.RawMessage `json:"preferences"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
 }
