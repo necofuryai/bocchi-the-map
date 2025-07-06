@@ -412,7 +412,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 	Describe("Listing spots", func() {
 		BeforeEach(func() {
 			By("Creating multiple test spots")
-			testSuite.FixtureManager.SetupStandardFixtures()
+			testSuite.FixtureManager.SetupStandardFixtures(context.Background())
 		})
 
 		Context("Given existing spots in the database", func() {
