@@ -12,11 +12,14 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"bocchi/api/infrastructure/database"
 	"bocchi/api/pkg/errors"
 	"bocchi/api/pkg/logger"
 	"bocchi/api/pkg/monitoring"
+	commonv1 "bocchi/api/gen/common/v1"
+	reviewv1 "bocchi/api/gen/review/v1"
 )
 
 // ReviewService implements the gRPC ReviewService
@@ -31,63 +34,14 @@ func NewReviewService(db *sql.DB) *ReviewService {
 	}
 }
 
-// Temporary structs until protobuf generates them
-type Review struct {
-	ID            string
-	SpotID        string
-	UserID        string
-	Rating        int32
-	Comment       string
-	RatingAspects map[string]int32
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-}
-
-type CreateReviewRequest struct {
-	SpotID        string
-	Rating        int32
-	Comment       string
-	RatingAspects map[string]int32
-}
-
-type CreateReviewResponse struct {
-	Review *Review
-}
-
-type GetSpotReviewsRequest struct {
-	SpotID     string
-	Pagination *PaginationRequest
-}
-
-type ReviewStatistics struct {
-	AverageRating      float64
-	TotalCount         int32
-	RatingDistribution map[int32]int32
-}
-
-type GetSpotReviewsResponse struct {
-	Reviews    []*Review
-	Pagination *PaginationResponse
-	Statistics *ReviewStatistics
-}
-
-type GetUserReviewsRequest struct {
-	UserID     string
-	Pagination *PaginationRequest
-}
-
-type GetUserReviewsResponse struct {
-	Reviews    []*Review
-	Pagination *PaginationResponse
-}
 
 // CreateReview creates a new review
-func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewRequest) (*CreateReviewResponse, error) {
+func (s *ReviewService) CreateReview(ctx context.Context, req *reviewv1.CreateReviewRequest) (*reviewv1.CreateReviewResponse, error) {
 	// Validate request
-	if req.SpotID == "" {
+	if req.GetSpotId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "spot_id is required")
 	}
-	if req.Rating < 1 || req.Rating > 5 {
+	if req.GetRating() < 1 || req.GetRating() > 5 {
 		return nil, status.Error(codes.InvalidArgument, "rating must be between 1 and 5")
 	}
 
@@ -100,7 +54,7 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 	// Check if user already reviewed this spot
 	_, err := s.queries.GetReviewByUserAndSpot(ctx, database.GetReviewByUserAndSpotParams{
 		UserID: sql.NullString{String: userID, Valid: true},
-		SpotID: req.SpotID,
+		SpotID: req.GetSpotId(),
 	})
 	if err == nil {
 		// User already reviewed this spot, return error
@@ -113,26 +67,26 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 	reviewID := uuid.New().String()
 
 	// Convert rating aspects to JSON
-	ratingAspectsJSON, err := json.Marshal(req.RatingAspects)
+	ratingAspectsJSON, err := json.Marshal(req.GetRatingAspects())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to marshal rating aspects")
 	}
-	if req.RatingAspects == nil {
+	if req.GetRatingAspects() == nil {
 		ratingAspectsJSON = []byte("{}")
 	}
 
 	// Convert comment to nullable string
 	var comment sql.NullString
-	if req.Comment != "" {
-		comment = sql.NullString{String: req.Comment, Valid: true}
+	if req.GetComment() != "" {
+		comment = sql.NullString{String: req.GetComment(), Valid: true}
 	}
 
 	// Create review in database
 	err = s.queries.CreateReview(ctx, database.CreateReviewParams{
 		ID:            reviewID,
-		SpotID:        req.SpotID,
+		SpotID:        req.GetSpotId(),
 		UserID:        sql.NullString{String: userID, Valid: true},
-		Rating:        req.Rating,
+		Rating:        req.GetRating(),
 		Comment:       comment,
 		RatingAspects: ratingAspectsJSON,
 	})
@@ -149,7 +103,7 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 			// Create timeout context for each attempt
 			ctx, cancel := context.WithTimeout(parentCtx, 30*time.Second)
 			
-			err := s.updateSpotRating(ctx, req.SpotID)
+			err := s.updateSpotRating(ctx, req.GetSpotId())
 			cancel()
 			
 			if err == nil {
@@ -159,16 +113,16 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 			
 			// Check if parent context was cancelled
 			if parentCtx.Err() != nil {
-				log.Printf("spot rating update cancelled for spot %s: %v", req.SpotID, parentCtx.Err())
+				log.Printf("spot rating update cancelled for spot %s: %v", req.GetSpotId(), parentCtx.Err())
 				return
 			}
 			
 			// Log the error
-			log.Printf("failed to update spot rating for spot %s (attempt %d/%d): %v", req.SpotID, attempt+1, maxRetries, err)
+			log.Printf("failed to update spot rating for spot %s (attempt %d/%d): %v", req.GetSpotId(), attempt+1, maxRetries, err)
 			
 			// If this was the last attempt, we're done
 			if attempt == maxRetries-1 {
-				log.Printf("exhausted all retry attempts for spot rating update for spot %s", req.SpotID)
+				log.Printf("exhausted all retry attempts for spot rating update for spot %s", req.GetSpotId())
 				return
 			}
 			
@@ -179,7 +133,7 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 			case <-time.After(delay + jitter):
 				// Continue to next retry
 			case <-parentCtx.Done():
-				log.Printf("spot rating update cancelled during backoff for spot %s: %v", req.SpotID, parentCtx.Err())
+				log.Printf("spot rating update cancelled during backoff for spot %s: %v", req.GetSpotId(), parentCtx.Err())
 				return
 			}
 		}
@@ -193,12 +147,12 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *CreateReviewReque
 
 	// Convert database review to gRPC response
 	review := s.convertDatabaseReviewToGRPC(dbReview)
-	return &CreateReviewResponse{Review: review}, nil
+	return &reviewv1.CreateReviewResponse{Review: review}, nil
 }
 
 // GetSpotReviews retrieves reviews for a specific spot
-func (s *ReviewService) GetSpotReviews(ctx context.Context, req *GetSpotReviewsRequest) (*GetSpotReviewsResponse, error) {
-	if req.SpotID == "" {
+func (s *ReviewService) GetSpotReviews(ctx context.Context, req *reviewv1.GetSpotReviewsRequest) (*reviewv1.GetSpotReviewsResponse, error) {
+	if req.GetSpotId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "spot_id is required")
 	}
 
@@ -216,14 +170,14 @@ func (s *ReviewService) GetSpotReviews(ctx context.Context, req *GetSpotReviewsR
 	offset := (page - 1) * pageSize
 
 	// Get total count of reviews for this spot
-	totalCount, err := s.queries.CountReviewsBySpot(ctx, req.SpotID)
+	totalCount, err := s.queries.CountReviewsBySpot(ctx, req.GetSpotId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to count reviews")
 	}
 
 	// Get reviews from database
 	dbReviews, err := s.queries.ListReviewsBySpot(ctx, database.ListReviewsBySpotParams{
-		SpotID: req.SpotID,
+		SpotID: req.GetSpotId(),
 		Limit:  pageSize,
 		Offset: offset,
 	})
@@ -232,7 +186,7 @@ func (s *ReviewService) GetSpotReviews(ctx context.Context, req *GetSpotReviewsR
 	}
 
 	// Convert database reviews to gRPC format
-	reviews := make([]*Review, len(dbReviews))
+	reviews := make([]*reviewv1.Review, len(dbReviews))
 	for i, dbReview := range dbReviews {
 		reviews[i] = s.convertDatabaseReviewRowToGRPC(dbReview)
 	}
@@ -241,7 +195,7 @@ func (s *ReviewService) GetSpotReviews(ctx context.Context, req *GetSpotReviewsR
 	totalPages := (int32(totalCount) + pageSize - 1) / pageSize
 
 	// Create pagination response
-	pagination := &PaginationResponse{
+	pagination := &commonv1.PaginationResponse{
 		TotalCount: int32(totalCount),
 		Page:       page,
 		PageSize:   pageSize,
@@ -249,12 +203,12 @@ func (s *ReviewService) GetSpotReviews(ctx context.Context, req *GetSpotReviewsR
 	}
 
 	// Get rating statistics
-	statistics, err := s.getSpotStatistics(ctx, req.SpotID)
+	statistics, err := s.getSpotStatistics(ctx, req.GetSpotId())
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to get spot statistics")
 	}
 
-	return &GetSpotReviewsResponse{
+	return &reviewv1.GetSpotReviewsResponse{
 		Reviews:    reviews,
 		Pagination: pagination,
 		Statistics: statistics,
@@ -262,8 +216,8 @@ func (s *ReviewService) GetSpotReviews(ctx context.Context, req *GetSpotReviewsR
 }
 
 // GetUserReviews retrieves reviews by a specific user
-func (s *ReviewService) GetUserReviews(ctx context.Context, req *GetUserReviewsRequest) (*GetUserReviewsResponse, error) {
-	if req.UserID == "" {
+func (s *ReviewService) GetUserReviews(ctx context.Context, req *reviewv1.GetUserReviewsRequest) (*reviewv1.GetUserReviewsResponse, error) {
+	if req.GetUserId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "user_id is required")
 	}
 
@@ -281,14 +235,14 @@ func (s *ReviewService) GetUserReviews(ctx context.Context, req *GetUserReviewsR
 	offset := (page - 1) * pageSize
 
 	// Get total count of reviews by this user
-	totalCount, err := s.queries.CountReviewsByUser(ctx, sql.NullString{String: req.UserID, Valid: true})
+	totalCount, err := s.queries.CountReviewsByUser(ctx, sql.NullString{String: req.GetUserId(), Valid: true})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to count user reviews")
 	}
 
 	// Get reviews from database
 	dbReviews, err := s.queries.ListReviewsByUser(ctx, database.ListReviewsByUserParams{
-		UserID: sql.NullString{String: req.UserID, Valid: true},
+		UserID: sql.NullString{String: req.GetUserId(), Valid: true},
 		Limit:  pageSize,
 		Offset: offset,
 	})
@@ -297,7 +251,7 @@ func (s *ReviewService) GetUserReviews(ctx context.Context, req *GetUserReviewsR
 	}
 
 	// Convert database reviews to gRPC format
-	reviews := make([]*Review, len(dbReviews))
+	reviews := make([]*reviewv1.Review, len(dbReviews))
 	for i, dbReview := range dbReviews {
 		reviews[i] = s.convertDatabaseUserReviewRowToGRPC(dbReview)
 	}
@@ -306,14 +260,14 @@ func (s *ReviewService) GetUserReviews(ctx context.Context, req *GetUserReviewsR
 	totalPages := (int32(totalCount) + pageSize - 1) / pageSize
 
 	// Create pagination response
-	pagination := &PaginationResponse{
+	pagination := &commonv1.PaginationResponse{
 		TotalCount: int32(totalCount),
 		Page:       page,
 		PageSize:   pageSize,
 		TotalPages: totalPages,
 	}
 
-	return &GetUserReviewsResponse{
+	return &reviewv1.GetUserReviewsResponse{
 		Reviews:    reviews,
 		Pagination: pagination,
 	}, nil
@@ -353,49 +307,49 @@ func parseRatingAspects(rawData json.RawMessage) map[string]int32 {
 }
 
 // convertDatabaseReviewToGRPC converts database review model to gRPC review struct
-func (s *ReviewService) convertDatabaseReviewToGRPC(dbReview database.Review) *Review {
-	return &Review{
-		ID:            dbReview.ID,
-		SpotID:        dbReview.SpotID,
-		UserID:        dbReview.UserID.String,
+func (s *ReviewService) convertDatabaseReviewToGRPC(dbReview database.Review) *reviewv1.Review {
+	return &reviewv1.Review{
+		Id:            dbReview.ID,
+		SpotId:        dbReview.SpotID,
+		UserId:        dbReview.UserID.String,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
 		RatingAspects: parseRatingAspects(dbReview.RatingAspects),
-		CreatedAt:     dbReview.CreatedAt,
-		UpdatedAt:     dbReview.UpdatedAt,
+		CreatedAt:     timestamppb.New(dbReview.CreatedAt),
+		UpdatedAt:     timestamppb.New(dbReview.UpdatedAt),
 	}
 }
 
 // convertDatabaseReviewRowToGRPC converts database review row (with user info) to gRPC review struct
-func (s *ReviewService) convertDatabaseReviewRowToGRPC(dbReview database.ListReviewsBySpotRow) *Review {
-	return &Review{
-		ID:            dbReview.ID,
-		SpotID:        dbReview.SpotID,
-		UserID:        dbReview.UserID.String,
+func (s *ReviewService) convertDatabaseReviewRowToGRPC(dbReview database.ListReviewsBySpotRow) *reviewv1.Review {
+	return &reviewv1.Review{
+		Id:            dbReview.ID,
+		SpotId:        dbReview.SpotID,
+		UserId:        dbReview.UserID.String,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
 		RatingAspects: parseRatingAspects(dbReview.RatingAspects),
-		CreatedAt:     dbReview.CreatedAt,
-		UpdatedAt:     dbReview.UpdatedAt,
+		CreatedAt:     timestamppb.New(dbReview.CreatedAt),
+		UpdatedAt:     timestamppb.New(dbReview.UpdatedAt),
 	}
 }
 
 // convertDatabaseUserReviewRowToGRPC converts database user review row (with spot info) to gRPC review struct
-func (s *ReviewService) convertDatabaseUserReviewRowToGRPC(dbReview database.ListReviewsByUserRow) *Review {
-	return &Review{
-		ID:            dbReview.ID,
-		SpotID:        dbReview.SpotID,
-		UserID:        dbReview.UserID.String,
+func (s *ReviewService) convertDatabaseUserReviewRowToGRPC(dbReview database.ListReviewsByUserRow) *reviewv1.Review {
+	return &reviewv1.Review{
+		Id:            dbReview.ID,
+		SpotId:        dbReview.SpotID,
+		UserId:        dbReview.UserID.String,
 		Rating:        dbReview.Rating,
 		Comment:       dbReview.Comment.String,
 		RatingAspects: parseRatingAspects(dbReview.RatingAspects),
-		CreatedAt:     dbReview.CreatedAt,
-		UpdatedAt:     dbReview.UpdatedAt,
+		CreatedAt:     timestamppb.New(dbReview.CreatedAt),
+		UpdatedAt:     timestamppb.New(dbReview.UpdatedAt),
 	}
 }
 
 // getSpotStatistics retrieves rating statistics for a spot
-func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*ReviewStatistics, error) {
+func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*reviewv1.ReviewStatistics, error) {
 	stats, err := s.queries.GetSpotRatingStats(ctx, spotID)
 	if err != nil {
 		return nil, err
@@ -406,7 +360,7 @@ func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*
 		averageRating = avgRating
 	}
 
-	return &ReviewStatistics{
+	return &reviewv1.ReviewStatistics{
 		AverageRating: averageRating,
 		TotalCount:    int32(stats.ReviewCount),
 		RatingDistribution: map[int32]int32{

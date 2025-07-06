@@ -3,13 +3,12 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	"bocchi/api/application/clients"
 	"bocchi/api/pkg/auth"
-	grpcSvc "bocchi/api/infrastructure/grpc"
+	userv1 "bocchi/api/gen/user/v1"
 )
 
 
@@ -33,86 +32,46 @@ type GetUserInput struct {
 	ID string `path:"id" doc:"User ID"`
 }
 
-// GetUserOutput represents the response for getting a user
+// GetUserOutput represents the response for getting a user (using protobuf User type)
 type GetUserOutput struct {
-	Body struct {
-		ID             string                 `json:"id" doc:"User ID"`
-		Email          string                 `json:"email" doc:"User email"`
-		DisplayName    string                 `json:"display_name" doc:"User display name"`
-		AvatarUrl      string                 `json:"avatar_url,omitempty" doc:"User avatar URL"`
-		AuthProvider   string                 `json:"auth_provider" doc:"Authentication provider"`
-		AuthProviderID string                 `json:"auth_provider_id" doc:"Authentication provider ID"`
-		Preferences    map[string]interface{} `json:"preferences,omitempty" doc:"User preferences"`
-		CreatedAt      time.Time              `json:"created_at" doc:"Creation timestamp"`
-		UpdatedAt      time.Time              `json:"updated_at" doc:"Last update timestamp"`
-	}
+	Body *userv1.User `json:"user" doc:"User data"`
 }
 
 // GetCurrentUserInput represents the request to get current user info
 type GetCurrentUserInput struct{}
 
-// GetCurrentUserOutput represents the response for getting current user
+// GetCurrentUserOutput represents the response for getting current user (using protobuf User type)
 type GetCurrentUserOutput struct {
-	Body struct {
-		ID             string                 `json:"id" doc:"User ID"`
-		Email          string                 `json:"email" doc:"User email"`
-		DisplayName    string                 `json:"display_name" doc:"User display name"`
-		AvatarUrl      string                 `json:"avatar_url,omitempty" doc:"User avatar URL"`
-		AuthProvider   string                 `json:"auth_provider" doc:"Authentication provider"`
-		AuthProviderID string                 `json:"auth_provider_id" doc:"Authentication provider ID"`
-		Preferences    map[string]interface{} `json:"preferences,omitempty" doc:"User preferences"`
-		CreatedAt      time.Time              `json:"created_at" doc:"Creation timestamp"`
-		UpdatedAt      time.Time              `json:"updated_at" doc:"Last update timestamp"`
-	}
+	Body *userv1.User `json:"user" doc:"User data"`
 }
 
 // UpdateUserInput represents the request to update a user
 type UpdateUserInput struct {
 	ID string `path:"id" doc:"User ID"`
 	Body struct {
-		DisplayName string                 `json:"display_name,omitempty" minLength:"1" maxLength:"255" doc:"User display name"`
-		AvatarUrl   string                 `json:"avatar_url,omitempty" maxLength:"500" doc:"User avatar URL"`
-		Preferences map[string]interface{} `json:"preferences,omitempty" doc:"User preferences"`
+		DisplayName string `json:"display_name,omitempty" minLength:"1" maxLength:"255" doc:"User display name"`
+		AvatarUrl   string `json:"avatar_url,omitempty" maxLength:"500" doc:"User avatar URL"`
+		Preferences string `json:"preferences,omitempty" doc:"User preferences as JSON string"`
 	}
 }
 
-// UpdateUserOutput represents the response for updating a user
+// UpdateUserOutput represents the response for updating a user (using protobuf User type)
 type UpdateUserOutput struct {
-	Body struct {
-		ID             string                 `json:"id" doc:"User ID"`
-		Email          string                 `json:"email" doc:"User email"`
-		DisplayName    string                 `json:"display_name" doc:"User display name"`
-		AvatarUrl      string                 `json:"avatar_url,omitempty" doc:"User avatar URL"`
-		AuthProvider   string                 `json:"auth_provider" doc:"Authentication provider"`
-		AuthProviderID string                 `json:"auth_provider_id" doc:"Authentication provider ID"`
-		Preferences    map[string]interface{} `json:"preferences,omitempty" doc:"User preferences"`
-		CreatedAt      time.Time              `json:"created_at" doc:"Creation timestamp"`
-		UpdatedAt      time.Time              `json:"updated_at" doc:"Last update timestamp"`
-	}
+	Body *userv1.User `json:"user" doc:"User data"`
 }
 
 // UpdateCurrentUserInput represents the request to update current user
 type UpdateCurrentUserInput struct {
 	Body struct {
-		DisplayName string                 `json:"display_name,omitempty" minLength:"1" maxLength:"255" doc:"User display name"`
-		AvatarUrl   string                 `json:"avatar_url,omitempty" maxLength:"500" doc:"User avatar URL"`
-		Preferences map[string]interface{} `json:"preferences,omitempty" doc:"User preferences"`
+		DisplayName string `json:"display_name,omitempty" minLength:"1" maxLength:"255" doc:"User display name"`
+		AvatarUrl   string `json:"avatar_url,omitempty" maxLength:"500" doc:"User avatar URL"`
+		Preferences string `json:"preferences,omitempty" doc:"User preferences as JSON string"`
 	}
 }
 
-// UpdateCurrentUserOutput represents the response for updating current user
+// UpdateCurrentUserOutput represents the response for updating current user (using protobuf User type)
 type UpdateCurrentUserOutput struct {
-	Body struct {
-		ID             string                 `json:"id" doc:"User ID"`
-		Email          string                 `json:"email" doc:"User email"`
-		DisplayName    string                 `json:"display_name" doc:"User display name"`
-		AvatarUrl      string                 `json:"avatar_url,omitempty" doc:"User avatar URL"`
-		AuthProvider   string                 `json:"auth_provider" doc:"Authentication provider"`
-		AuthProviderID string                 `json:"auth_provider_id" doc:"Authentication provider ID"`
-		Preferences    map[string]interface{} `json:"preferences,omitempty" doc:"User preferences"`
-		CreatedAt      time.Time              `json:"created_at" doc:"Creation timestamp"`
-		UpdatedAt      time.Time              `json:"updated_at" doc:"Last update timestamp"`
-	}
+	Body *userv1.User `json:"user" doc:"User data"`
 }
 
 // DeleteCurrentUserInput represents the request to delete current user
@@ -195,24 +154,22 @@ func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.
 // GetUser gets a user by ID (public info only)
 func (h *UserHandler) GetUser(ctx context.Context, input *GetUserInput) (*GetUserOutput, error) {
 	// Call gRPC service
-	grpcResp, err := h.userClient.GetUser(ctx, &grpcSvc.GetUserRequest{
-		ID: input.ID,
+	grpcResp, err := h.userClient.GetUser(ctx, &userv1.GetUserRequest{
+		Id: input.ID,
 	})
 	if err != nil {
 		return nil, grpcToHTTPError(err, "failed to get user")
 	}
 
-	// Convert gRPC response to HTTP response (public info only)
-	resp := &GetUserOutput{}
-	resp.Body.ID = grpcResp.User.ID
-	resp.Body.DisplayName = grpcResp.User.DisplayName
-	resp.Body.AvatarUrl = grpcResp.User.AvatarUrl
-	resp.Body.CreatedAt = grpcResp.User.CreatedAt
+	// Create public user info (remove sensitive data)
+	publicUser := &userv1.User{
+		Id:          grpcResp.User.Id,
+		DisplayName: grpcResp.User.DisplayName,
+		AvatarUrl:   grpcResp.User.AvatarUrl,
+		CreatedAt:   grpcResp.User.CreatedAt,
+	}
 
-	// Don't expose sensitive information in public endpoint
-	// Email, AuthProvider, AuthProviderID, and Preferences are private
-
-	return resp, nil
+	return &GetUserOutput{Body: publicUser}, nil
 }
 
 // GetCurrentUser gets the current authenticated user
@@ -224,26 +181,15 @@ func (h *UserHandler) GetCurrentUser(ctx context.Context, input *GetCurrentUserI
 	}
 
 	// Call gRPC service
-	grpcResp, err := h.userClient.GetUser(ctx, &grpcSvc.GetUserRequest{
-		ID: userID,
+	grpcResp, err := h.userClient.GetUser(ctx, &userv1.GetUserRequest{
+		Id: userID,
 	})
 	if err != nil {
 		return nil, grpcToHTTPError(err, "failed to get current user")
 	}
 
-	// Convert gRPC response to HTTP response (full info for authenticated user)
-	resp := &GetCurrentUserOutput{}
-	resp.Body.ID = grpcResp.User.ID
-	resp.Body.Email = grpcResp.User.Email
-	resp.Body.DisplayName = grpcResp.User.DisplayName
-	resp.Body.AvatarUrl = grpcResp.User.AvatarUrl
-	resp.Body.AuthProvider = grpcResp.User.AuthProvider
-	resp.Body.AuthProviderID = grpcResp.User.AuthProviderID
-	resp.Body.Preferences = grpcResp.User.Preferences
-	resp.Body.CreatedAt = grpcResp.User.CreatedAt
-	resp.Body.UpdatedAt = grpcResp.User.UpdatedAt
-
-	return resp, nil
+	// Return full user info for authenticated user (protobuf User)
+	return &GetCurrentUserOutput{Body: grpcResp.User}, nil
 }
 
 // UpdateUser updates a user by ID (admin or self only)
@@ -261,8 +207,8 @@ func (h *UserHandler) UpdateUser(ctx context.Context, input *UpdateUserInput) (*
 	}
 
 	// Call gRPC service
-	grpcResp, err := h.userClient.UpdateUser(ctx, &grpcSvc.UpdateUserRequest{
-		ID:          input.ID,
+	grpcResp, err := h.userClient.UpdateUser(ctx, &userv1.UpdateUserRequest{
+		Id:          input.ID,
 		DisplayName: input.Body.DisplayName,
 		AvatarUrl:   input.Body.AvatarUrl,
 		Preferences: input.Body.Preferences,
@@ -271,19 +217,8 @@ func (h *UserHandler) UpdateUser(ctx context.Context, input *UpdateUserInput) (*
 		return nil, grpcToHTTPError(err, "failed to update user")
 	}
 
-	// Convert gRPC response to HTTP response
-	resp := &UpdateUserOutput{}
-	resp.Body.ID = grpcResp.User.ID
-	resp.Body.Email = grpcResp.User.Email
-	resp.Body.DisplayName = grpcResp.User.DisplayName
-	resp.Body.AvatarUrl = grpcResp.User.AvatarUrl
-	resp.Body.AuthProvider = grpcResp.User.AuthProvider
-	resp.Body.AuthProviderID = grpcResp.User.AuthProviderID
-	resp.Body.Preferences = grpcResp.User.Preferences
-	resp.Body.CreatedAt = grpcResp.User.CreatedAt
-	resp.Body.UpdatedAt = grpcResp.User.UpdatedAt
-
-	return resp, nil
+	// Return updated user (protobuf User)
+	return &UpdateUserOutput{Body: grpcResp.User}, nil
 }
 
 // UpdateCurrentUser updates the current authenticated user
@@ -295,8 +230,8 @@ func (h *UserHandler) UpdateCurrentUser(ctx context.Context, input *UpdateCurren
 	}
 
 	// Call gRPC service
-	grpcResp, err := h.userClient.UpdateUser(ctx, &grpcSvc.UpdateUserRequest{
-		ID:          userID,
+	grpcResp, err := h.userClient.UpdateUser(ctx, &userv1.UpdateUserRequest{
+		Id:          userID,
 		DisplayName: input.Body.DisplayName,
 		AvatarUrl:   input.Body.AvatarUrl,
 		Preferences: input.Body.Preferences,
@@ -305,19 +240,8 @@ func (h *UserHandler) UpdateCurrentUser(ctx context.Context, input *UpdateCurren
 		return nil, grpcToHTTPError(err, "failed to update current user")
 	}
 
-	// Convert gRPC response to HTTP response
-	resp := &UpdateCurrentUserOutput{}
-	resp.Body.ID = grpcResp.User.ID
-	resp.Body.Email = grpcResp.User.Email
-	resp.Body.DisplayName = grpcResp.User.DisplayName
-	resp.Body.AvatarUrl = grpcResp.User.AvatarUrl
-	resp.Body.AuthProvider = grpcResp.User.AuthProvider
-	resp.Body.AuthProviderID = grpcResp.User.AuthProviderID
-	resp.Body.Preferences = grpcResp.User.Preferences
-	resp.Body.CreatedAt = grpcResp.User.CreatedAt
-	resp.Body.UpdatedAt = grpcResp.User.UpdatedAt
-
-	return resp, nil
+	// Return updated user (protobuf User)
+	return &UpdateCurrentUserOutput{Body: grpcResp.User}, nil
 }
 
 // DeleteCurrentUser deletes the current authenticated user
@@ -329,8 +253,8 @@ func (h *UserHandler) DeleteCurrentUser(ctx context.Context, input *DeleteCurren
 	}
 
 	// Call gRPC service to delete the user
-	_, err := h.userClient.DeleteUser(ctx, &grpcSvc.DeleteUserRequest{
-		ID: userID,
+	_, err := h.userClient.DeleteUser(ctx, &userv1.DeleteUserRequest{
+		Id: userID,
 	})
 	if err != nil {
 		return nil, grpcToHTTPError(err, "failed to delete user")

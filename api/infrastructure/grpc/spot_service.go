@@ -11,7 +11,10 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
+	commonv1 "bocchi/api/gen/common/v1"
+	spotv1 "bocchi/api/gen/spot/v1"
 	"bocchi/api/infrastructure/database"
 	"bocchi/api/pkg/logger"
 )
@@ -28,86 +31,21 @@ func NewSpotService(db *sql.DB) *SpotService {
 	}
 }
 
-// Temporary structs until protobuf generates them
-type Coordinates struct {
-	Latitude  float64
-	Longitude float64
-}
-
-type Spot struct {
-	ID            string
-	Name          string
-	NameI18n      map[string]string
-	Coordinates   *Coordinates
-	Category      string
-	Address       string
-	AddressI18n   map[string]string
-	CountryCode   string
-	AverageRating float64
-	ReviewCount   int32
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-}
-
-type CreateSpotRequest struct {
-	Name        string
-	NameI18n    map[string]string
-	Coordinates *Coordinates
-	Category    string
-	Address     string
-	AddressI18n map[string]string
-	CountryCode string
-}
-
-type CreateSpotResponse struct {
-	Spot *Spot
-}
-
-type GetSpotRequest struct {
-	ID string
-}
-
-type GetSpotResponse struct {
-	Spot *Spot
-}
-
-type PaginationRequest struct {
-	Page     int32
-	PageSize int32
-}
-
-type PaginationResponse struct {
-	TotalCount int32
-	Page       int32
-	PageSize   int32
-	TotalPages int32
-}
-
-type ListSpotsRequest struct {
-	Pagination  *PaginationRequest
-	Center      *Coordinates
-	RadiusKm    float64
-	Category    string
-	CountryCode string
-}
-
-type ListSpotsResponse struct {
-	Spots      []*Spot
-	Pagination *PaginationResponse
-}
-
-type SearchSpotsRequest struct {
-	Query      string
-	Language   string // Simplified language handling
-	Center     *Coordinates
-	RadiusKm   float64
-	Pagination *PaginationRequest
-}
-
-type SearchSpotsResponse struct {
-	Spots      []*Spot
-	Pagination *PaginationResponse
-}
+// Use Protocol Buffers generated types
+type (
+	Coordinates        = commonv1.Coordinates
+	PaginationRequest  = commonv1.PaginationRequest
+	PaginationResponse = commonv1.PaginationResponse
+	Spot               = spotv1.Spot
+	CreateSpotRequest  = spotv1.CreateSpotRequest
+	CreateSpotResponse = spotv1.CreateSpotResponse
+	GetSpotRequest     = spotv1.GetSpotRequest
+	GetSpotResponse    = spotv1.GetSpotResponse
+	ListSpotsRequest   = spotv1.ListSpotsRequest
+	ListSpotsResponse  = spotv1.ListSpotsResponse
+	SearchSpotsRequest = spotv1.SearchSpotsRequest
+	SearchSpotsResponse = spotv1.SearchSpotsResponse
+)
 
 // CreateSpot creates a new spot
 func (s *SpotService) CreateSpot(ctx context.Context, req *CreateSpotRequest) (*CreateSpotResponse, error) {
@@ -137,22 +75,22 @@ func (s *SpotService) CreateSpot(ctx context.Context, req *CreateSpotRequest) (*
 
 	// Convert i18n maps to JSON
 	var nameI18nJSON []byte
-	if req.NameI18n == nil {
+	if req.NameI18N == nil {
 		nameI18nJSON = []byte("{}")
 	} else {
 		var err error
-		nameI18nJSON, err = json.Marshal(req.NameI18n)
+		nameI18nJSON, err = json.Marshal(req.NameI18N)
 		if err != nil {
 			return nil, status.Error(codes.Internal, "failed to marshal name i18n")
 		}
 	}
 
 	var addressI18nJSON []byte
-	if req.AddressI18n == nil {
+	if req.AddressI18N == nil {
 		addressI18nJSON = []byte("{}")
 	} else {
 		var err error
-		addressI18nJSON, err = json.Marshal(req.AddressI18n)
+		addressI18nJSON, err = json.Marshal(req.AddressI18N)
 		if err != nil {
 			return nil, status.Error(codes.Internal, "failed to marshal address i18n")
 		}
@@ -187,12 +125,12 @@ func (s *SpotService) CreateSpot(ctx context.Context, req *CreateSpotRequest) (*
 
 // GetSpot retrieves a spot by ID
 func (s *SpotService) GetSpot(ctx context.Context, req *GetSpotRequest) (*GetSpotResponse, error) {
-	if req.ID == "" {
+	if req.Id == "" {
 		return nil, status.Error(codes.InvalidArgument, "id is required")
 	}
 
 	// Get spot from database
-	dbSpot, err := s.queries.GetSpotByID(ctx, req.ID)
+	dbSpot, err := s.queries.GetSpotByID(ctx, req.Id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, status.Error(codes.NotFound, "spot not found")
@@ -210,14 +148,14 @@ func (s *SpotService) ListSpots(ctx context.Context, req *ListSpotsRequest) (*Li
 	// TODO: Implement actual listing logic
 	// For now, return dummy data
 	spot := &Spot{
-		ID:            "spot_1",
+		Id:            "spot_1",
 		Name:          "Sample Cafe",
 		Coordinates:   &Coordinates{Latitude: 35.6762, Longitude: 139.6503},
 		Category:      "cafe",
 		AverageRating: 4.5,
 		ReviewCount:   10,
-		CreatedAt:     time.Now().Add(-24 * time.Hour),
-		UpdatedAt:     time.Now(),
+		CreatedAt:     timestamppb.New(time.Now().Add(-24 * time.Hour)),
+		UpdatedAt:     timestamppb.New(time.Now()),
 	}
 
 	pagination := &PaginationResponse{
@@ -246,14 +184,14 @@ func (s *SpotService) SearchSpots(ctx context.Context, req *SearchSpotsRequest) 
 	// TODO: Implement actual search logic
 	// For now, return dummy data similar to ListSpots
 	spot := &Spot{
-		ID:            "spot_search_1",
+		Id:            "spot_search_1",
 		Name:          fmt.Sprintf("Search Result for: %s", req.Query),
 		Coordinates:   &Coordinates{Latitude: 35.6762, Longitude: 139.6503},
 		Category:      "cafe",
 		AverageRating: 4.5,
 		ReviewCount:   10,
-		CreatedAt:     time.Now().Add(-24 * time.Hour),
-		UpdatedAt:     time.Now(),
+		CreatedAt:     timestamppb.New(time.Now().Add(-24 * time.Hour)),
+		UpdatedAt:     timestamppb.New(time.Now()),
 	}
 
 	pagination := &PaginationResponse{
@@ -327,20 +265,20 @@ func (s *SpotService) convertDatabaseSpotToGRPC(dbSpot database.Spot) *Spot {
 	}
 
 	return &Spot{
-		ID:   dbSpot.ID,
+		Id:   dbSpot.ID,
 		Name: dbSpot.Name,
-		NameI18n: nameI18n,
+		NameI18N: nameI18n,
 		Coordinates: &Coordinates{
 			Latitude:  latitude,
 			Longitude: longitude,
 		},
 		Category:      dbSpot.Category,
 		Address:       dbSpot.Address,
-		AddressI18n:   addressI18n,
+		AddressI18N:   addressI18n,
 		CountryCode:   dbSpot.CountryCode,
 		AverageRating: averageRating,
 		ReviewCount:   dbSpot.ReviewCount,
-		CreatedAt:     dbSpot.CreatedAt,
-		UpdatedAt:     dbSpot.UpdatedAt,
+		CreatedAt:     timestamppb.New(dbSpot.CreatedAt),
+		UpdatedAt:     timestamppb.New(dbSpot.UpdatedAt),
 	}
 }

@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"bocchi/api/gen/user/v1"
 	"bocchi/api/infrastructure/database"
 	"bocchi/api/pkg/errors"
 	"bocchi/api/pkg/logger"
@@ -27,75 +28,29 @@ func NewUserService(db *sql.DB) *UserService {
 	}
 }
 
-// Temporary structs until protobuf generates them
-type User struct {
-	ID             string            `json:"id"`
-	Email          string            `json:"email"`
-	DisplayName    string            `json:"display_name"`
-	AvatarUrl      string            `json:"avatar_url,omitempty"`
-	AuthProvider   string            `json:"auth_provider"`
-	AuthProviderID string            `json:"auth_provider_id"`
-	Preferences    map[string]interface{} `json:"preferences,omitempty"`
-	CreatedAt      time.Time         `json:"created_at"`
-	UpdatedAt      time.Time         `json:"updated_at"`
-}
-
-type GetUserRequest struct {
-	ID string `json:"id"`
-}
-
-type GetUserResponse struct {
-	User *User `json:"user"`
-}
-
-type GetUserByEmailRequest struct {
-	Email string `json:"email"`
-}
-
-type GetUserByEmailResponse struct {
-	User *User `json:"user"`
-}
-
-type CreateUserRequest struct {
-	Email          string                 `json:"email"`
-	DisplayName    string                 `json:"display_name"`
-	AvatarUrl      string                 `json:"avatar_url,omitempty"`
-	AuthProvider   string                 `json:"auth_provider"`
-	AuthProviderID string                 `json:"auth_provider_id"`
-	Preferences    map[string]interface{} `json:"preferences,omitempty"`
-}
-
-type CreateUserResponse struct {
-	User *User `json:"user"`
-}
-
-type UpdateUserRequest struct {
-	ID          string                 `json:"id"`
-	DisplayName string                 `json:"display_name,omitempty"`
-	AvatarUrl   string                 `json:"avatar_url,omitempty"`
-	Preferences map[string]interface{} `json:"preferences,omitempty"`
-}
-
-type UpdateUserResponse struct {
-	User *User `json:"user"`
-}
-
-type DeleteUserRequest struct {
-	ID string `json:"id"`
-}
-
-type DeleteUserResponse struct {
-	Success bool `json:"success"`
-}
+// Use Protocol Buffers generated types
+type (
+	User                   = userv1.User
+	GetUserRequest         = userv1.GetUserRequest
+	GetUserResponse        = userv1.GetUserResponse
+	GetUserByEmailRequest  = userv1.GetUserByEmailRequest
+	GetUserByEmailResponse = userv1.GetUserByEmailResponse
+	CreateUserRequest      = userv1.CreateUserRequest
+	CreateUserResponse     = userv1.CreateUserResponse
+	UpdateUserRequest      = userv1.UpdateUserRequest
+	UpdateUserResponse     = userv1.UpdateUserResponse
+	DeleteUserRequest      = userv1.DeleteUserRequest
+	DeleteUserResponse     = userv1.DeleteUserResponse
+)
 
 // GetUser retrieves a user by ID
 func (s *UserService) GetUser(ctx context.Context, req *GetUserRequest) (*GetUserResponse, error) {
-	if req.ID == "" {
+	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "user ID is required")
 	}
 
 	// Get user from database
-	dbUser, err := s.queries.GetUserByID(ctx, req.ID)
+	dbUser, err := s.queries.GetUserByID(ctx, req.GetId())
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, status.Error(codes.NotFound, "user not found")
@@ -111,12 +66,12 @@ func (s *UserService) GetUser(ctx context.Context, req *GetUserRequest) (*GetUse
 
 // GetUserByEmail retrieves a user by email
 func (s *UserService) GetUserByEmail(ctx context.Context, req *GetUserByEmailRequest) (*GetUserByEmailResponse, error) {
-	if req.Email == "" {
+	if req.GetEmail() == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
 
 	// Get user from database
-	dbUser, err := s.queries.GetUserByEmail(ctx, req.Email)
+	dbUser, err := s.queries.GetUserByEmail(ctx, req.GetEmail())
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, status.Error(codes.NotFound, "user not found")
@@ -133,21 +88,21 @@ func (s *UserService) GetUserByEmail(ctx context.Context, req *GetUserByEmailReq
 // CreateUser creates a new user
 func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*CreateUserResponse, error) {
 	// Validate request
-	if req.Email == "" {
+	if req.GetEmail() == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
-	if req.DisplayName == "" {
+	if req.GetDisplayName() == "" {
 		return nil, status.Error(codes.InvalidArgument, "display name is required")
 	}
-	if req.AuthProvider == "" {
+	if req.GetAuthProvider() == "" {
 		return nil, status.Error(codes.InvalidArgument, "auth provider is required")
 	}
-	if req.AuthProviderID == "" {
+	if req.GetAuthProviderId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "auth provider ID is required")
 	}
 
 	// Check if user already exists
-	_, err := s.queries.GetUserByEmail(ctx, req.Email)
+	_, err := s.queries.GetUserByEmail(ctx, req.GetEmail())
 	if err == nil {
 		return nil, status.Error(codes.AlreadyExists, "user with this email already exists")
 	} else if err != sql.ErrNoRows {
@@ -158,24 +113,28 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 	// Generate UUID for new user
 	userID := uuid.New().String()
 
-	// Convert preferences to JSON
-	preferencesJSON, err := json.Marshal(req.Preferences)
-	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to marshal preferences")
-	}
-	if req.Preferences == nil {
+	// Convert preferences to JSON (for proto string field)
+	var preferencesJSON []byte
+	if req.GetPreferences() != "" {
+		// Validate that it's valid JSON
+		var temp interface{}
+		if err := json.Unmarshal([]byte(req.GetPreferences()), &temp); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "preferences must be valid JSON")
+		}
+		preferencesJSON = []byte(req.GetPreferences())
+	} else {
 		preferencesJSON = []byte("{}")
 	}
 
 	// Convert avatar URL to nullable string
 	var avatarUrl sql.NullString
-	if req.AvatarUrl != "" {
-		avatarUrl = sql.NullString{String: req.AvatarUrl, Valid: true}
+	if req.GetAvatarUrl() != "" {
+		avatarUrl = sql.NullString{String: req.GetAvatarUrl(), Valid: true}
 	}
 
 	// Validate auth provider
 	var authProvider string
-	switch req.AuthProvider {
+	switch req.GetAuthProvider() {
 	case "google":
 		authProvider = "google"
 	case "twitter":
@@ -189,12 +148,12 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 	// Create user in database
 	err = s.queries.CreateUser(ctx, database.CreateUserParams{
 		ID:            userID,
-		Email:         req.Email,
-		Name:          sql.NullString{String: req.DisplayName, Valid: true},
-		Nickname:      sql.NullString{String: req.DisplayName, Valid: true},
+		Email:         req.GetEmail(),
+		Name:          sql.NullString{String: req.GetDisplayName(), Valid: true},
+		Nickname:      sql.NullString{String: req.GetDisplayName(), Valid: true},
 		Picture:       avatarUrl,
 		Provider:      authProvider,
-		ProviderID:    req.AuthProviderID,
+		ProviderID:    req.GetAuthProviderId(),
 		EmailVerified: true,
 		Preferences:   preferencesJSON,
 	})
@@ -217,12 +176,12 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 
 // UpdateUser updates an existing user
 func (s *UserService) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*UpdateUserResponse, error) {
-	if req.ID == "" {
+	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "user ID is required")
 	}
 
 	// Get current user to verify it exists
-	_, err := s.queries.GetUserByID(ctx, req.ID)
+	_, err := s.queries.GetUserByID(ctx, req.GetId())
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, status.Error(codes.NotFound, "user not found")
@@ -232,14 +191,14 @@ func (s *UserService) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*
 	}
 
 	// Update avatar if provided
-	if req.AvatarUrl != "" {
+	if req.GetAvatarUrl() != "" {
 		var avatarUrl sql.NullString
-		if req.AvatarUrl != "" {
-			avatarUrl = sql.NullString{String: req.AvatarUrl, Valid: true}
+		if req.GetAvatarUrl() != "" {
+			avatarUrl = sql.NullString{String: req.GetAvatarUrl(), Valid: true}
 		}
 		
 		err = s.queries.UpdateUserAvatar(ctx, database.UpdateUserAvatarParams{
-			ID:      req.ID,
+			ID:      req.GetId(),
 			Picture: avatarUrl,
 		})
 		if err != nil {
@@ -249,15 +208,16 @@ func (s *UserService) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*
 	}
 
 	// Update preferences if provided
-	if req.Preferences != nil {
-		preferencesJSON, err := json.Marshal(req.Preferences)
-		if err != nil {
-			return nil, status.Error(codes.Internal, "failed to marshal preferences")
+	if req.GetPreferences() != "" {
+		// Validate that it's valid JSON
+		var temp interface{}
+		if err := json.Unmarshal([]byte(req.GetPreferences()), &temp); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "preferences must be valid JSON")
 		}
 
 		err = s.queries.UpdateUserPreferences(ctx, database.UpdateUserPreferencesParams{
-			ID:          req.ID,
-			Preferences: preferencesJSON,
+			ID:          req.GetId(),
+			Preferences: []byte(req.GetPreferences()),
 		})
 		if err != nil {
 			logger.ErrorWithContext(ctx, "Failed to update user preferences", err)
@@ -266,7 +226,7 @@ func (s *UserService) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*
 	}
 
 	// Retrieve the updated user
-	dbUser, err := s.queries.GetUserByID(ctx, req.ID)
+	dbUser, err := s.queries.GetUserByID(ctx, req.GetId())
 	if err != nil {
 		logger.ErrorWithContext(ctx, "Failed to retrieve updated user", err)
 		return nil, status.Error(codes.Internal, "failed to retrieve updated user")
@@ -279,7 +239,7 @@ func (s *UserService) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*
 
 // DeleteUser deletes a user (hard deletion)
 func (s *UserService) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*DeleteUserResponse, error) {
-	if req.ID == "" {
+	if req.GetId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "user ID is required")
 	}
 
@@ -290,13 +250,13 @@ func (s *UserService) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*
 	}
 
 	// Check if user is trying to delete themselves or has admin permissions
-	if authUserID != req.ID {
+	if authUserID != req.GetId() {
 		// TODO: Add admin permission check here
 		return nil, status.Error(codes.PermissionDenied, "insufficient permissions to delete user")
 	}
 
 	// Check if user exists
-	_, err := s.queries.GetUserByID(ctx, req.ID)
+	_, err := s.queries.GetUserByID(ctx, req.GetId())
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, status.Error(codes.NotFound, "user not found")
@@ -306,14 +266,14 @@ func (s *UserService) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*
 	}
 
 	// Delete user (CASCADE will handle related reviews)
-	err = s.queries.DeleteUser(ctx, req.ID)
+	err = s.queries.DeleteUser(ctx, req.GetId())
 	if err != nil {
 		logger.ErrorWithContext(ctx, "Failed to delete user", err)
 		return nil, status.Error(codes.Internal, "failed to delete user")
 	}
 
 	logger.InfoWithFields("User deleted successfully", map[string]interface{}{
-		"user_id":      req.ID,
+		"user_id":      req.GetId(),
 		"auth_user_id": authUserID,
 	})
 
@@ -322,25 +282,31 @@ func (s *UserService) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*
 
 // convertDatabaseUserToGRPC converts database user model to gRPC user struct
 func (s *UserService) convertDatabaseUserToGRPC(dbUser database.User) *User {
-	// Parse preferences JSON
-	var preferences map[string]interface{}
+	// Convert preferences to JSON string for proto
+	var preferencesStr string
 	if len(dbUser.Preferences) > 0 {
-		if err := json.Unmarshal(dbUser.Preferences, &preferences); err != nil {
+		// Validate JSON and pretty-print if needed
+		var temp interface{}
+		if err := json.Unmarshal(dbUser.Preferences, &temp); err != nil {
 			logger.Error("Failed to unmarshal user preferences", err)
-			preferences = make(map[string]interface{})
+			preferencesStr = "{}"
+		} else {
+			preferencesStr = string(dbUser.Preferences)
 		}
+	} else {
+		preferencesStr = "{}"
 	}
 
 	return &User{
-		ID:             dbUser.ID,
+		Id:             dbUser.ID,
 		Email:          dbUser.Email,
 		DisplayName:    dbUser.Name.String,
 		AvatarUrl:      dbUser.Picture.String,
 		AuthProvider:   dbUser.Provider,
-		AuthProviderID: dbUser.ProviderID,
-		Preferences:    preferences,
-		CreatedAt:      dbUser.CreatedAt,
-		UpdatedAt:      dbUser.UpdatedAt,
+		AuthProviderId: dbUser.ProviderID,
+		Preferences:    preferencesStr,
+		CreatedAt:      timestamppb.New(dbUser.CreatedAt),
+		UpdatedAt:      timestamppb.New(dbUser.UpdatedAt),
 	}
 }
 
