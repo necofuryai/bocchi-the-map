@@ -67,3 +67,4 @@ temp/
 
 # Claude Code
 .claude/sessions/
+.claude/settings.local.json
