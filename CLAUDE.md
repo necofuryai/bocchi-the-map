@@ -101,6 +101,13 @@ This project systematically manages knowledge through the following files:
 - Follow Onion Architecture with clear dependency boundaries
 - Prioritize security and performance in all implementations
 
+### Git & Commit Standards
+
+- **Commit Messages**: Use conventional commit format (feat:, fix:, chore:, etc.)
+- **No Auto-Signatures**: Do NOT include Claude Code attribution or co-authorship signatures in commit messages
+- **Clean History**: Keep commit messages concise and focused on the actual changes
+- **English Only**: All commit messages must be written in English
+
 ### Authentication & Security Standards
 
 - **Auth0 Integration**: Production-ready authentication with JWT validation
