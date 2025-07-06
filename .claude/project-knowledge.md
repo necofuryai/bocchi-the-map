@@ -178,6 +178,134 @@ func (e ValidationError) Error() string {
 }
 ```
 
+#### Authentication Middleware Pattern
+
+```go
+// Enhanced authentication middleware with token blacklisting
+type AuthMiddleware struct {
+    jwtValidator *JWTValidator
+    queries      *database.Queries
+    rateLimiter  *RateLimiter
+    logger       zerolog.Logger
+}
+
+// Middleware function with comprehensive security checks
+func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // 1. Extract and validate JWT token
+        token := extractTokenFromRequest(r)
+        claims, err := am.jwtValidator.ValidateToken(r.Context(), token)
+        if err != nil {
+            http.Error(w, "invalid token", http.StatusUnauthorized)
+            return
+        }
+        
+        // 2. Check token blacklist
+        if err := am.checkTokenBlacklist(r.Context(), claims.ID); err != nil {
+            http.Error(w, "token has been revoked", http.StatusUnauthorized)
+            return
+        }
+        
+        // 3. Add authentication context
+        ctx := am.addAuthContext(r.Context(), claims)
+        next.ServeHTTP(w, r.WithContext(ctx))
+    })
+}
+
+// Safe fail pattern for blacklist checking
+func (am *AuthMiddleware) checkTokenBlacklist(ctx context.Context, jti string) error {
+    if jti == "" {
+        return nil // No JTI means older token format, allow for backward compatibility
+    }
+    
+    isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, jti)
+    if err != nil {
+        // Log error but don't fail authentication - availability over security
+        am.logger.Warn("Blacklist check failed, allowing authentication", err)
+        return nil
+    }
+    
+    if isBlacklisted {
+        return errors.New("token has been revoked")
+    }
+    return nil
+}
+```
+
+#### Secure Account Deletion Pattern
+
+```go
+// Multi-step secure deletion with rollback capability
+func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
+    // 1. Verify user exists and get associated data
+    user, err := s.queries.GetUser(ctx, userID)
+    if err != nil {
+        return status.Error(codes.NotFound, "user not found")
+    }
+    
+    // 2. Begin transaction for atomic deletion
+    tx, err := s.db.BeginTx(ctx, nil)
+    if err != nil {
+        return status.Error(codes.Internal, "failed to begin transaction")
+    }
+    defer tx.Rollback()
+    
+    // 3. Delete user (CASCADE will handle related data)
+    if err := s.queries.WithTx(tx).DeleteUser(ctx, userID); err != nil {
+        return status.Error(codes.Internal, "failed to delete user")
+    }
+    
+    // 4. Commit transaction
+    if err := tx.Commit(); err != nil {
+        return status.Error(codes.Internal, "failed to commit deletion")
+    }
+    
+    // 5. Log deletion for audit trail
+    s.logger.InfoWithFields("User account deleted", map[string]interface{}{
+        "user_id": userID,
+        "email":   user.Email,
+    })
+    
+    return nil
+}
+```
+
+#### Context Management Pattern
+
+```go
+// Type-safe context key management
+type contextKey string
+
+const (
+    userIDKey    contextKey = "user_id"
+    jtiKey       contextKey = "jti"
+    tokenExpKey  contextKey = "token_exp"
+)
+
+// Context helper functions with type safety
+func WithUserID(ctx context.Context, userID string) context.Context {
+    return context.WithValue(ctx, userIDKey, userID)
+}
+
+func GetUserIDFromContext(ctx context.Context) string {
+    if userID, ok := ctx.Value(userIDKey).(string); ok {
+        return userID
+    }
+    return ""
+}
+
+func WithJTI(ctx context.Context, jti string) context.Context {
+    return context.WithValue(ctx, jtiKey, jti)
+}
+
+func GetJTIFromContext(ctx context.Context) string {
+    if jti, ok := ctx.Value(jtiKey).(string); ok {
+        return jti
+    }
+    return ""
+}
+```
+
 ### Frontend Patterns
 
 #### TDD+BDD Component Pattern
@@ -329,6 +457,46 @@ export const spotHandlers = [
 3. **Tight Coupling Between Layers**: Respect onion architecture dependencies
 4. **Inconsistent Error Handling**: Use structured error types consistently
 
+#### Authentication & Security Anti-Patterns
+
+5. **Storing JTI in Database Without Checking**: 
+   - ❌ Don't add tokens to blacklist without verifying they aren't already there
+   - ✅ Use proper unique constraints and handle duplicate key errors gracefully
+   
+6. **Failing Authentication on Database Errors**:
+   - ❌ Don't block all authentication when blacklist database is unavailable
+   - ✅ Implement graceful degradation - log errors but allow authentication
+   
+7. **Missing Token Context Information**:
+   - ❌ Don't store only user ID in request context
+   - ✅ Store JTI, expiration, and other token metadata for security operations
+   
+8. **Inconsistent Account Deletion Scope**:
+   - ❌ Don't leave orphaned data when deleting user accounts
+   - ✅ Use CASCADE constraints and verify all related data is cleaned up
+   
+9. **Hard Failure on Token Blacklisting**:
+   - ❌ Don't fail logout/deletion operations if blacklisting fails
+   - ✅ Log blacklist failures but complete the primary operation
+   
+10. **Missing Audit Trail for Security Operations**:
+    - ❌ Don't perform account deletion without logging
+    - ✅ Always log security-sensitive operations with sufficient context
+
+#### Context Management Anti-Patterns
+
+11. **String-based Context Keys**:
+    - ❌ `ctx.Value("user_id")`
+    - ✅ Use typed context keys: `ctx.Value(userIDKey)`
+    
+12. **Missing Context Value Type Assertions**:
+    - ❌ `userID := ctx.Value(userIDKey).(string)` (can panic)
+    - ✅ `userID, ok := ctx.Value(userIDKey).(string); if !ok { return "" }`
+    
+13. **Overloading Context with Non-Request Data**:
+    - ❌ Don't store application configuration in request context
+    - ✅ Only store request-scoped authentication and user data
+
 ### Frontend Anti-Patterns
 
 #### React Development Anti-Patterns
@@ -411,6 +579,126 @@ This project employs a sophisticated hybrid testing approach that combines the s
 - **Clean Implementation**: TDD ensures robust, testable code
 - **Comprehensive Coverage**: Both behavior and implementation are tested
 - **Maintainable**: Clear separation of concerns in test structure
+
+#### Security Feature Implementation Pattern
+
+When implementing security-critical features like authentication, token management, and account deletion, follow this specialized TDD+BDD approach:
+
+##### BDD Security Scenarios
+```gherkin
+Feature: Token Blacklist Management
+  Scenario: User logs out and token is blacklisted
+    Given a user is authenticated with a valid JWT
+    When the user logs out
+    Then the token should be added to blacklist
+    And subsequent requests with that token should be rejected
+
+Feature: Account Deletion Security
+  Scenario: User deletes account with data cleanup
+    Given a user is authenticated
+    When the user requests account deletion
+    Then the user data should be removed from database
+    And all user tokens should be blacklisted
+    And related content should be cleaned up via CASCADE
+```
+
+##### TDD Security Implementation
+```go
+// 1. Red Phase - Write failing test
+func TestAuthMiddleware_CheckTokenBlacklist(t *testing.T) {
+    tests := []struct {
+        name          string
+        jti           string
+        setupMock     func(*mocks.MockQuerier)
+        expectedError bool
+        errorMessage  string
+    }{
+        {
+            name: "revoked token should be rejected",
+            jti:  "test-jti-123",
+            setupMock: func(m *mocks.MockQuerier) {
+                m.EXPECT().IsTokenBlacklisted(gomock.Any(), "test-jti-123").Return(true, nil)
+            },
+            expectedError: true,
+            errorMessage:  "token has been revoked",
+        },
+        {
+            name: "database error should not block authentication",
+            jti:  "test-jti-456",
+            setupMock: func(m *mocks.MockQuerier) {
+                m.EXPECT().IsTokenBlacklisted(gomock.Any(), "test-jti-456").Return(false, errors.New("db error"))
+            },
+            expectedError: false, // Graceful degradation
+        },
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // Test implementation
+        })
+    }
+}
+
+// 2. Green Phase - Implement minimal code to pass
+func (am *AuthMiddleware) checkTokenBlacklist(ctx context.Context, jti string) error {
+    // Implementation that makes tests pass
+}
+
+// 3. Refactor Phase - Optimize and clean up
+func (am *AuthMiddleware) checkTokenBlacklist(ctx context.Context, jti string) error {
+    // Refactored implementation with proper error handling
+}
+```
+
+##### E2E Security Validation
+```go
+// BDD E2E test using Ginkgo
+var _ = Describe("Token Blacklist Security", func() {
+    Context("Given a user is authenticated", func() {
+        BeforeEach(func() {
+            // Setup authenticated user context
+            user := authHelper.CreateTestUser()
+            token = authHelper.GenerateTokenForUser(user)
+        })
+        
+        Context("When the user logs out", func() {
+            It("Then subsequent requests should be rejected", func() {
+                By("Successfully logging out")
+                response := authHelper.Logout(token)
+                Expect(response.StatusCode).To(Equal(200))
+                
+                By("Rejecting subsequent authenticated requests")
+                response = authHelper.MakeAuthenticatedRequest(token, "/api/v1/users/me")
+                Expect(response.StatusCode).To(Equal(401))
+                Expect(response.Body).To(ContainSubstring("token has been revoked"))
+            })
+        })
+    })
+})
+```
+
+##### Security Testing Best Practices
+
+1. **Always Test Security Boundaries**:
+   - Test unauthorized access attempts
+   - Test with expired tokens
+   - Test with malformed tokens
+   - Test account deletion edge cases
+
+2. **Test Graceful Degradation**:
+   - Database unavailability scenarios
+   - Partial system failures
+   - Network timeouts and retries
+
+3. **Audit Trail Verification**:
+   - Verify security operations are logged
+   - Test log content and format
+   - Ensure sensitive data is not logged
+
+4. **Data Consistency Validation**:
+   - Verify CASCADE deletions work correctly
+   - Test transaction rollback scenarios
+   - Validate orphaned data cleanup
 
 ### Traditional Testing Approaches
 
@@ -629,10 +917,108 @@ func (c *Config) Validate() error {
 
 ### Authentication & Authorization
 
-- Use JWT tokens with proper expiration
-- Implement CSRF protection
-- Validate all user inputs
-- Use HTTPS everywhere
+#### Core Authentication Features
+- **JWT Token Management**: Use JWT tokens with proper expiration and Auth0 validation
+- **Token Blacklisting**: Implement JWT ID (JTI) based token revocation for logout security
+- **Account Management**: Secure account deletion with CASCADE data removal
+- **CSRF Protection**: Implement CSRF protection for state-changing operations
+- **Input Validation**: Validate all user inputs at multiple layers
+- **HTTPS Enforcement**: Use HTTPS everywhere in production
+
+#### Advanced Security Patterns
+
+##### Token Blacklist Implementation
+```go
+// JWT ID (JTI) extraction and blacklist management
+type Claims struct {
+    ID          string   `json:"jti,omitempty"`     // JWT ID for blacklist tracking
+    Audience    []string `json:"aud,omitempty"`
+    Subject     string   `json:"sub,omitempty"`
+    Email       string   `json:"email,omitempty"`
+    Permissions []string `json:"permissions,omitempty"`
+    jwt.RegisteredClaims
+}
+
+// Blacklist check in authentication middleware
+func (am *AuthMiddleware) checkTokenBlacklist(ctx context.Context, jti string) error {
+    isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, jti)
+    if err != nil {
+        // Fail safely - don't block authentication on DB issues
+        am.logger.Warn("Failed to check token blacklist", err)
+        return nil
+    }
+    if isBlacklisted {
+        return errors.New("token has been revoked")
+    }
+    return nil
+}
+```
+
+##### Secure Account Deletion Pattern
+```go
+// Account deletion with security checks and cascade operations
+func (h *UserHandler) DeleteCurrentUser(ctx context.Context, input *DeleteCurrentUserInput) (*DeleteCurrentUserOutput, error) {
+    // 1. Extract authenticated user from context
+    userID := auth.GetUserIDFromContext(ctx)
+    if userID == "" {
+        return nil, huma.Error401Unauthorized("authentication required")
+    }
+    
+    // 2. Delete user via gRPC service (triggers CASCADE deletion)
+    err := h.userClient.DeleteUser(ctx, userID)
+    if err != nil {
+        return nil, huma.Error500InternalServerError("failed to delete user account")
+    }
+    
+    // 3. Blacklist current token to prevent further access
+    if jti := auth.GetJTIFromContext(ctx); jti != "" {
+        if err := h.authMiddleware.Logout(ctx); err != nil {
+            h.logger.Warn("Failed to blacklist token during account deletion", err)
+        }
+    }
+    
+    return &DeleteCurrentUserOutput{}, nil
+}
+```
+
+#### Authentication Context Management
+```go
+// Context keys for authentication data
+const (
+    UserIDContextKey    = "user_id"
+    JTIContextKey      = "jti"
+    TokenExpContextKey = "token_exp"
+)
+
+// Helper functions for context management
+func GetJTIFromContext(ctx context.Context) string {
+    if jti, ok := ctx.Value(JTIContextKey).(string); ok {
+        return jti
+    }
+    return ""
+}
+
+func GetTokenExpirationFromContext(ctx context.Context) *time.Time {
+    if exp, ok := ctx.Value(TokenExpContextKey).(*time.Time); ok {
+        return exp
+    }
+    return nil
+}
+```
+
+#### Database Security Patterns
+```sql
+-- Secure user deletion with CASCADE constraints
+DELETE FROM users WHERE id = ?;
+-- Related reviews are automatically deleted via CASCADE
+
+-- Token blacklist with automatic cleanup
+INSERT INTO token_blacklist (jti, token_type, expires_at) 
+VALUES (?, 'access', ?);
+
+-- Cleanup expired tokens (run periodically)
+DELETE FROM token_blacklist WHERE expires_at < NOW();
+```
 
 ### Data Protection
 
