@@ -541,4 +541,4 @@ gh pr create --title "feat: implement geospatial search"
 
 **🚀 Built for scale, optimized for developer happiness**
 
-[📖 Full Documentation](../README.md) • [🐛 Report Issue](https://github.com/necofuryai/bocchi-the-map/issues) • [💬 Discussions](https://github.com/necofuryai/bocchi-the-map/discussions)
+[📖 Full Documentation](../README.md) • [🐛 Report Issue](https://github.com/masyusakai/bocchi-the-map/issues) • [💬 Discussions](https://github.com/masyusakai/bocchi-the-map/discussions)

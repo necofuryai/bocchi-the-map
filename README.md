@@ -2,7 +2,7 @@
 
 > **Solo-friendly location discovery platform** - Find the perfect spots for your alone time
 
-[![Alpha](https://img.shields.io/badge/Status-Alpha-orange?style=flat)](https://github.com/necofuryai/bocchi-the-map)
+[![Alpha](https://img.shields.io/badge/Status-Alpha-orange?style=flat)](https://github.com/masyusakai/bocchi-the-map)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.3.2-000000?style=flat&logo=next.js)](https://nextjs.org/)
@@ -72,7 +72,7 @@ go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest # Type-safe SQL
 ### Local Development
 ```bash
 # Clone and setup
-git clone https://github.com/necofuryai/bocchi-the-map.git
+git clone https://github.com/masyusakai/bocchi-the-map.git
 cd bocchi-the-map
 
 # Backend (Terminal 1)
@@ -379,4 +379,4 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 **Built with ❤️ for the solo explorers**
 
-[🌟 Star this repo](https://github.com/necofuryai/bocchi-the-map) • [🐛 Report Bug](https://github.com/necofuryai/bocchi-the-map/issues) • [💡 Request Feature](https://github.com/necofuryai/bocchi-the-map/issues)
+[🌟 Star this repo](https://github.com/masyusakai/bocchi-the-map) • [🐛 Report Bug](https://github.com/masyusakai/bocchi-the-map/issues) • [💡 Request Feature](https://github.com/masyusakai/bocchi-the-map/issues)
