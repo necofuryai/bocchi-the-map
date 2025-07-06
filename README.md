@@ -9,6 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat&logo=vercel)](https://vercel.com/)
 [![gRPC](https://img.shields.io/badge/gRPC-1.60+-244c5a?style=flat&logo=grpc)](https://grpc.io/)
+[![Protocol Buffers](https://img.shields.io/badge/Protocol_Buffers-Fully_Implemented-4285F4?style=flat&logo=google)](https://protobuf.dev/)
 ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/necofuryai/bocchi-the-map?style=flat&utm_source=oss&utm_medium=github&utm_campaign=necofuryai%2Fbocchi-the-map&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
 **Bocchi The Map** is a modern, location-based review platform specifically designed for solo activities. Built with clean architecture principles and cloud-native technologies to scale effortlessly from MVP to millions of users.
@@ -43,7 +44,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 | Layer | Technology | Why |
 |-------|------------|-----|
 | **Frontend** | Next.js 15 + TypeScript | App Router, Turbopack, React Server Components |
-| **Backend** | Go + Huma Framework | Type-safe APIs, auto-generated OpenAPI docs |
+| **Backend** | Go + Huma + Protocol Buffers | Type-safe APIs, auto-generated OpenAPI docs, protobuf-driven contracts |
 | **Database** | TiDB Serverless | MySQL-compatible, auto-scaling, built for cloud |
 | **Maps** | MapLibre GL JS | Open-source, vector tiles, highly customizable |
 | **Storage** | Cloudflare R2 | PMTiles format for efficient map delivery |
@@ -77,7 +78,7 @@ cd bocchi-the-map
 
 # Backend (Terminal 1)
 cd api
-make deps && make proto
+make deps && make proto     # Install deps + generate type-safe code from .proto files
 make dev                    # Starts on :8080 with hot reload
 
 # Frontend (Terminal 2)  
@@ -134,7 +135,7 @@ pnpm test:e2e               # E2E tests
 - **Testable** - Domain logic isolated from infrastructure
 - **Scalable** - Ready for microservice extraction
 - **Maintainable** - Clear dependency boundaries
-- **Type-safe** - Protocol Buffers drive all contracts
+- **Type-safe** - ✅ **Protocol Buffers fully implemented** - All manual structs replaced with generated code
 
 ### Frontend: Modern React
 - **App Router** - File-based routing with layouts
@@ -162,11 +163,18 @@ pnpm test:e2e               # E2E tests
 ### API Development
 ```bash
 cd api
-make proto              # Generate from .proto files
-make test               # Run test suite
+make proto              # Generate type-safe Go code from .proto files
+make test               # Run test suite (BDD with Ginkgo)
 make build              # Build production binary
-make docs               # Generate OpenAPI spec
+make docs               # Generate OpenAPI spec from protobuf definitions
 ```
+
+**Protocol Buffers Development Workflow:**
+1. **Define API contracts** - Edit `.proto` files in `proto/` directory
+2. **Generate code** - Run `make proto` to generate Go structs and gRPC clients
+3. **Implement services** - Use generated types in `infrastructure/grpc/` services
+4. **Update handlers** - HTTP handlers automatically convert to/from protobuf types
+5. **Test & validate** - Type safety enforced at compile time
 
 ### Web Development  
 ```bash
@@ -298,14 +306,22 @@ gh pr create --title "feat: your amazing feature"
 - [x] **Authentication System** - Auth0 + JWT with enterprise security ✅ 
 - [x] **Production Infrastructure** - Cloud Run + monitoring ✅
 - [x] **Huma v2 Integration** - Type-safe APIs with auto-docs ✅
+- [x] **Protocol Buffers Migration** - Full protobuf implementation with generated code ✅
 - [ ] **Social Features** - Follow users, curated lists
 - [ ] **AI Recommendations** - ML-powered spot suggestions
 - [ ] **Mobile App** - React Native with shared business logic
 - [ ] **API v2** - GraphQL federation for microservices
 
-## 🔐 Latest Updates (2025-06-29)
+## 🔐 Latest Updates (2025-06-30)
 
-**Database Migration & CI/CD Improvements** 🚧
+**✅ Protocol Buffers Migration Completed** 🎉
+- **Full Implementation**: All manual struct definitions replaced with generated Protocol Buffers code
+- **Type Safety**: 100% compile-time contract validation across all services (User, Spot, Review)
+- **Zero Breaking Changes**: Seamless migration preserving existing API behavior
+- **Performance**: Binary serialization for internal service communication
+- **Multi-Language Ready**: Shared contracts enable future TypeScript client generation
+
+**Previous Database Migration & CI/CD Improvements (2025-06-29)** 🚧
 - **Migration Fixes**: Resolved idx_location index conflicts in reviews table migrations
 - **GitHub Actions**: Enhanced BDD test security with database URL consistency and debug logging
 - **Production Ready**: All migration files synchronized between development and production

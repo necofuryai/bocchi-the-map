@@ -45,8 +45,8 @@ This is a monorepo with three main modules:
   - Rationale: Type safety without heavy ORM overhead
 - **Architecture**: Onion Architecture
   - Rationale: Clean separation of concerns, testable code
-- **API Design**: Protocol Buffers-driven
-  - Rationale: Type-safe communication between layers
+- **API Design**: ✅ **Protocol Buffers-driven (FULLY IMPLEMENTED)**
+  - Rationale: Type-safe communication between layers, zero manual structs
 - **Database**: TiDB Serverless
   - Rationale: MySQL-compatible with auto-scaling capabilities
 - **Hosting**: Google Cloud Run
