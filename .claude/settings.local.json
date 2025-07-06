@@ -19,6 +19,7 @@
       "Bash(pwd)",
       "Bash(touch:*)",
       "Bash(uv:*)",
+      "Bash(xargs:*)",
       "Read(**)",
       "WebFetch(domain:*)"
     ],
