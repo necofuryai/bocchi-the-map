@@ -602,7 +602,264 @@ export function EntityList({ entities, onSelect, loading, error }: EntityListPro
 
 ### Testing Templates
 
-#### Backend Test Template (Ginkgo)
+#### TDD+BDD Hybrid Testing Templates
+
+##### BDD E2E Test Template (Outer Loop)
+```go
+// api/tests/e2e/spot_review_test.go
+var _ = Describe("Solo-Friendly Spot Review Feature", func() {
+    var (
+        suite    *CommonTestSuite
+        authUser *User
+        spot     *Spot
+    )
+
+    BeforeEach(func() {
+        suite = NewCommonTestSuite()
+        authUser = suite.CreateTestUser()
+        spot = suite.CreateTestSpot()
+    })
+
+    AfterEach(func() {
+        suite.Cleanup()
+    })
+
+    Context("Given I am an authenticated user", func() {
+        BeforeEach(func() {
+            suite.AuthenticateUser(authUser)
+        })
+
+        Context("When I review a spot for solo-friendliness", func() {
+            It("Then the review should be saved with my rating", func() {
+                By("Creating a review request")
+                reviewRequest := &ReviewRequest{
+                    SpotID:            spot.ID,
+                    SoloFriendlyRating: 5,
+                    Comment:           "Great quiet cafe for solo work",
+                    Tags:              []string{"quiet", "wifi", "solo-friendly"},
+                }
+
+                By("Submitting the review")
+                response, err := suite.APIClient.CreateReview(context.Background(), reviewRequest)
+                
+                By("Verifying the response")
+                Expect(err).ToNot(HaveOccurred())
+                Expect(response.Review.ID).ToNot(BeEmpty())
+                Expect(response.Review.SoloFriendlyRating).To(Equal(5))
+                Expect(response.Review.UserID).To(Equal(authUser.ID))
+
+                By("Verifying the review is persisted")
+                savedReview, err := suite.APIClient.GetReview(context.Background(), response.Review.ID)
+                Expect(err).ToNot(HaveOccurred())
+                Expect(savedReview.Comment).To(Equal("Great quiet cafe for solo work"))
+            })
+        })
+
+        Context("When I submit an invalid review", func() {
+            It("Then I should receive a validation error", func() {
+                By("Creating an invalid review request")
+                invalidRequest := &ReviewRequest{
+                    SpotID:            "", // Invalid empty spot ID
+                    SoloFriendlyRating: 0,
+                    Comment:           "",
+                }
+
+                By("Submitting the invalid review")
+                _, err := suite.APIClient.CreateReview(context.Background(), invalidRequest)
+
+                By("Verifying the validation error")
+                Expect(err).To(HaveOccurred())
+                Expect(err.Error()).To(ContainSubstring("validation failed"))
+            })
+        })
+    })
+})
+```
+
+##### TDD Unit Test Template (Inner Loop)
+```go
+// api/internal/domain/review/review_test.go
+func TestReview_Create(t *testing.T) {
+    tests := []struct {
+        name          string
+        spotID        string
+        userID        string
+        rating        int
+        comment       string
+        wantErr       bool
+        wantErrMsg    string
+    }{
+        {
+            name:    "valid review creation",
+            spotID:  "spot-123",
+            userID:  "user-456",
+            rating:  5,
+            comment: "Great place for solo work",
+            wantErr: false,
+        },
+        {
+            name:       "empty spot ID",
+            spotID:     "",
+            userID:     "user-456",
+            rating:     5,
+            comment:    "Great place",
+            wantErr:    true,
+            wantErrMsg: "spot ID cannot be empty",
+        },
+        {
+            name:       "invalid rating range",
+            spotID:     "spot-123",
+            userID:     "user-456",
+            rating:     6, // Invalid: rating should be 1-5
+            comment:    "Great place",
+            wantErr:    true,
+            wantErrMsg: "rating must be between 1 and 5",
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // Act
+            review, err := NewReview(tt.spotID, tt.userID, tt.rating, tt.comment)
+
+            // Assert
+            if tt.wantErr {
+                assert.Error(t, err)
+                assert.Contains(t, err.Error(), tt.wantErrMsg)
+                assert.Nil(t, review)
+            } else {
+                assert.NoError(t, err)
+                assert.NotNil(t, review)
+                assert.Equal(t, tt.spotID, review.SpotID)
+                assert.Equal(t, tt.userID, review.UserID)
+                assert.Equal(t, tt.rating, review.SoloFriendlyRating)
+                assert.Equal(t, tt.comment, review.Comment)
+            }
+        })
+    }
+}
+```
+
+##### TDD Service Layer Test Template
+```go
+// api/internal/application/review_service_test.go
+func TestReviewService_CreateReview(t *testing.T) {
+    // Arrange
+    mockRepo := &MockReviewRepository{}
+    mockSpotRepo := &MockSpotRepository{}
+    service := NewReviewService(mockRepo, mockSpotRepo)
+    
+    ctx := context.Background()
+    request := &CreateReviewRequest{
+        SpotID:            "spot-123",
+        UserID:            "user-456",
+        SoloFriendlyRating: 5,
+        Comment:           "Great for solo work",
+        Tags:              []string{"quiet", "wifi"},
+    }
+
+    // Setup mocks
+    mockSpotRepo.On("GetByID", ctx, "spot-123").Return(&Spot{ID: "spot-123"}, nil)
+    mockRepo.On("Create", ctx, mock.AnythingOfType("*Review")).Return(nil)
+
+    // Act
+    result, err := service.CreateReview(ctx, request)
+
+    // Assert
+    assert.NoError(t, err)
+    assert.NotNil(t, result)
+    assert.Equal(t, "spot-123", result.SpotID)
+    assert.Equal(t, 5, result.SoloFriendlyRating)
+    
+    // Verify mocks
+    mockSpotRepo.AssertExpectations(t)
+    mockRepo.AssertExpectations(t)
+}
+```
+
+##### TDD+BDD Integration Test Template
+```go
+// api/tests/integration/review_integration_test.go
+var _ = Describe("Review Integration", func() {
+    var (
+        suite   *CommonTestSuite
+        service *ReviewService
+        ctx     context.Context
+    )
+
+    BeforeEach(func() {
+        suite = NewCommonTestSuite()
+        service = suite.Container.Get("review_service").(*ReviewService)
+        ctx = context.Background()
+    })
+
+    AfterEach(func() {
+        suite.Cleanup()
+    })
+
+    Context("Given a valid spot exists", func() {
+        var spot *Spot
+
+        BeforeEach(func() {
+            spot = suite.CreateTestSpot()
+        })
+
+        Context("When creating a review", func() {
+            It("Then should persist to database", func() {
+                // Given
+                request := &CreateReviewRequest{
+                    SpotID:            spot.ID,
+                    UserID:            "user-123",
+                    SoloFriendlyRating: 4,
+                    Comment:           "Nice quiet spot",
+                }
+
+                // When
+                result, err := service.CreateReview(ctx, request)
+
+                // Then
+                Expect(err).ToNot(HaveOccurred())
+                Expect(result.ID).ToNot(BeEmpty())
+
+                // Verify persistence
+                saved, err := service.GetReview(ctx, result.ID)
+                Expect(err).ToNot(HaveOccurred())
+                Expect(saved.Comment).To(Equal("Nice quiet spot"))
+            })
+        })
+    })
+})
+```
+
+##### TDD+BDD Workflow Commands
+```bash
+# Step 1: Write BDD scenario (Red)
+cd api
+ginkgo generate tests/e2e/new_feature_test.go
+# Write failing E2E test first
+
+# Step 2: TDD Inner Loop (Red-Green-Refactor)
+# Write domain unit tests
+go test -v ./internal/domain/...
+
+# Write service unit tests  
+go test -v ./internal/application/...
+
+# Write handler unit tests
+go test -v ./interfaces/http/handlers/...
+
+# Step 3: Integration (Green)
+# Run all tests including E2E
+make test
+
+# Step 4: Refactor
+# Clean up code while keeping tests green
+ginkgo -v tests/e2e/
+```
+
+#### Traditional Testing Templates
+
+##### Backend Test Template (Ginkgo)
 ```go
 var _ = Describe("EntityService", func() {
     var (

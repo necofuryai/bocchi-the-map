@@ -228,14 +228,60 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 
 ## Testing Strategies
 
-### Backend Testing
+### TDD+BDD Hybrid Methodology
+
+This project employs a sophisticated hybrid testing approach that combines the strengths of both Test-Driven Development (TDD) and Behavior-Driven Development (BDD):
+
+#### Core Philosophy
+- **Outside-In Development**: Start with BDD scenarios to define user behavior, then use TDD for implementation
+- **Double-Loop Testing**: Outer loop (BDD) drives user stories, inner loop (TDD) drives implementation details
+- **Specification by Example**: Use concrete examples to drive both behavior and implementation
+
+#### Layer-Specific Testing Strategy
+
+**Interface Layer (Handlers/Controllers)**
+- Primary: BDD approach with Ginkgo
+- Focus: User interactions and API contracts
+- Tools: E2E tests with Given-When-Then structure
+
+**Application Layer (Services)**
+- Primary: TDD with BDD context
+- Focus: Business logic orchestration
+- Tools: Standard Go testing with clear scenarios
+
+**Domain Layer (Core Business Logic)**
+- Primary: Pure TDD
+- Focus: Business rules and entities
+- Tools: Table-driven tests, property-based testing
+
+**Infrastructure Layer (Adapters)**
+- Primary: TDD with integration tests
+- Focus: External system interactions
+- Tools: Mocks and test containers
+
+#### Test Flow Pattern
+1. **Feature Request** → BDD scenario definition
+2. **E2E Test** → High-level behavior specification
+3. **TDD Cycle** → Implementation of supporting components
+4. **Integration** → Ensure all layers work together
+5. **Validation** → BDD scenarios pass end-to-end
+
+#### Benefits
+- **User-Centric**: BDD ensures features meet user needs
+- **Clean Implementation**: TDD ensures robust, testable code
+- **Comprehensive Coverage**: Both behavior and implementation are tested
+- **Maintainable**: Clear separation of concerns in test structure
+
+### Traditional Testing Approaches
+
+#### Backend Testing
 
 - **Unit Tests**: Test domain entities and services in isolation
 - **Integration Tests**: Test repository implementations with real database
 - **BDD Tests**: Use Ginkgo for behavior specifications
 - **Contract Tests**: Verify Protocol Buffer contracts
 
-### Frontend Testing
+#### Frontend Testing
 
 - **Unit Tests**: Test utility functions and custom hooks with Vitest
 - **Component Tests**: Test React components in isolation

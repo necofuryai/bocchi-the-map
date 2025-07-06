@@ -54,6 +54,19 @@ This project systematically manages knowledge through the following files:
 - Frequently used command patterns
 - Standard implementation templates
 - Deployment commands (see "Cloud Run and Docker Deployment Patterns" section)
+- TDD+BDD hybrid testing templates and workflow commands
+
+#### `.claude/tdd-bdd-hybrid.md`
+- Comprehensive TDD+BDD hybrid methodology guide
+- Three hybrid approaches: Outside-In TDD, Double-Loop TDD, Specification by Example
+- Layer-specific testing strategies and practical workflows
+- Anti-patterns to avoid and best practices
+
+#### `.claude/tdd-bdd-example.md`
+- Complete implementation example of TDD+BDD hybrid approach
+- Solo-Friendly Rating feature as reference implementation
+- Step-by-step guide from BDD scenarios to TDD implementation
+- Executable code examples and test execution patterns
 
 ### Additional Documentation
 
@@ -80,7 +93,9 @@ This project systematically manages knowledge through the following files:
 
 ### Core Development Standards
 
-- Follow BDD (Behavior-Driven Development) with Ginkgo framework
+- Follow TDD+BDD Hybrid methodology with three distinct approaches
+- Use BDD (Behavior-Driven Development) with Ginkgo framework for user-facing behavior
+- Apply TDD (Test-Driven Development) for internal implementation details
 - Implement comprehensive monitoring and observability from project start
 - Use Protocol Buffers for type-safe API contracts
 - Follow Onion Architecture with clear dependency boundaries
@@ -97,5 +112,23 @@ This project systematically manages knowledge through the following files:
 
 - **IDE Optimization**: VSCode configured for optimal TypeScript development
 - **Code Quality**: ESLint and Prettier integration for consistent code formatting
-- **Testing Infrastructure**: Automated testing patterns with high coverage
+- **Testing Infrastructure**: TDD+BDD hybrid testing patterns with comprehensive coverage
+- **Testing Methodology**: Outside-In development with BDD scenarios driving TDD implementation
 - **Documentation**: Comprehensive guides for setup, deployment, and troubleshooting
+
+### TDD+BDD Hybrid Testing Guidelines
+
+When implementing new features, follow the TDD+BDD hybrid methodology:
+
+1. **Start with BDD** - Define user behavior with Given-When-Then scenarios
+2. **Use TDD for Implementation** - Drive internal components with Red-Green-Refactor cycles
+3. **Layer-Specific Approach** - BDD for interfaces, TDD for domain logic
+4. **Reference Documentation** - Use `.claude/tdd-bdd-hybrid.md` for methodology and `.claude/tdd-bdd-example.md` for implementation patterns
+5. **Update Templates** - Extend `.claude/common-patterns.md` with new testing patterns as needed
+
+## Important Instruction Reminders
+
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
