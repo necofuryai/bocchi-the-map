@@ -1,12 +1,45 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm:*)",
+      "Bash(cat:*)",
+      "Bash(cd:*)",
+      "Bash(cp:*)",
+      "Bash(echo:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(grep:*)",
       "Bash(ls:*)",
-      "Bash(grep:*)"
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(open:*)",
+      "Bash(pnpm:*)",
+      "Bash(pwd)",
+      "Bash(touch:*)",
+      "Bash(uv:*)",
+      "Read(**)",
+      "WebFetch(domain:*)"
     ],
     "deny": [
-      "Bash(npm:*)"
+      "Bash(curl:*)",
+      "Bash(pip:*)"
+    ]
+  },
+  "env": {
+    "MAX_THINKING_TOKENS": "31999"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/enforce-uv.sh"
+          }
+        ]
+      }
     ]
   }
 }
