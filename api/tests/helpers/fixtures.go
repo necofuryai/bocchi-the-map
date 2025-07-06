@@ -117,11 +117,15 @@ func (fm *FixtureManager) CreateSpotFixture(ctx context.Context, fixture SpotFix
 func (fm *FixtureManager) CreateUserFixture(ctx context.Context, fixture UserFixture) *entities.User {
 	
 	params := database.CreateUserParams{
-		ID:             fixture.ID,
-		Email:          fixture.Email,
-		DisplayName:    fixture.DisplayName,
-		AuthProvider:   database.UsersAuthProvider(fixture.AuthProvider),
-		AuthProviderID: fixture.AuthProviderID,
+		ID:            fixture.ID,
+		Email:         fixture.Email,
+		Name:          sql.NullString{String: fixture.DisplayName, Valid: true},
+		Nickname:      sql.NullString{String: fixture.DisplayName, Valid: true},
+		Picture:       sql.NullString{},
+		Provider:      fixture.AuthProvider,
+		ProviderID:    fixture.AuthProviderID,
+		EmailVerified: true,
+		Preferences:   []byte(`{}`),
 	}
 	
 	err := fm.db.Queries.CreateUser(ctx, params)
@@ -152,7 +156,7 @@ func (fm *FixtureManager) CreateReviewFixture(ctx context.Context, fixture Revie
 	params := database.CreateReviewParams{
 		ID:            fixture.ID,
 		SpotID:        fixture.SpotID,
-		UserID:        fixture.UserID,
+		UserID:        sql.NullString{String: fixture.UserID, Valid: true},
 		Rating:        int32(fixture.Rating),
 		Comment:       sql.NullString{String: fixture.Comment, Valid: fixture.Comment != ""},
 		RatingAspects: ratingAspectsJSON,
