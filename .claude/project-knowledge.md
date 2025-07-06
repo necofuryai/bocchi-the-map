@@ -180,34 +180,144 @@ func (e ValidationError) Error() string {
 
 ### Frontend Patterns
 
-#### Custom Hook Pattern
+#### TDD+BDD Component Pattern
 
 ```typescript
-// Map interaction hooks
-export function useMapInteraction() {
-  const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+// BDD-style component testing
+describe('SearchInput Component', () => {
+  describe('Given the SearchInput component is rendered', () => {
+    describe('When user types in the search input', () => {
+      it('Then the input value should update correctly', async () => {
+        // Given
+        const user = userEvent.setup()
+        render(<SearchInput onSearch={mockOnSearch} onClear={mockOnClear} />)
+        
+        // When
+        await user.type(searchInput, 'quiet cafe')
+        
+        // Then
+        expect(searchInput).toHaveValue('quiet cafe')
+      })
+    })
+  })
+})
+```
+
+#### Custom Hook TDD Pattern
+
+```typescript
+// TDD-driven custom hook development
+export function useSpotSearch(): UseSpotSearchReturn {
+  const [spots, setSpots] = useState<Spot[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
-  const handleSpotClick = useCallback((spot: Spot) => {
-    setSelectedSpot(spot);
-  }, []);
+  const search = useCallback(async (query: string) => {
+    // Implementation driven by tests
+    setLoading(true)
+    try {
+      const response = await searchSpots(query, filters)
+      setSpots(response.data)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [filters])
   
-  return { selectedSpot, handleSpotClick };
+  return { spots, loading, error, search }
 }
+```
+
+#### BDD E2E Test Pattern
+
+```typescript
+// Playwright E2E tests with BDD structure
+test.describe('Spot Search Feature', () => {
+  test.describe('Given I am on the search page', () => {
+    test('When I search for "quiet cafe", Then I should see relevant results', async ({ page }) => {
+      // Given
+      await page.goto('/search')
+      
+      // When
+      await page.getByTestId('search-input').fill('quiet cafe')
+      await page.keyboard.press('Enter')
+      
+      // Then
+      await expect(page.getByTestId('search-results')).toBeVisible()
+    })
+  })
+})
 ```
 
 #### Component Composition Pattern
 
 ```typescript
-// Composable UI components
+// Composable UI components with testability
 export function SpotCard({ spot, onSelect }: SpotCardProps) {
   return (
-    <Card onClick={() => onSelect(spot)}>
+    <Card onClick={() => onSelect(spot)} data-testid="spot-item">
       <CardHeader>
-        <CardTitle>{spot.name}</CardTitle>
+        <CardTitle data-testid="spot-name">{spot.name}</CardTitle>
+        {spot.soloFriendly && (
+          <Badge data-testid="solo-friendly-badge">Solo-friendly</Badge>
+        )}
       </CardHeader>
     </Card>
   );
 }
+```
+
+#### Test Utilities Pattern
+
+```typescript
+// BDD-style test helpers and assertions
+export const BDDAssertions = {
+  expectLoadingState: () => {
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
+  },
+  
+  expectSearchResults: (count?: number) => {
+    const resultsContainer = screen.getByTestId('search-results')
+    expect(resultsContainer).toBeInTheDocument()
+    
+    if (count !== undefined) {
+      const spotItems = screen.getAllByTestId('spot-item')
+      expect(spotItems).toHaveLength(count)
+    }
+  }
+}
+
+export const BDDActions = {
+  performSearch: async (query: string) => {
+    const searchInput = screen.getByPlaceholderText('Search for spots...')
+    await userEvent.clear(searchInput)
+    await userEvent.type(searchInput, query)
+    await userEvent.keyboard('{Enter}')
+  }
+}
+```
+
+#### MSW API Mocking Pattern
+
+```typescript
+// Realistic API mocking for tests
+export const spotHandlers = [
+  http.get('/api/spots/search', ({ request }) => {
+    const url = new URL(request.url)
+    const query = url.searchParams.get('q')?.toLowerCase() || ''
+    
+    const filteredSpots = mockSpots.filter(spot =>
+      spot.name.toLowerCase().includes(query)
+    )
+    
+    return HttpResponse.json({
+      data: filteredSpots,
+      total: filteredSpots.length,
+      hasMore: false,
+    })
+  }),
+]
 ```
 
 ## Anti-Patterns to Avoid
@@ -221,10 +331,40 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 
 ### Frontend Anti-Patterns
 
+#### React Development Anti-Patterns
 1. **Direct State Mutation**: Use immutable updates with React state
 2. **Prop Drilling**: Use context or state management for deep component trees
 3. **Uncontrolled Side Effects**: Use useEffect dependencies properly
 4. **Missing Error Boundaries**: Implement error handling for async operations
+
+#### Frontend Testing Anti-Patterns
+1. **Testing Implementation Details**: 
+   - ❌ Don't test internal component state
+   - ✅ Test user-visible behavior and interactions
+   
+2. **Over-mocking in E2E Tests**: 
+   - ❌ Don't mock internal components in E2E tests
+   - ✅ Mock only external APIs and services
+   
+3. **Skipping TDD Cycles**: 
+   - ❌ Don't write component code before tests
+   - ✅ Always follow Red-Green-Refactor cycle
+   
+4. **Missing Accessibility Testing**:
+   - ❌ Don't ignore screen reader compatibility
+   - ✅ Always test with semantic queries and a11y tools
+   
+5. **Writing Tests After Implementation**:
+   - ❌ Don't write tests just to increase coverage
+   - ✅ Let tests drive your component design (TDD)
+   
+6. **Mixing Test Concerns**:
+   - ❌ Don't test BDD scenarios in unit tests
+   - ✅ Keep E2E (BDD) and component (TDD) tests separate
+   
+7. **Unrealistic Test Data**:
+   - ❌ Don't use overly simplified mock data
+   - ✅ Use realistic API responses with MSW
 
 ## Testing Strategies
 
@@ -283,10 +423,53 @@ This project employs a sophisticated hybrid testing approach that combines the s
 
 #### Frontend Testing
 
+The frontend adopts the same TDD+BDD hybrid methodology as the backend, adapted for React/Next.js development:
+
+**TDD+BDD Frontend Hybrid Approach:**
+
+**Presentation Layer (React Components)**
+- Primary: BDD approach for user interactions
+- Focus: Component behavior, props, and user events  
+- Tools: React Testing Library with user-event
+- Pattern: Given-When-Then for component behavior
+
+**Logic Layer (Custom Hooks)**
+- Primary: TDD with BDD context
+- Focus: Business logic, state management, side effects
+- Tools: Vitest with React Testing Library renderHook
+- Pattern: Red-Green-Refactor for hook logic
+
+**Integration Layer (API Calls)**  
+- Primary: TDD with mocking
+- Focus: Data fetching, caching, error handling
+- Tools: MSW (Mock Service Worker) for API mocking
+- Pattern: Test doubles for external dependencies
+
+**E2E Layer (User Journeys)**
+- Primary: Pure BDD
+- Focus: Complete user workflows
+- Tools: Playwright for full browser automation
+- Pattern: User story scenarios
+
+**Frontend Testing Infrastructure:**
+- **Test Utilities**: Comprehensive test helpers with BDD-style assertions
+- **API Mocking**: MSW integration for realistic API responses
+- **Accessibility Testing**: Automated a11y validation with jest-axe
+- **Visual Testing**: Component screenshot comparison capabilities
+
+**Example Frontend TDD+BDD Workflow:**
+1. Write E2E BDD scenario (e.g., `spot-search.spec.ts`)
+2. Implement components with TDD (e.g., `SearchInput`, `useSpotSearch`)
+3. Create integration tests for component cooperation
+4. Validate E2E scenarios pass end-to-end
+
+**Frontend Test Types:**
 - **Unit Tests**: Test utility functions and custom hooks with Vitest
-- **Component Tests**: Test React components in isolation
+- **Component Tests**: Test React components in isolation with BDD structure
 - **Integration Tests**: Test component interactions and data flow
 - **E2E Tests**: Test complete user workflows with Playwright
+- **Accessibility Tests**: Automated accessibility compliance testing
+- **Visual Regression Tests**: UI consistency validation
 
 ## Performance Considerations
 

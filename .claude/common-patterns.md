@@ -958,6 +958,642 @@ describe('useEntityManagement', () => {
     });
 });
 
+## Frontend TDD+BDD Hybrid Testing Templates
+
+### BDD E2E Test Templates (Playwright)
+
+#### Feature-Based E2E Test Template
+```typescript
+// web/e2e/spot-search.spec.ts
+import { test, expect } from '@playwright/test'
+
+test.describe('Spot Search Feature', () => {
+  test.describe('Given I am on the search page', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.goto('/search')
+    })
+
+    test('When I enter a search query, Then filtered results should appear', async ({ page }) => {
+      // Given
+      const searchInput = page.getByPlaceholder('Search for spots...')
+      const searchQuery = 'quiet cafe'
+
+      // When
+      await searchInput.fill(searchQuery)
+      await page.keyboard.press('Enter')
+
+      // Then
+      await expect(page.getByTestId('search-results')).toBeVisible()
+      await expect(page.getByTestId('search-results')).toContainText('quiet')
+      
+      // And the URL should reflect the search
+      await expect(page).toHaveURL(/.*search.*q=quiet%20cafe/)
+    })
+
+    test('When I apply filters, Then results should be filtered accordingly', async ({ page }) => {
+      // Given
+      const filterButton = page.getByTestId('filter-button')
+      const soloFriendlyFilter = page.getByTestId('solo-friendly-filter')
+
+      // When
+      await filterButton.click()
+      await soloFriendlyFilter.check()
+      await page.getByTestId('apply-filters').click()
+
+      // Then
+      await expect(page.getByTestId('search-results')).toBeVisible()
+      
+      // And all results should have solo-friendly indicators
+      const resultItems = page.getByTestId('spot-item')
+      const count = await resultItems.count()
+      
+      for (let i = 0; i < count; i++) {
+        await expect(resultItems.nth(i).getByTestId('solo-friendly-badge')).toBeVisible()
+      }
+    })
+  })
+
+  test.describe('Given I am not authenticated', () => {
+    test('When I try to save a spot, Then I should be prompted to login', async ({ page }) => {
+      // Given
+      await page.goto('/search')
+      await page.getByTestId('spot-item').first().click()
+      
+      // When
+      await page.getByTestId('save-spot-button').click()
+      
+      // Then
+      await expect(page.getByTestId('login-prompt')).toBeVisible()
+      await expect(page.getByText('Please log in to save spots')).toBeVisible()
+    })
+  })
+})
+```
+
+#### User Journey E2E Test Template
+```typescript
+// web/e2e/user-journey.spec.ts
+import { test, expect } from '@playwright/test'
+
+test.describe('Complete User Journey', () => {
+  test.describe('Given I am a new user', () => {
+    test('When I complete a full search and review flow, Then all features should work seamlessly', async ({ page }) => {
+      // Given - Start at homepage
+      await page.goto('/')
+
+      // When - Navigate to search
+      await page.getByTestId('search-button').click()
+      await expect(page).toHaveURL('/search')
+
+      // And - Search for spots
+      await page.getByPlaceholder('Search for spots...').fill('coffee shop')
+      await page.keyboard.press('Enter')
+
+      // Then - Results should appear
+      await expect(page.getByTestId('search-results')).toBeVisible()
+      
+      // When - View spot details
+      await page.getByTestId('spot-item').first().click()
+      
+      // Then - Spot details should be displayed
+      await expect(page.getByTestId('spot-details')).toBeVisible()
+      await expect(page.getByTestId('spot-title')).toBeVisible()
+      
+      // When - Try to write a review (should prompt login)
+      await page.getByTestId('write-review-button').click()
+      
+      // Then - Login prompt should appear
+      await expect(page.getByTestId('login-prompt')).toBeVisible()
+    })
+  })
+})
+```
+
+### TDD Component Test Templates (Vitest + React Testing Library)
+
+#### React Component TDD Template
+```typescript
+// web/src/components/search/__tests__/search-input.test.tsx
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { SearchInput } from '../search-input'
+
+describe('SearchInput Component', () => {
+  const mockOnSearch = vi.fn()
+  const mockOnClear = vi.fn()
+  
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Given the SearchInput component is rendered', () => {
+    describe('When the component loads', () => {
+      it('Then it should display the search input with placeholder text', () => {
+        // Given
+        render(<SearchInput onSearch={mockOnSearch} onClear={mockOnClear} />)
+        
+        // Then
+        expect(screen.getByPlaceholderText('Search for spots...')).toBeInTheDocument()
+        expect(screen.getByRole('textbox')).toBeInTheDocument()
+      })
+    })
+
+    describe('When user types in the search input', () => {
+      it('Then the input value should update', async () => {
+        // Given
+        const user = userEvent.setup()
+        render(<SearchInput onSearch={mockOnSearch} onClear={mockOnClear} />)
+        const searchInput = screen.getByRole('textbox')
+        
+        // When
+        await user.type(searchInput, 'coffee shop')
+        
+        // Then
+        expect(searchInput).toHaveValue('coffee shop')
+      })
+    })
+
+    describe('When user presses Enter key', () => {
+      it('Then onSearch should be called with the input value', async () => {
+        // Given
+        const user = userEvent.setup()
+        render(<SearchInput onSearch={mockOnSearch} onClear={mockOnClear} />)
+        const searchInput = screen.getByRole('textbox')
+        
+        // When
+        await user.type(searchInput, 'quiet cafe')
+        await user.keyboard('{Enter}')
+        
+        // Then
+        expect(mockOnSearch).toHaveBeenCalledWith('quiet cafe')
+        expect(mockOnSearch).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    describe('When user clicks the clear button', () => {
+      it('Then the input should be cleared and onClear should be called', async () => {
+        // Given
+        const user = userEvent.setup()
+        render(<SearchInput onSearch={mockOnSearch} onClear={mockOnClear} />)
+        const searchInput = screen.getByRole('textbox')
+        
+        // When
+        await user.type(searchInput, 'some text')
+        const clearButton = screen.getByRole('button', { name: 'Clear search' })
+        await user.click(clearButton)
+        
+        // Then
+        expect(searchInput).toHaveValue('')
+        expect(mockOnClear).toHaveBeenCalledTimes(1)
+      })
+    })
+  })
+
+  describe('Given the SearchInput has a default value', () => {
+    describe('When the component loads', () => {
+      it('Then the input should display the default value', () => {
+        // Given
+        const defaultValue = 'default search'
+        render(
+          <SearchInput 
+            onSearch={mockOnSearch} 
+            onClear={mockOnClear} 
+            defaultValue={defaultValue} 
+          />
+        )
+        
+        // Then
+        expect(screen.getByRole('textbox')).toHaveValue(defaultValue)
+      })
+    })
+  })
+})
+```
+
+#### Custom Hook TDD Template
+```typescript
+// web/src/hooks/__tests__/use-spot-search.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, act, waitFor } from '@testing-library/react'
+import { useSpotSearch } from '../use-spot-search'
+
+// Mock the API
+vi.mock('@/services/spot-api', () => ({
+  searchSpots: vi.fn(),
+}))
+
+import { searchSpots } from '@/services/spot-api'
+
+describe('useSpotSearch Hook', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Given the useSpotSearch hook is initialized', () => {
+    describe('When the hook is first called', () => {
+      it('Then it should return initial state', () => {
+        // Given & When
+        const { result } = renderHook(() => useSpotSearch())
+        
+        // Then
+        expect(result.current.spots).toEqual([])
+        expect(result.current.loading).toBe(false)
+        expect(result.current.error).toBeNull()
+        expect(result.current.hasMore).toBe(true)
+      })
+    })
+
+    describe('When search is called with a query', () => {
+      it('Then it should fetch spots and update state', async () => {
+        // Given
+        const mockSpots = [
+          { id: '1', name: 'Cafe A', type: 'cafe' },
+          { id: '2', name: 'Cafe B', type: 'cafe' },
+        ]
+        vi.mocked(searchSpots).mockResolvedValueOnce({ data: mockSpots, hasMore: true })
+        
+        const { result } = renderHook(() => useSpotSearch())
+        
+        // When
+        await act(async () => {
+          await result.current.search('coffee')
+        })
+        
+        // Then
+        expect(result.current.spots).toEqual(mockSpots)
+        expect(result.current.loading).toBe(false)
+        expect(result.current.error).toBeNull()
+        expect(searchSpots).toHaveBeenCalledWith('coffee', expect.any(Object))
+      })
+    })
+
+    describe('When search fails', () => {
+      it('Then it should set error state', async () => {
+        // Given
+        const error = new Error('Search failed')
+        vi.mocked(searchSpots).mockRejectedValueOnce(error)
+        
+        const { result } = renderHook(() => useSpotSearch())
+        
+        // When
+        await act(async () => {
+          await result.current.search('coffee')
+        })
+        
+        // Then
+        expect(result.current.spots).toEqual([])
+        expect(result.current.loading).toBe(false)
+        expect(result.current.error).toBe('Search failed')
+      })
+    })
+
+    describe('When loadMore is called', () => {
+      it('Then it should append new spots to existing results', async () => {
+        // Given
+        const initialSpots = [{ id: '1', name: 'Cafe A', type: 'cafe' }]
+        const additionalSpots = [{ id: '2', name: 'Cafe B', type: 'cafe' }]
+        
+        vi.mocked(searchSpots)
+          .mockResolvedValueOnce({ data: initialSpots, hasMore: true })
+          .mockResolvedValueOnce({ data: additionalSpots, hasMore: false })
+        
+        const { result } = renderHook(() => useSpotSearch())
+        
+        // When
+        await act(async () => {
+          await result.current.search('coffee')
+        })
+        
+        await act(async () => {
+          await result.current.loadMore()
+        })
+        
+        // Then
+        expect(result.current.spots).toEqual([...initialSpots, ...additionalSpots])
+        expect(result.current.hasMore).toBe(false)
+      })
+    })
+  })
+})
+```
+
+### TDD+BDD Integration Test Templates
+
+#### Component Integration Test Template
+```typescript
+// web/src/components/search/__tests__/search-page.test.tsx
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { SearchPage } from '../search-page'
+
+// Mock the custom hook
+vi.mock('@/hooks/use-spot-search', () => ({
+  useSpotSearch: vi.fn(),
+}))
+
+import { useSpotSearch } from '@/hooks/use-spot-search'
+
+describe('SearchPage Component Integration', () => {
+  const mockSearch = vi.fn()
+  const mockLoadMore = vi.fn()
+  const mockClearSearch = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('Given the SearchPage component is rendered', () => {
+    describe('When no search has been performed', () => {
+      it('Then it should display initial state', () => {
+        // Given
+        vi.mocked(useSpotSearch).mockReturnValue({
+          spots: [],
+          loading: false,
+          error: null,
+          hasMore: true,
+          search: mockSearch,
+          loadMore: mockLoadMore,
+          clearSearch: mockClearSearch,
+        })
+
+        render(<SearchPage />)
+
+        // Then
+        expect(screen.getByPlaceholderText('Search for spots...')).toBeInTheDocument()
+        expect(screen.getByText('Enter a search query to find spots')).toBeInTheDocument()
+      })
+    })
+
+    describe('When search results are loading', () => {
+      it('Then it should display loading state', () => {
+        // Given
+        vi.mocked(useSpotSearch).mockReturnValue({
+          spots: [],
+          loading: true,
+          error: null,
+          hasMore: true,
+          search: mockSearch,
+          loadMore: mockLoadMore,
+          clearSearch: mockClearSearch,
+        })
+
+        render(<SearchPage />)
+
+        // Then
+        expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
+        expect(screen.getByText('Searching for spots...')).toBeInTheDocument()
+      })
+    })
+
+    describe('When search results are available', () => {
+      it('Then it should display the search results', () => {
+        // Given
+        const mockSpots = [
+          { id: '1', name: 'Cafe A', type: 'cafe', soloFriendly: true },
+          { id: '2', name: 'Cafe B', type: 'cafe', soloFriendly: false },
+        ]
+        
+        vi.mocked(useSpotSearch).mockReturnValue({
+          spots: mockSpots,
+          loading: false,
+          error: null,
+          hasMore: true,
+          search: mockSearch,
+          loadMore: mockLoadMore,
+          clearSearch: mockClearSearch,
+        })
+
+        render(<SearchPage />)
+
+        // Then
+        expect(screen.getByTestId('search-results')).toBeInTheDocument()
+        expect(screen.getByText('Cafe A')).toBeInTheDocument()
+        expect(screen.getByText('Cafe B')).toBeInTheDocument()
+      })
+    })
+
+    describe('When search returns an error', () => {
+      it('Then it should display error message', () => {
+        // Given
+        vi.mocked(useSpotSearch).mockReturnValue({
+          spots: [],
+          loading: false,
+          error: 'Failed to search spots',
+          hasMore: false,
+          search: mockSearch,
+          loadMore: mockLoadMore,
+          clearSearch: mockClearSearch,
+        })
+
+        render(<SearchPage />)
+
+        // Then
+        expect(screen.getByTestId('error-message')).toBeInTheDocument()
+        expect(screen.getByText('Failed to search spots')).toBeInTheDocument()
+      })
+    })
+
+    describe('When user performs a search', () => {
+      it('Then it should call the search function', async () => {
+        // Given
+        const user = userEvent.setup()
+        vi.mocked(useSpotSearch).mockReturnValue({
+          spots: [],
+          loading: false,
+          error: null,
+          hasMore: true,
+          search: mockSearch,
+          loadMore: mockLoadMore,
+          clearSearch: mockClearSearch,
+        })
+
+        render(<SearchPage />)
+
+        // When
+        const searchInput = screen.getByPlaceholderText('Search for spots...')
+        await user.type(searchInput, 'coffee shop')
+        await user.keyboard('{Enter}')
+
+        // Then
+        expect(mockSearch).toHaveBeenCalledWith('coffee shop')
+      })
+    })
+  })
+})
+```
+
+### Frontend TDD+BDD Workflow Commands
+
+#### Component Development Workflow
+```bash
+# Step 1: Write E2E BDD scenario (Red)
+cd web
+# Write failing E2E test first
+pnpm test:e2e spot-search.spec.ts
+
+# Step 2: TDD Inner Loop (Red-Green-Refactor)
+# Write component unit tests
+pnpm test src/components/search/search-input.test.tsx
+
+# Write hook unit tests
+pnpm test src/hooks/use-spot-search.test.ts
+
+# Write integration tests
+pnpm test src/components/search/search-page.test.tsx
+
+# Step 3: Run all tests (Green)
+pnpm test
+pnpm test:e2e
+
+# Step 4: Refactor while keeping tests green
+pnpm test --watch
+```
+
+#### Test-Driven Component Development
+```bash
+# Create new component with TDD approach
+cd web/src/components/search
+
+# 1. Write failing test first
+echo "// Red: Write failing test" > __tests__/new-component.test.tsx
+pnpm test __tests__/new-component.test.tsx
+
+# 2. Create minimal component to pass test
+echo "// Green: Minimal implementation" > new-component.tsx
+pnpm test __tests__/new-component.test.tsx
+
+# 3. Refactor while keeping tests green
+# Edit both test and component files
+pnpm test --watch __tests__/new-component.test.tsx
+```
+
+#### BDD-First Feature Development
+```bash
+# Start with E2E scenario
+cd web/e2e
+
+# 1. Create feature test file
+touch new-feature.spec.ts
+
+# 2. Write user story scenarios
+pnpm test:e2e new-feature.spec.ts
+
+# 3. Implement components to satisfy scenarios
+cd ../src/components
+
+# 4. Use TDD for component implementation
+pnpm test --watch
+```
+
+### Mock and Test Utility Templates
+
+#### API Mock Template (MSW)
+```typescript
+// web/src/mocks/spot-api.ts
+import { http, HttpResponse } from 'msw'
+
+export const spotHandlers = [
+  http.get('/api/spots/search', ({ request }) => {
+    const url = new URL(request.url)
+    const query = url.searchParams.get('q')
+    
+    if (query === 'coffee') {
+      return HttpResponse.json({
+        data: [
+          { id: '1', name: 'Quiet Coffee', type: 'cafe', soloFriendly: true },
+          { id: '2', name: 'Busy Cafe', type: 'cafe', soloFriendly: false },
+        ],
+        hasMore: false
+      })
+    }
+    
+    return HttpResponse.json({ data: [], hasMore: false })
+  }),
+  
+  http.post('/api/spots/:id/reviews', ({ params }) => {
+    return HttpResponse.json({
+      id: 'review-123',
+      spotId: params.id,
+      rating: 5,
+      comment: 'Great for solo work',
+      createdAt: new Date().toISOString()
+    })
+  })
+]
+```
+
+#### Test Utility Template
+```typescript
+// web/src/test-utils/render-with-providers.tsx
+import { render } from '@testing-library/react'
+import { ReactElement } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ThemeProvider } from '@/components/theme-provider'
+
+export function renderWithProviders(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        cacheTime: 0,
+      },
+    },
+  })
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light">
+        {ui}
+      </ThemeProvider>
+    </QueryClientProvider>
+  )
+}
+
+// Custom hook for tests
+export function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        cacheTime: 0,
+      },
+    },
+  })
+
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light">
+        {children}
+      </ThemeProvider>
+    </QueryClientProvider>
+  )
+}
+```
+
+#### Accessibility Testing Template
+```typescript
+// web/src/test-utils/accessibility-helpers.ts
+import { axe, toHaveNoViolations } from 'jest-axe'
+import { render } from '@testing-library/react'
+
+expect.extend(toHaveNoViolations)
+
+export async function testAccessibility(component: React.ReactElement) {
+  const { container } = render(component)
+  const results = await axe(container)
+  expect(results).toHaveNoViolations()
+}
+
+// Usage in tests
+describe('Component Accessibility', () => {
+  it('should have no accessibility violations', async () => {
+    await testAccessibility(<MyComponent />)
+  })
+})
+```
+
 ## File Formatting Rules
 
 ### Markdown File End-of-File Requirements
