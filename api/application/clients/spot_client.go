@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
+	grpcSvc "bocchi/api/infrastructure/grpc"
 )
 
 // SpotClient wraps gRPC client calls for spot operations

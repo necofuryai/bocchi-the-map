@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/necofuryai/bocchi-the-map/api/tests/helpers"
+	"bocchi/api/tests/helpers"
 )
 
 func main() {

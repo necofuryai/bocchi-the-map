@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"bocchi/api/pkg/logger"
 )
 
 // contextKey is a custom type for context keys to prevent collisions

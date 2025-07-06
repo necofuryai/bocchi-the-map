@@ -20,13 +20,13 @@ import (
 	"github.com/go-chi/cors"
 	"google.golang.org/grpc"
 
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
-	"github.com/necofuryai/bocchi-the-map/api/interfaces/http/handlers"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/monitoring"
+	"bocchi/api/application/clients"
+	"bocchi/api/infrastructure/database"
+	"bocchi/api/interfaces/http/handlers"
+	"bocchi/api/pkg/auth"
+	"bocchi/api/pkg/config"
+	"bocchi/api/pkg/logger"
+	"bocchi/api/pkg/monitoring"
 )
 
 // Options for the CLI

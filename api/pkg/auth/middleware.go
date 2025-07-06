@@ -10,10 +10,10 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/monitoring"
+	"bocchi/api/infrastructure/database"
+	"bocchi/api/pkg/errors"
+	"bocchi/api/pkg/logger"
+	"bocchi/api/pkg/monitoring"
 )
 
 // AuthMiddleware provides JWT authentication middleware for the API

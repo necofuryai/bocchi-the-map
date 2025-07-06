@@ -7,10 +7,10 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/monitoring"
+	"bocchi/api/application/clients"
+	"bocchi/api/pkg/auth"
+	"bocchi/api/pkg/logger"
+	"bocchi/api/pkg/monitoring"
 )
 
 // AuthHandler handles authentication-related HTTP requests

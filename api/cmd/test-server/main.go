@@ -15,9 +15,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
-	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"bocchi/api/pkg/auth"
+	"bocchi/api/pkg/config"
+	"bocchi/api/pkg/logger"
 )
 
 // HealthCheckOutput represents the health check response

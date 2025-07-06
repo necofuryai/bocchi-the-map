@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/masyusakai/bocchi-the-map/api/internal/domain/rating"
+	"bocchi/api/internal/domain/rating"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

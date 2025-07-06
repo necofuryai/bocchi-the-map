@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
-	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
+	"bocchi/api/application/clients"
+	"bocchi/api/pkg/auth"
+	grpcSvc "bocchi/api/infrastructure/grpc"
 )
 
 

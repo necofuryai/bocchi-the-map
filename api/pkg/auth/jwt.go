@@ -10,8 +10,8 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"bocchi/api/pkg/errors"
+	"bocchi/api/pkg/logger"
 )
 
 // Claims represents the JWT claims structure for Auth0 tokens

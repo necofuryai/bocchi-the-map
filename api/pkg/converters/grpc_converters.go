@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
+	"bocchi/api/domain/entities"
+	"bocchi/api/infrastructure/database"
+	"bocchi/api/pkg/errors"
 )
 
 // Default user preference values

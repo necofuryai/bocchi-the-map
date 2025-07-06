@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package bocchi.review.v1;
 
-option go_package = "github.com/necofuryai/bocchi-the-map/api/gen/review/v1;reviewv1";
+option go_package = "bocchi/api/gen/review/v1;reviewv1";
 
 import "google/protobuf/timestamp.proto";
 import "common.proto";

@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 
-	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
+	"bocchi/api/domain/entities"
 )
 
 // SpotRepository defines the interface for spot data operations

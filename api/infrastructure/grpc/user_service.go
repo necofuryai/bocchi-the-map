@@ -10,9 +10,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"bocchi/api/infrastructure/database"
+	"bocchi/api/pkg/errors"
+	"bocchi/api/pkg/logger"
 )
 
 // UserService implements the gRPC UserService

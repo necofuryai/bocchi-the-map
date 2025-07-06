@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
+	"bocchi/api/domain/entities"
+	"bocchi/api/infrastructure/database"
 	"github.com/onsi/gomega"
 )
 

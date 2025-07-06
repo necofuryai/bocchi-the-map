@@ -45,10 +45,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"bocchi/api/infrastructure/database"
+	"bocchi/api/pkg/config"
+	"bocchi/api/pkg/errors"
+	"bocchi/api/pkg/logger"
 )
 
 // Service provides a high-level interface for authentication operations

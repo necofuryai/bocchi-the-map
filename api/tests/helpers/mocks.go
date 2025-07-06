@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
+	"bocchi/api/domain/entities"
+	"bocchi/api/pkg/auth"
+	"bocchi/api/pkg/errors"
 )
 
 const (

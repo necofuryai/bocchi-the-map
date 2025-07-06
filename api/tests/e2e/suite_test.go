@@ -5,7 +5,7 @@ package e2e
 import (
 	"testing"
 
-	"github.com/necofuryai/bocchi-the-map/api/tests/helpers"
+	"bocchi/api/tests/helpers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

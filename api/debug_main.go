@@ -6,8 +6,8 @@ import (
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
+	"bocchi/api/application/clients"
+	"bocchi/api/infrastructure/database"
 )
 
 func main() {

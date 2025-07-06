@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/monitoring"
+	"bocchi/api/pkg/errors"
+	"bocchi/api/pkg/logger"
+	"bocchi/api/pkg/monitoring"
 )
 
 // RateLimiter provides rate limiting functionality for authentication endpoints

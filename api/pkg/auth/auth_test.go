@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
+	"bocchi/api/pkg/config"
 )
 
 func TestNewServiceFromConfig(t *testing.T) {

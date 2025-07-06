@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
+	grpcSvc "bocchi/api/infrastructure/grpc"
 )
 
 // UserClient wraps gRPC client calls for user operations
