@@ -5,6 +5,7 @@ import (
 	stdErrors "errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
@@ -113,6 +114,16 @@ func (m *AuthMiddleware) RequireAuth() func(http.Handler) http.Handler {
 			// Add user context to request
 			userCtx := m.validator.GetUserContext(r.Context(), claims)
 			
+			// Add JWT ID (JTI) to context for logout functionality
+			if claims.ID != "" {
+				userCtx = context.WithValue(userCtx, "jti", claims.ID)
+			}
+			
+			// Add token expiration to context
+			if claims.ExpiresAt > 0 {
+				userCtx = context.WithValue(userCtx, "token_expires_at", time.Unix(claims.ExpiresAt, 0))
+			}
+			
 			// Add user info for monitoring
 			monitoring.AddUserContext(userCtx, claims.Subject, claims.Email)
 
@@ -166,6 +177,17 @@ func (m *AuthMiddleware) OptionalAuth() func(http.Handler) http.Handler {
 
 			// Add user context if validation succeeded
 			userCtx := m.validator.GetUserContext(r.Context(), claims)
+			
+			// Add JWT ID (JTI) to context for logout functionality
+			if claims.ID != "" {
+				userCtx = context.WithValue(userCtx, "jti", claims.ID)
+			}
+			
+			// Add token expiration to context
+			if claims.ExpiresAt > 0 {
+				userCtx = context.WithValue(userCtx, "token_expires_at", time.Unix(claims.ExpiresAt, 0))
+			}
+			
 			monitoring.AddUserContext(userCtx, claims.Subject, claims.Email)
 			
 			next.ServeHTTP(w, r.WithContext(userCtx))
@@ -195,10 +217,35 @@ func (m *AuthMiddleware) validateRequest(r *http.Request) (*Claims, error) {
 	return claims, nil
 }
 
-// checkTokenBlacklist checks if the token is blacklisted (placeholder for future implementation)
+// checkTokenBlacklist checks if the token is blacklisted
 func (m *AuthMiddleware) checkTokenBlacklist(ctx context.Context, claims *Claims) error {
-	// TODO: Implement token blacklist checking using database queries
-	// This would involve checking if the token JTI (JWT ID) is in a blacklist table
+	// Check if JWT ID (JTI) is available
+	if claims.ID == "" {
+		logger.InfoWithFields("Token missing JTI", map[string]interface{}{
+			"subject": claims.Subject,
+		})
+		// Allow tokens without JTI for now (Auth0 might not always include JTI)
+		return nil
+	}
+
+	// Check if token is blacklisted
+	isBlacklisted, err := m.queries.IsTokenBlacklisted(ctx, claims.ID)
+	if err != nil {
+		logger.ErrorWithFields("Failed to check token blacklist", err, map[string]interface{}{
+			"jti": claims.ID,
+		})
+		// Don't block authentication on database errors
+		return nil
+	}
+
+	if isBlacklisted {
+		logger.InfoWithFields("Token has been revoked", map[string]interface{}{
+			"jti":     claims.ID,
+			"subject": claims.Subject,
+		})
+		return errors.Unauthorized("token has been revoked")
+	}
+
 	return nil
 }
 
@@ -285,10 +332,29 @@ func (m *AuthMiddleware) RegisterAuthRoutes(router chi.Router) {
 	// This would include routes for OAuth2 flow with Auth0
 }
 
-// Logout handles user logout by invalidating tokens (placeholder)
-func (m *AuthMiddleware) Logout(ctx context.Context, tokenJTI string) error {
-	// TODO: Implement token blacklisting
-	// This would involve adding the token JTI to a blacklist table
+// Logout handles user logout by invalidating tokens
+func (m *AuthMiddleware) Logout(ctx context.Context, tokenJTI string, expiresAt time.Time) error {
+	if tokenJTI == "" {
+		return errors.InvalidInput("tokenJTI", "JWT ID is required for logout")
+	}
+
+	// Add token to blacklist
+	err := m.queries.BlacklistAccessToken(ctx, database.BlacklistAccessTokenParams{
+		Jti:       tokenJTI,
+		ExpiresAt: expiresAt,
+	})
+	if err != nil {
+		logger.ErrorWithFields("Failed to blacklist token", err, map[string]interface{}{
+			"jti": tokenJTI,
+		})
+		return errors.Wrap(err, errors.ErrTypeInternal, "failed to invalidate token")
+	}
+
+	logger.InfoWithFields("Token blacklisted successfully", map[string]interface{}{
+		"jti":        tokenJTI,
+		"expires_at": expiresAt,
+	})
+
 	return nil
 }
 

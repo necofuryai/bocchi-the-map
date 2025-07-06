@@ -277,3 +277,15 @@ func HasPermission(ctx context.Context, permission string) bool {
 	
 	return false
 }
+
+// GetJTIFromContext extracts JWT ID (JTI) from context
+func GetJTIFromContext(ctx context.Context) (string, bool) {
+	jti, ok := ctx.Value("jti").(string)
+	return jti, ok
+}
+
+// GetTokenExpirationFromContext extracts token expiration from context
+func GetTokenExpirationFromContext(ctx context.Context) (time.Time, bool) {
+	expiresAt, ok := ctx.Value("token_expires_at").(time.Time)
+	return expiresAt, ok
+}

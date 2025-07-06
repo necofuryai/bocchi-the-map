@@ -293,19 +293,44 @@ func (h *AuthHandler) Logout(ctx context.Context, input *LogoutInput) (*LogoutOu
 		return nil, huma.Error401Unauthorized("authentication required")
 	}
 
-	// TODO: Implement token blacklisting
-	// This would involve:
-	// 1. Extracting the JWT ID (JTI) from the token
-	// 2. Adding it to the blacklist table
-	// 3. Setting appropriate expiration
+	// Extract JWT ID (JTI) from context
+	jti, hasJTI := auth.GetJTIFromContext(ctx)
+	if !hasJTI || jti == "" {
+		logger.InfoWithFields("User logout without JTI", map[string]interface{}{
+			"user_id": userID,
+			"note":    "Token does not contain JTI - proceeding with client-side logout only",
+		})
+		resp.Body.Success = true
+		resp.Body.Message = "Logout successful. Please remove the token from client storage."
+		return resp, nil
+	}
 
-	logger.InfoWithFields("User logout requested", map[string]interface{}{
+	// Extract token expiration from context
+	expiresAt, hasExpiration := auth.GetTokenExpirationFromContext(ctx)
+	if !hasExpiration {
+		expiresAt = time.Now().Add(24 * time.Hour) // Default fallback
+	}
+
+	// Blacklist the token
+	err := h.authMiddleware.Logout(ctx, jti, expiresAt)
+	if err != nil {
+		logger.ErrorWithFields("Failed to blacklist token during logout", err, map[string]interface{}{
+			"user_id": userID,
+			"jti":     jti,
+		})
+		// Don't fail logout completely, but inform the client
+		resp.Body.Success = true
+		resp.Body.Message = "Logout processed. Please remove the token from client storage. Note: token may still be valid for a short time."
+		return resp, nil
+	}
+
+	logger.InfoWithFields("User logout successful", map[string]interface{}{
 		"user_id": userID,
+		"jti":     jti,
 	})
 
-	// For now, just return success (client should remove token)
 	resp.Body.Success = true
-	resp.Body.Message = "Logout successful. Please remove the token from client storage."
+	resp.Body.Message = "Logout successful. Token has been invalidated."
 
 	// Add monitoring context
 	monitoring.AddUserContext(ctx, userID, "")
