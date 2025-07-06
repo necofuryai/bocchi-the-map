@@ -68,6 +68,18 @@ This project systematically manages knowledge through the following files:
 - Step-by-step guide from BDD scenarios to TDD implementation
 - Executable code examples and test execution patterns
 
+#### `.claude/frontend-tdd-bdd-hybrid.md`
+- Frontend-specific TDD+BDD hybrid methodology for React/Next.js
+- Component testing patterns and UI-first development approaches
+- Integration with Playwright for E2E testing and React Testing Library for component testing
+- Frontend-specific testing strategies and best practices
+
+#### `.claude/commands/`
+- External tool integration commands and workflows
+- `discuss-with-gemini.md` - Gemini CLI discussion support for enhanced analysis
+- `gemini-search.md` - Gemini CLI web search integration
+- `orchestrator.md` - Complex task orchestration patterns
+
 ### Additional Documentation
 
 #### `docs/IMPLEMENTATION_LOG.md`
