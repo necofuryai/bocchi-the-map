@@ -1,0 +1,194 @@
+---
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'web/**'
+      - 'api/**'
+      - '.github/workflows/e2e-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'api/**'
+      - '.github/workflows/e2e-tests.yml'
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  e2e-tests:
+    name: E2E Tests with Playwright
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps
+
+      - name: Build application
+        working-directory: web
+        run: npm run build
+
+      - name: Start application
+        working-directory: web
+        run: |
+          npm run start &
+          sleep 10
+          curl -f http://localhost:3000 || exit 1
+
+      - name: Run E2E tests
+        working-directory: web
+        run: |
+          npm run test:e2e -- --reporter=json > ../e2e-results.json || true
+          npm run test:e2e -- --reporter=html
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            web/playwright-report/
+            web/test-results/
+            e2e-results.json
+          if-no-files-found: ignore
+
+      - name: Analyze E2E test results
+        id: analyze
+        if: always()
+        run: |
+          if [ -f "e2e-results.json" ]; then
+            # Parse JSON results
+            TOTAL_TESTS=$(jq '.stats.expected' e2e-results.json)
+            PASSED_TESTS=$(jq '.stats.passed' e2e-results.json)
+            FAILED_TESTS=$(jq '.stats.failed' e2e-results.json)
+            
+            if [ "$TOTAL_TESTS" -eq 0 ]; then
+              SUCCESS_RATE=0
+            else
+              SUCCESS_RATE=$((PASSED_TESTS * 100 / TOTAL_TESTS))
+            fi
+            
+            echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+            echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+            echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+            echo "success_rate=$SUCCESS_RATE" >> $GITHUB_OUTPUT
+          else
+            echo "total_tests=0" >> $GITHUB_OUTPUT
+            echo "passed_tests=0" >> $GITHUB_OUTPUT
+            echo "failed_tests=0" >> $GITHUB_OUTPUT
+            echo "success_rate=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment PR with E2E test results
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const totalTests = '${{ steps.analyze.outputs.total_tests }}';
+            const passedTests = '${{ steps.analyze.outputs.passed_tests }}';
+            const failedTests = '${{ steps.analyze.outputs.failed_tests }}';
+            const successRate = '${{ steps.analyze.outputs.success_rate }}';
+
+            let comment = '## 🎭 E2E Test Results\n\n';
+            
+            if (failedTests > 0) {
+              comment += '❌ **Some E2E tests failed!**\n\n';
+            } else if (totalTests > 0) {
+              comment += '✅ **All E2E tests passed!**\n\n';
+            } else {
+              comment += '⚠️ **No E2E tests were executed**\n\n';
+            }
+
+            comment += `**Results Summary:**\n`;
+            comment += `- 📊 Total Tests: ${totalTests}\n`;
+            comment += `- ✅ Passed: ${passedTests}\n`;
+            comment += `- ❌ Failed: ${failedTests}\n`;
+            comment += `- 📈 Success Rate: ${successRate}%\n\n`;
+
+            comment += `**Test Environment:**\n`;
+            comment += `- Node.js Version: ${{ env.NODE_VERSION }}\n`;
+            comment += `- Testing Framework: Playwright\n`;
+            comment += `- Browsers: Chromium, Firefox, WebKit\n\n`;
+
+            comment += `**Test Report:**\n`;
+            comment += `- 📋 [Detailed HTML Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})\n`;
+            comment += `- 📁 Test artifacts available in workflow run`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  e2e-cross-browser:
+    name: E2E Cross-Browser Tests
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: github.event_name == 'pull_request'
+
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'web/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Build application
+        working-directory: web
+        run: npm run build
+
+      - name: Start application
+        working-directory: web
+        run: |
+          npm run start &
+          sleep 10
+          curl -f http://localhost:3000 || exit 1
+
+      - name: Run E2E tests on ${{ matrix.browser }}
+        working-directory: web
+        run: npx playwright test --project=${{ matrix.browser }}
+
+      - name: Upload browser-specific test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results-${{ matrix.browser }}
+          path: |
+            web/playwright-report/
+            web/test-results/
+          if-no-files-found: ignore
