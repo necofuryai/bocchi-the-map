@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./hooks/enforce-uv.sh"
+            "command": "./.claude/hooks/enforce-uv.sh"
           }
         ]
       }
