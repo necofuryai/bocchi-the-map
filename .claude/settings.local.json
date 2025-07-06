@@ -5,6 +5,7 @@
       "Bash(cd:*)",
       "Bash(cp:*)",
       "Bash(echo:*)",
+      "Bash(find:*)",
       "Bash(git:*)",
       "Bash(gh:*)",
       "Bash(grep:*)",
