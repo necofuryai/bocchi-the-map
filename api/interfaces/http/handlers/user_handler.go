@@ -115,6 +115,12 @@ type UpdateCurrentUserOutput struct {
 	}
 }
 
+// DeleteCurrentUserInput represents the request to delete current user
+type DeleteCurrentUserInput struct{}
+
+// DeleteCurrentUserOutput represents the response for deleting current user
+type DeleteCurrentUserOutput struct{}  // Empty response body for 204 No Content
+
 // RegisterRoutes registers user routes (without authentication)
 func (h *UserHandler) RegisterRoutes(api huma.API) {
 	// Get user by ID (public endpoint)
@@ -171,6 +177,19 @@ func (h *UserHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.
 			{"bearerAuth": {}},
 		},
 	}, h.UpdateCurrentUser)
+
+	// Delete current user (requires authentication)
+	huma.Register(api, huma.Operation{
+		OperationID: "delete-current-user",
+		Method:      http.MethodDelete,
+		Path:        "/api/v1/users/me",
+		Summary:     "Delete current user",
+		Description: "Delete current authenticated user account",
+		Tags:        []string{"Users"},
+		Security: []map[string][]string{
+			{"bearerAuth": {}},
+		},
+	}, h.DeleteCurrentUser)
 }
 
 // GetUser gets a user by ID (public info only)
@@ -299,4 +318,24 @@ func (h *UserHandler) UpdateCurrentUser(ctx context.Context, input *UpdateCurren
 	resp.Body.UpdatedAt = grpcResp.User.UpdatedAt
 
 	return resp, nil
+}
+
+// DeleteCurrentUser deletes the current authenticated user
+func (h *UserHandler) DeleteCurrentUser(ctx context.Context, input *DeleteCurrentUserInput) (*DeleteCurrentUserOutput, error) {
+	// Extract user ID from authentication context
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
+		return nil, huma.Error401Unauthorized("authentication required")
+	}
+
+	// Call gRPC service to delete the user
+	_, err := h.userClient.DeleteUser(ctx, &grpcSvc.DeleteUserRequest{
+		ID: userID,
+	})
+	if err != nil {
+		return nil, grpcToHTTPError(err, "failed to delete user")
+	}
+
+	// Return empty response for 204 No Content
+	return &DeleteCurrentUserOutput{}, nil
 }

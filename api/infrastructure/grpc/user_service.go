@@ -174,27 +174,29 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 	}
 
 	// Validate auth provider
-	var authProvider database.UsersAuthProvider
+	var authProvider string
 	switch req.AuthProvider {
 	case "google":
-		authProvider = database.UsersAuthProviderGoogle
+		authProvider = "google"
 	case "twitter":
-		authProvider = database.UsersAuthProviderTwitter
+		authProvider = "twitter"
 	case "x":
-		authProvider = database.UsersAuthProviderX
+		authProvider = "x"
 	default:
 		return nil, status.Error(codes.InvalidArgument, "invalid auth provider")
 	}
 
 	// Create user in database
 	err = s.queries.CreateUser(ctx, database.CreateUserParams{
-		ID:             userID,
-		Email:          req.Email,
-		DisplayName:    req.DisplayName,
-		AvatarUrl:      avatarUrl,
-		AuthProvider:   authProvider,
-		AuthProviderID: req.AuthProviderID,
-		Preferences:    preferencesJSON,
+		ID:            userID,
+		Email:         req.Email,
+		Name:          sql.NullString{String: req.DisplayName, Valid: true},
+		Nickname:      sql.NullString{String: req.DisplayName, Valid: true},
+		Picture:       avatarUrl,
+		Provider:      authProvider,
+		ProviderID:    req.AuthProviderID,
+		EmailVerified: true,
+		Preferences:   preferencesJSON,
 	})
 	if err != nil {
 		logger.ErrorWithContext(ctx, "Failed to create user", err)
@@ -237,8 +239,8 @@ func (s *UserService) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*
 		}
 		
 		err = s.queries.UpdateUserAvatar(ctx, database.UpdateUserAvatarParams{
-			ID:        req.ID,
-			AvatarUrl: avatarUrl,
+			ID:      req.ID,
+			Picture: avatarUrl,
 		})
 		if err != nil {
 			logger.ErrorWithContext(ctx, "Failed to update user avatar", err)
@@ -275,7 +277,7 @@ func (s *UserService) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*
 	return &UpdateUserResponse{User: user}, nil
 }
 
-// DeleteUser deletes a user (logical deletion)
+// DeleteUser deletes a user (hard deletion)
 func (s *UserService) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*DeleteUserResponse, error) {
 	if req.ID == "" {
 		return nil, status.Error(codes.InvalidArgument, "user ID is required")
@@ -293,8 +295,7 @@ func (s *UserService) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*
 		return nil, status.Error(codes.PermissionDenied, "insufficient permissions to delete user")
 	}
 
-	// For now, we'll just check if the user exists
-	// In a production system, you might want to implement soft deletion
+	// Check if user exists
 	_, err := s.queries.GetUserByID(ctx, req.ID)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -304,18 +305,19 @@ func (s *UserService) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*
 		return nil, status.Error(codes.Internal, "failed to get user")
 	}
 
-	// TODO: Implement actual user deletion logic
-	// This might involve:
-	// - Soft deletion (marking as deleted)
-	// - Anonymizing user data
-	// - Removing personal information but keeping reviews/spots
-	
-	logger.InfoWithFields("User deletion requested (not implemented)", map[string]interface{}{
+	// Delete user (CASCADE will handle related reviews)
+	err = s.queries.DeleteUser(ctx, req.ID)
+	if err != nil {
+		logger.ErrorWithContext(ctx, "Failed to delete user", err)
+		return nil, status.Error(codes.Internal, "failed to delete user")
+	}
+
+	logger.InfoWithFields("User deleted successfully", map[string]interface{}{
 		"user_id":      req.ID,
 		"auth_user_id": authUserID,
 	})
 
-	return &DeleteUserResponse{Success: false}, status.Error(codes.Unimplemented, "user deletion not implemented")
+	return &DeleteUserResponse{Success: true}, nil
 }
 
 // convertDatabaseUserToGRPC converts database user model to gRPC user struct
@@ -332,10 +334,10 @@ func (s *UserService) convertDatabaseUserToGRPC(dbUser database.User) *User {
 	return &User{
 		ID:             dbUser.ID,
 		Email:          dbUser.Email,
-		DisplayName:    dbUser.DisplayName,
-		AvatarUrl:      dbUser.AvatarUrl.String,
-		AuthProvider:   string(dbUser.AuthProvider),
-		AuthProviderID: dbUser.AuthProviderID,
+		DisplayName:    dbUser.Name.String,
+		AvatarUrl:      dbUser.Picture.String,
+		AuthProvider:   dbUser.Provider,
+		AuthProviderID: dbUser.ProviderID,
 		Preferences:    preferences,
 		CreatedAt:      dbUser.CreatedAt,
 		UpdatedAt:      dbUser.UpdatedAt,
@@ -361,27 +363,29 @@ func (s *UserService) UpsertUserFromAuth(ctx context.Context, email, displayName
 	}
 
 	// Validate auth provider
-	var dbAuthProvider database.UsersAuthProvider
+	var dbAuthProvider string
 	switch authProvider {
 	case "google":
-		dbAuthProvider = database.UsersAuthProviderGoogle
+		dbAuthProvider = "google"
 	case "twitter":
-		dbAuthProvider = database.UsersAuthProviderTwitter
+		dbAuthProvider = "twitter"
 	case "x":
-		dbAuthProvider = database.UsersAuthProviderX
+		dbAuthProvider = "x"
 	default:
 		return nil, status.Error(codes.InvalidArgument, "invalid auth provider")
 	}
 
 	// Upsert user in database
 	err := s.queries.UpsertUser(ctx, database.UpsertUserParams{
-		ID:             userID,
-		Email:          email,
-		DisplayName:    displayName,
-		AvatarUrl:      avatarUrlNullable,
-		AuthProvider:   dbAuthProvider,
-		AuthProviderID: authProviderID,
-		Preferences:    preferencesJSON,
+		ID:            userID,
+		Email:         email,
+		Name:          sql.NullString{String: displayName, Valid: true},
+		Nickname:      sql.NullString{String: displayName, Valid: true},
+		Picture:       avatarUrlNullable,
+		Provider:      dbAuthProvider,
+		ProviderID:    authProviderID,
+		EmailVerified: true,
+		Preferences:   preferencesJSON,
 	})
 	if err != nil {
 		logger.ErrorWithContext(ctx, "Failed to upsert user", err)
