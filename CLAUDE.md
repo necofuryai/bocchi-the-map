@@ -74,6 +74,12 @@ This project systematically manages knowledge through the following files:
 - Integration with Playwright for E2E testing and React Testing Library for component testing
 - Frontend-specific testing strategies and best practices
 
+#### `.claude/design-philosophy.md`
+- Design principles inspired by John Carmack, Robert C. Martin, and Rob Pike
+- Performance-aware clean architecture guidelines
+- Unified approach combining performance, maintainability, and simplicity
+- Practical implementation patterns and anti-patterns to avoid
+
 #### `.claude/commands/`
 - External tool integration commands and workflows
 - `discuss-with-gemini.md` - Gemini CLI discussion support for enhanced analysis
