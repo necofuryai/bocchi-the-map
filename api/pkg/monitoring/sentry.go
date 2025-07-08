@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"bocchi/api/pkg/logger"
 )
 
 // getTracesSampleRate returns the traces sample rate based on environment

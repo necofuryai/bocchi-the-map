@@ -47,7 +47,7 @@ Bocchi The Map uses an automated documentation sync system to ensure that implem
 
 #### E2E Progress Tracker
 - **Workflow**: `.github/workflows/e2e-progress-tracker.yml`
-- **Triggers**: E2E test completion, weekly schedule
+- **Triggers**: E2E Tests completion, weekly schedule
 - **Function**: 
   - Tracks E2E test success rate progress
   - Records milestones when reaching 90%, 95%, or 100% success

@@ -2,14 +2,19 @@ package helpers
 
 import (
 	"context"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"math"
+	"net/http"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/necofuryai/bocchi-the-map/api/domain/entities"
+	"github.com/golang-jwt/jwt/v5"
+	"bocchi/api/domain/entities"
+	"bocchi/api/pkg/auth"
+	"bocchi/api/pkg/errors"
 )
 
 const (
@@ -69,7 +74,7 @@ func (m *MockSpotRepository) Create(ctx context.Context, spot *entities.Spot) er
 	}
 	
 	if spot.ID == "" {
-		return errors.New("spot.ID cannot be empty")
+		return stdErrors.New("spot.ID cannot be empty")
 	}
 	
 	m.mu.Lock()
@@ -382,7 +387,7 @@ func (m *MockUserRepository) Create(ctx context.Context, user *entities.User) er
 	}
 	
 	if user.ID == "" {
-		return errors.New("user ID is required")
+		return stdErrors.New("user ID is required")
 	}
 	
 	m.mu.Lock()
@@ -841,4 +846,892 @@ func (bdm *BehaviorDrivenMocks) ConfigurePartialFailure() {
 func (bdm *BehaviorDrivenMocks) Reset() {
 	bdm.SpotRepo.Reset()
 	bdm.UserRepo.Reset()
+}
+
+// AuthTestData represents authentication test data structure
+type AuthTestData struct {
+	ValidToken      string
+	InvalidToken    string
+	ExpiredToken    string
+	ValidUserID     string
+	InvalidUserID   string
+	TestUser        *TestUserInfo
+	AdminUser       *TestUserInfo
+}
+
+// TestUserInfo represents test user information
+type TestUserInfo struct {
+	Email          string
+	DisplayName    string
+	AuthProvider   entities.AuthProvider
+	AuthProviderID string
+	Preferences    entities.UserPreferences
+	IsAdmin        bool
+	Permissions    []string // JWT permissions for authentication testing
+	Role           string   // User role for authorization testing
+}
+
+// AuthHelper provides authentication testing utilities
+type AuthHelper struct {
+	// Default test tokens and user data
+	mockValidator  *MockJWTValidator
+	mockMiddleware *MockAuthMiddleware
+	mockService    *MockAuthService
+}
+
+// NewAuthHelper creates a new authentication helper for testing
+func NewAuthHelper() *AuthHelper {
+	return &AuthHelper{
+		mockValidator:  NewMockJWTValidator(),
+		mockMiddleware: NewMockAuthMiddleware(),
+		mockService:    NewMockAuthService(),
+	}
+}
+
+// NewAuthTestData creates new authentication test data
+func (ah *AuthHelper) NewAuthTestData() *AuthTestData {
+	return &AuthTestData{
+		ValidToken:   "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXItMTIzIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaXNzIjoiaHR0cHM6Ly90ZXN0LmF1dGgwLmNvbS8iLCJhdWQiOlsiYm9jY2hpLXRoZS1tYXAtYXBpIl0sImlhdCI6MTcwNDEwMDgwMCwiZXhwIjozNzEwMjIwODAwLCJzY29wZSI6InJlYWQ6c3BvdHMgd3JpdGU6c3BvdHMgcmVhZDpyZXZpZXdzIHdyaXRlOnJldmlld3MifQ.test-signature",
+		InvalidToken: "invalid.token.value",
+		ExpiredToken: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXItMTIzIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaXNzIjoiaHR0cHM6Ly90ZXN0LmF1dGgwLmNvbS8iLCJhdWQiOlsiYm9jY2hpLXRoZS1tYXAtYXBpIl0sImlhdCI6MTcwNDEwMDgwMCwiZXhwIjoxNzA0MTAwODAwLCJzY29wZSI6InJlYWQ6c3BvdHMgd3JpdGU6c3BvdHMgcmVhZDpyZXZpZXdzIHdyaXRlOnJldmlld3MifQ.expired-signature",
+		ValidUserID:  "test-user-123",
+		InvalidUserID: "non-existent-user",
+		TestUser: &TestUserInfo{
+			Email:          "test@example.com",
+			DisplayName:    "Test User",
+			AuthProvider:   entities.AuthProviderGoogle,
+			AuthProviderID: "google_test_123",
+			Preferences: entities.UserPreferences{
+				Language: "en",
+				DarkMode: false,
+				Timezone: "UTC",
+			},
+			IsAdmin:     false,
+			Permissions: []string{"read:spots", "write:reviews", "edit:profile"},
+			Role:        "user",
+		},
+		AdminUser: &TestUserInfo{
+			Email:          "admin@example.com",
+			DisplayName:    "Admin User",
+			AuthProvider:   entities.AuthProviderGoogle,
+			AuthProviderID: "google_admin_456",
+			Preferences: entities.UserPreferences{
+				Language: "en",
+				DarkMode: true,
+				Timezone: "UTC",
+			},
+			IsAdmin:     true,
+			Permissions: []string{"read:spots", "write:spots", "delete:spots", "admin:users", "admin:system"},
+			Role:        "admin",
+		},
+	}
+}
+
+// CreateAuthenticatedContext creates a context with authentication data for testing
+func (ah *AuthHelper) CreateAuthenticatedContext(baseCtx context.Context, userID string, userEmail string) context.Context {
+	// In a real implementation, this would set up the context with authentication middleware data
+	// For testing purposes, we simulate the context that would be created by the auth middleware
+	ctx := context.WithValue(baseCtx, "user_id", userID)
+	ctx = context.WithValue(ctx, "user_email", userEmail)
+	ctx = context.WithValue(ctx, "user_info", map[string]interface{}{
+		"sub":            userID,
+		"email":          userEmail,
+		"email_verified": true,
+		"name":           "Test User",
+		"picture":        "https://example.com/avatar.jpg",
+		"scope":          "read:spots write:spots read:reviews write:reviews",
+	})
+	return ctx
+}
+
+// CreateUnauthenticatedContext creates a context without authentication data
+func (ah *AuthHelper) CreateUnauthenticatedContext(baseCtx context.Context) context.Context {
+	// Return the base context without any authentication data
+	return baseCtx
+}
+
+// GetValidAuthHeaders returns valid authentication headers for HTTP requests
+func (ah *AuthHelper) GetValidAuthHeaders(authData *AuthTestData) map[string]string {
+	return map[string]string{
+		"Authorization": "Bearer " + authData.ValidToken,
+		"Content-Type":  "application/json",
+	}
+}
+
+// GetInvalidAuthHeaders returns invalid authentication headers for testing error scenarios
+func (ah *AuthHelper) GetInvalidAuthHeaders(authData *AuthTestData) map[string]string {
+	return map[string]string{
+		"Authorization": "Bearer " + authData.InvalidToken,
+		"Content-Type":  "application/json",
+	}
+}
+
+// GetExpiredAuthHeaders returns expired authentication headers for testing token expiration
+func (ah *AuthHelper) GetExpiredAuthHeaders(authData *AuthTestData) map[string]string {
+	return map[string]string{
+		"Authorization": "Bearer " + authData.ExpiredToken,
+		"Content-Type":  "application/json",
+	}
+}
+
+// GetMockValidator returns the mock JWT validator
+func (ah *AuthHelper) GetMockValidator() *MockJWTValidator {
+	return ah.mockValidator
+}
+
+// GetMockMiddleware returns the mock auth middleware
+func (ah *AuthHelper) GetMockMiddleware() *MockAuthMiddleware {
+	return ah.mockMiddleware
+}
+
+// GetMockService returns the mock auth service
+func (ah *AuthHelper) GetMockService() *MockAuthService {
+	return ah.mockService
+}
+
+// Reset resets all mocks to their default state
+func (ah *AuthHelper) Reset() {
+	ah.mockValidator.Reset()
+	ah.mockMiddleware.Reset()
+	ah.mockService.Reset()
+}
+
+// CreateTestUserContext creates a context with test user information
+func (ah *AuthHelper) CreateTestUserContext(ctx context.Context, userID, email string, permissions []string) context.Context {
+	userInfo := map[string]interface{}{
+		"user_id":        userID,
+		"email":          email,
+		"email_verified": true,
+		"name":           fmt.Sprintf("Test User %s", userID),
+		"nickname":       userID,
+		"picture":        "https://example.com/avatar.jpg",
+		"permissions":    permissions,
+	}
+
+	ctx = context.WithValue(ctx, "user", userInfo)
+	ctx = context.WithValue(ctx, "user_id", userID)
+	ctx = context.WithValue(ctx, "email", email)
+
+	return ctx
+}
+
+// CreateAdminContext creates a context with admin user permissions
+func (ah *AuthHelper) CreateAdminContext(ctx context.Context) context.Context {
+	return ah.CreateTestUserContext(ctx, "admin_user_123", "admin@example.com",
+		[]string{"read:spots", "write:spots", "delete:spots", "admin:users", "admin:system"})
+}
+
+// CreateUserContext creates a context with regular user permissions
+func (ah *AuthHelper) CreateUserContext(ctx context.Context) context.Context {
+	return ah.CreateTestUserContext(ctx, "regular_user_123", "user@example.com",
+		[]string{"read:spots", "write:reviews", "edit:profile"})
+}
+
+// CreateViewerContext creates a context with viewer-only permissions
+func (ah *AuthHelper) CreateViewerContext(ctx context.Context) context.Context {
+	return ah.CreateTestUserContext(ctx, "viewer_user_123", "viewer@example.com",
+		[]string{"read:spots"})
+}
+
+// MockJWTValidator provides a mock implementation for JWT validation testing
+type MockJWTValidator struct {
+	mu                          sync.RWMutex
+	validateTokenFunc           func(tokenString string) (*auth.Claims, error)
+	validateTokenFromRequestFunc func(r *http.Request) (*auth.Claims, error)
+	extractTokenFromRequestFunc func(r *http.Request) (string, error)
+	getUserContextFunc          func(ctx context.Context, claims *auth.Claims) context.Context
+}
+
+// NewMockJWTValidator creates a new mock JWT validator
+func NewMockJWTValidator() *MockJWTValidator {
+	return &MockJWTValidator{}
+}
+
+// ValidateToken validates a JWT token (mock implementation)
+func (m *MockJWTValidator) ValidateToken(tokenString string) (*auth.Claims, error) {
+	m.mu.RLock()
+	validateFunc := m.validateTokenFunc
+	m.mu.RUnlock()
+
+	if validateFunc != nil {
+		return validateFunc(tokenString)
+	}
+
+	// Default behavior: parse test token or create mock claims
+	if tokenString == "" {
+		return nil, errors.Unauthorized("token is required")
+	}
+
+	// Handle special test tokens
+	return m.parseTestToken(tokenString)
+}
+
+// ValidateTokenFromRequest validates a JWT token from HTTP request (mock implementation)
+func (m *MockJWTValidator) ValidateTokenFromRequest(r *http.Request) (*auth.Claims, error) {
+	m.mu.RLock()
+	validateFromRequestFunc := m.validateTokenFromRequestFunc
+	m.mu.RUnlock()
+
+	if validateFromRequestFunc != nil {
+		return validateFromRequestFunc(r)
+	}
+
+	// Extract token using mock extractor
+	token, err := m.ExtractTokenFromRequest(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.ValidateToken(token)
+}
+
+// ExtractTokenFromRequest extracts JWT token from HTTP request (mock implementation)
+func (m *MockJWTValidator) ExtractTokenFromRequest(r *http.Request) (string, error) {
+	m.mu.RLock()
+	extractFunc := m.extractTokenFromRequestFunc
+	m.mu.RUnlock()
+
+	if extractFunc != nil {
+		return extractFunc(r)
+	}
+
+	// Default extraction logic
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
+			return parts[1], nil
+		}
+		return "", errors.Unauthorized("authorization header format must be 'Bearer {token}'")
+	}
+
+	// Check query parameter as fallback
+	token := r.URL.Query().Get("token")
+	if token != "" {
+		return token, nil
+	}
+
+	return "", errors.Unauthorized("no authorization token found")
+}
+
+// GetUserContext creates a context with user information from claims (mock implementation)
+func (m *MockJWTValidator) GetUserContext(ctx context.Context, claims *auth.Claims) context.Context {
+	m.mu.RLock()
+	getUserContextFunc := m.getUserContextFunc
+	m.mu.RUnlock()
+
+	if getUserContextFunc != nil {
+		return getUserContextFunc(ctx, claims)
+	}
+
+	// Default behavior: create context with user info
+	userInfo := map[string]interface{}{
+		"user_id":        claims.Subject,
+		"email":          claims.Email,
+		"email_verified": claims.EmailVerified,
+		"name":           claims.Name,
+		"nickname":       claims.Nickname,
+		"picture":        claims.Picture,
+		"permissions":    claims.Permissions,
+	}
+
+	// Set both "user" object and individual context keys for compatibility
+	ctx = context.WithValue(ctx, "user", userInfo)
+	ctx = context.WithValue(ctx, "user_id", claims.Subject)
+	ctx = context.WithValue(ctx, "email", claims.Email)
+
+	return ctx
+}
+
+// parseTestToken parses special test tokens and returns mock claims
+func (m *MockJWTValidator) parseTestToken(tokenString string) (*auth.Claims, error) {
+	switch {
+	case strings.HasPrefix(tokenString, "test_valid_"):
+		return m.createValidTestClaims(tokenString), nil
+	case strings.HasPrefix(tokenString, "test_expired_"):
+		return nil, errors.Unauthorized("token has expired")
+	case strings.HasPrefix(tokenString, "test_invalid_"):
+		return nil, errors.Unauthorized("invalid token")
+	case tokenString == "test_admin_token":
+		return m.createAdminTestClaims(), nil
+	case tokenString == "test_user_token":
+		return m.createUserTestClaims(), nil
+	case tokenString == "test_viewer_token":
+		return m.createViewerTestClaims(), nil
+	default:
+		// Try to parse as real JWT (for integration tests)
+		return m.parseRealJWT(tokenString)
+	}
+}
+
+// createValidTestClaims creates valid test claims for a given token
+func (m *MockJWTValidator) createValidTestClaims(tokenString string) *auth.Claims {
+	userID := strings.TrimPrefix(tokenString, "test_valid_")
+	if userID == "" {
+		userID = "test_user_123"
+	}
+
+	return &auth.Claims{
+		Subject:       userID,
+		Email:         fmt.Sprintf("%s@example.com", userID),
+		EmailVerified: true,
+		Name:          fmt.Sprintf("Test User %s", userID),
+		Nickname:      userID,
+		Picture:       "https://example.com/avatar.jpg",
+		Permissions:   []string{"read:spots", "write:reviews"},
+		Audience:      []string{"bocchi-the-map-api"},
+		Issuer:        "https://test.auth0.com/",
+		ExpiresAt:     time.Now().Add(time.Hour).Unix(),
+		IssuedAt:      time.Now().Unix(),
+		NotBefore:     time.Now().Unix(),
+	}
+}
+
+// createAdminTestClaims creates test claims with admin permissions
+func (m *MockJWTValidator) createAdminTestClaims() *auth.Claims {
+	return &auth.Claims{
+		Subject:       "admin_user_123",
+		Email:         "admin@example.com",
+		EmailVerified: true,
+		Name:          "Admin User",
+		Nickname:      "admin",
+		Picture:       "https://example.com/admin_avatar.jpg",
+		Permissions:   []string{"read:spots", "write:spots", "delete:spots", "admin:users", "admin:system"},
+		Audience:      []string{"bocchi-the-map-api"},
+		Issuer:        "https://test.auth0.com/",
+		ExpiresAt:     time.Now().Add(time.Hour).Unix(),
+		IssuedAt:      time.Now().Unix(),
+		NotBefore:     time.Now().Unix(),
+	}
+}
+
+// createUserTestClaims creates test claims with regular user permissions
+func (m *MockJWTValidator) createUserTestClaims() *auth.Claims {
+	return &auth.Claims{
+		Subject:       "regular_user_123",
+		Email:         "user@example.com",
+		EmailVerified: true,
+		Name:          "Regular User",
+		Nickname:      "user",
+		Picture:       "https://example.com/user_avatar.jpg",
+		Permissions:   []string{"read:spots", "write:reviews", "edit:profile"},
+		Audience:      []string{"bocchi-the-map-api"},
+		Issuer:        "https://test.auth0.com/",
+		ExpiresAt:     time.Now().Add(time.Hour).Unix(),
+		IssuedAt:      time.Now().Unix(),
+		NotBefore:     time.Now().Unix(),
+	}
+}
+
+// createViewerTestClaims creates test claims with viewer-only permissions
+func (m *MockJWTValidator) createViewerTestClaims() *auth.Claims {
+	return &auth.Claims{
+		Subject:       "viewer_user_123",
+		Email:         "viewer@example.com",
+		EmailVerified: true,
+		Name:          "Viewer User",
+		Nickname:      "viewer",
+		Picture:       "https://example.com/viewer_avatar.jpg",
+		Permissions:   []string{"read:spots"},
+		Audience:      []string{"bocchi-the-map-api"},
+		Issuer:        "https://test.auth0.com/",
+		ExpiresAt:     time.Now().Add(time.Hour).Unix(),
+		IssuedAt:      time.Now().Unix(),
+		NotBefore:     time.Now().Unix(),
+	}
+}
+
+// parseRealJWT attempts to parse a real JWT token (for integration testing)
+func (m *MockJWTValidator) parseRealJWT(tokenString string) (*auth.Claims, error) {
+	// This is a simplified parser for testing purposes
+	// In real tests, you might want to use the actual Auth0 validator
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, &auth.Claims{})
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrTypeUnauthorized, "failed to parse JWT token")
+	}
+
+	claims, ok := token.Claims.(*auth.Claims)
+	if !ok {
+		return nil, errors.Unauthorized("invalid token claims")
+	}
+
+	return claims, nil
+}
+
+// Mock configuration methods for MockJWTValidator
+func (m *MockJWTValidator) SetValidateTokenFunc(fn func(tokenString string) (*auth.Claims, error)) {
+	m.mu.Lock()
+	m.validateTokenFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockJWTValidator) SetValidateTokenFromRequestFunc(fn func(r *http.Request) (*auth.Claims, error)) {
+	m.mu.Lock()
+	m.validateTokenFromRequestFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockJWTValidator) SetExtractTokenFromRequestFunc(fn func(r *http.Request) (string, error)) {
+	m.mu.Lock()
+	m.extractTokenFromRequestFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockJWTValidator) SetGetUserContextFunc(fn func(ctx context.Context, claims *auth.Claims) context.Context) {
+	m.mu.Lock()
+	m.getUserContextFunc = fn
+	m.mu.Unlock()
+}
+
+// Reset clears all mock configurations for MockJWTValidator
+func (m *MockJWTValidator) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.validateTokenFunc = nil
+	m.validateTokenFromRequestFunc = nil
+	m.extractTokenFromRequestFunc = nil
+	m.getUserContextFunc = nil
+}
+
+// MockAuthMiddleware provides a mock implementation for authentication middleware testing
+type MockAuthMiddleware struct {
+	mu                     sync.RWMutex
+	requireAuthFunc        func() func(http.Handler) http.Handler
+	optionalAuthFunc       func() func(http.Handler) http.Handler
+	validateRequestFunc    func(r *http.Request) (*auth.Claims, error)
+	getValidatorFunc       func() *MockJWTValidator
+	shouldSkipPath         func(path string) bool
+	development            bool
+	skipPaths              map[string]bool
+}
+
+// NewMockAuthMiddleware creates a new mock auth middleware
+func NewMockAuthMiddleware() *MockAuthMiddleware {
+	return &MockAuthMiddleware{
+		skipPaths: make(map[string]bool),
+	}
+}
+
+// RequireAuth returns a Chi middleware that requires authentication (mock implementation)
+func (m *MockAuthMiddleware) RequireAuth() func(http.Handler) http.Handler {
+	m.mu.RLock()
+	requireFunc := m.requireAuthFunc
+	m.mu.RUnlock()
+
+	if requireFunc != nil {
+		return requireFunc()
+	}
+
+	// Default mock behavior: create middleware that validates test tokens
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check if path should be skipped
+			if m.shouldSkipTestPath(r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Mock token validation
+			claims, err := m.validateTestRequest(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
+
+			// Add user context to request
+			userCtx := m.createUserContext(r.Context(), claims)
+			next.ServeHTTP(w, r.WithContext(userCtx))
+		})
+	}
+}
+
+// OptionalAuth returns a Chi middleware that optionally validates authentication (mock implementation)
+func (m *MockAuthMiddleware) OptionalAuth() func(http.Handler) http.Handler {
+	m.mu.RLock()
+	optionalFunc := m.optionalAuthFunc
+	m.mu.RUnlock()
+
+	if optionalFunc != nil {
+		return optionalFunc()
+	}
+
+	// Default mock behavior: validate if token present, but don't block if missing
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims, err := m.validateTestRequest(r)
+			if err == nil && claims != nil {
+				// Add user context if validation succeeded
+				userCtx := m.createUserContext(r.Context(), claims)
+				next.ServeHTTP(w, r.WithContext(userCtx))
+				return
+			}
+
+			// Continue without authentication
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// GetValidator returns the mock JWT validator
+func (m *MockAuthMiddleware) GetValidator() *MockJWTValidator {
+	m.mu.RLock()
+	getValidatorFunc := m.getValidatorFunc
+	m.mu.RUnlock()
+
+	if getValidatorFunc != nil {
+		return getValidatorFunc()
+	}
+
+	// Return a default mock validator
+	return NewMockJWTValidator()
+}
+
+// shouldSkipTestPath checks if the given path should skip authentication in tests
+func (m *MockAuthMiddleware) shouldSkipTestPath(path string) bool {
+	m.mu.RLock()
+	shouldSkipFunc := m.shouldSkipPath
+	skipPaths := m.skipPaths
+	m.mu.RUnlock()
+
+	if shouldSkipFunc != nil {
+		return shouldSkipFunc(path)
+	}
+
+	// Check exact match
+	if skipPaths[path] {
+		return true
+	}
+
+	// Check for path prefixes that should be skipped
+	skipPrefixes := []string{
+		"/health",
+		"/metrics",
+		"/debug",
+		"/swagger",
+		"/docs",
+		"/test",
+	}
+
+	for _, prefix := range skipPrefixes {
+		if strings.HasPrefix(path, prefix) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// validateTestRequest validates a test request and returns claims
+func (m *MockAuthMiddleware) validateTestRequest(r *http.Request) (*auth.Claims, error) {
+	m.mu.RLock()
+	validateFunc := m.validateRequestFunc
+	m.mu.RUnlock()
+
+	if validateFunc != nil {
+		return validateFunc(r)
+	}
+
+	// Default behavior: extract and validate test token
+	validator := NewMockJWTValidator()
+	return validator.ValidateTokenFromRequest(r)
+}
+
+// createUserContext creates a context with user information from claims
+func (m *MockAuthMiddleware) createUserContext(ctx context.Context, claims *auth.Claims) context.Context {
+	if claims == nil {
+		return ctx
+	}
+
+	userInfo := map[string]interface{}{
+		"user_id":        claims.Subject,
+		"email":          claims.Email,
+		"email_verified": claims.EmailVerified,
+		"name":           claims.Name,
+		"nickname":       claims.Nickname,
+		"picture":        claims.Picture,
+		"permissions":    claims.Permissions,
+	}
+
+	// Set both "user" object and individual context keys for compatibility
+	ctx = context.WithValue(ctx, "user", userInfo)
+	ctx = context.WithValue(ctx, "user_id", claims.Subject)
+	ctx = context.WithValue(ctx, "email", claims.Email)
+
+	return ctx
+}
+
+// Mock configuration methods for MockAuthMiddleware
+func (m *MockAuthMiddleware) SetRequireAuthFunc(fn func() func(http.Handler) http.Handler) {
+	m.mu.Lock()
+	m.requireAuthFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthMiddleware) SetOptionalAuthFunc(fn func() func(http.Handler) http.Handler) {
+	m.mu.Lock()
+	m.optionalAuthFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthMiddleware) SetValidateRequestFunc(fn func(r *http.Request) (*auth.Claims, error)) {
+	m.mu.Lock()
+	m.validateRequestFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthMiddleware) SetGetValidatorFunc(fn func() *MockJWTValidator) {
+	m.mu.Lock()
+	m.getValidatorFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthMiddleware) SetShouldSkipPathFunc(fn func(path string) bool) {
+	m.mu.Lock()
+	m.shouldSkipPath = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthMiddleware) SetSkipPaths(paths []string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.skipPaths = make(map[string]bool)
+	for _, path := range paths {
+		m.skipPaths[path] = true
+	}
+}
+
+func (m *MockAuthMiddleware) SetDevelopment(dev bool) {
+	m.mu.Lock()
+	m.development = dev
+	m.mu.Unlock()
+}
+
+// Reset clears all mock configurations for MockAuthMiddleware
+func (m *MockAuthMiddleware) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.requireAuthFunc = nil
+	m.optionalAuthFunc = nil
+	m.validateRequestFunc = nil
+	m.getValidatorFunc = nil
+	m.shouldSkipPath = nil
+	m.development = false
+	m.skipPaths = make(map[string]bool)
+}
+
+// MockAuthService provides a mock implementation for the authentication service
+type MockAuthService struct {
+	mu                    sync.RWMutex
+	validateTokenFunc     func(ctx context.Context, token string) (*auth.Claims, error)
+	checkPermissionFunc   func(ctx context.Context, permission string) error
+	getUserInfoFunc       func(ctx context.Context) (map[string]interface{}, error)
+	requireUserFunc       func(ctx context.Context) (map[string]interface{}, error)
+	requireUserIDFunc     func(ctx context.Context) (string, error)
+	requireUserEmailFunc  func(ctx context.Context) (string, error)
+	healthFunc            func(ctx context.Context) error
+	getStatsFunc          func() map[string]interface{}
+}
+
+// NewMockAuthService creates a new mock auth service
+func NewMockAuthService() *MockAuthService {
+	return &MockAuthService{}
+}
+
+// ValidateToken validates a JWT token and returns claims (mock implementation)
+func (m *MockAuthService) ValidateToken(ctx context.Context, token string) (*auth.Claims, error) {
+	m.mu.RLock()
+	validateFunc := m.validateTokenFunc
+	m.mu.RUnlock()
+
+	if validateFunc != nil {
+		return validateFunc(ctx, token)
+	}
+
+	// Default behavior: use mock validator
+	validator := NewMockJWTValidator()
+	return validator.ValidateToken(token)
+}
+
+// CheckPermission validates that a user has a specific permission (mock implementation)
+func (m *MockAuthService) CheckPermission(ctx context.Context, permission string) error {
+	m.mu.RLock()
+	checkFunc := m.checkPermissionFunc
+	m.mu.RUnlock()
+
+	if checkFunc != nil {
+		return checkFunc(ctx, permission)
+	}
+
+	// Default behavior: check if user has permission in context
+	if !auth.HasPermission(ctx, permission) {
+		return errors.Forbidden("permission", permission)
+	}
+	return nil
+}
+
+// GetUserInfo extracts user information from the request context (mock implementation)
+func (m *MockAuthService) GetUserInfo(ctx context.Context) (map[string]interface{}, error) {
+	m.mu.RLock()
+	getUserFunc := m.getUserInfoFunc
+	m.mu.RUnlock()
+
+	if getUserFunc != nil {
+		return getUserFunc(ctx)
+	}
+
+	// Default behavior: get user from context
+	user, ok := auth.GetUserFromContext(ctx)
+	if !ok {
+		return nil, errors.Unauthorized("user context not found")
+	}
+	return user, nil
+}
+
+// RequireUser ensures a user is authenticated and returns user info (mock implementation)
+func (m *MockAuthService) RequireUser(ctx context.Context) (map[string]interface{}, error) {
+	m.mu.RLock()
+	requireFunc := m.requireUserFunc
+	m.mu.RUnlock()
+
+	if requireFunc != nil {
+		return requireFunc(ctx)
+	}
+
+	return m.GetUserInfo(ctx)
+}
+
+// RequireUserID ensures a user is authenticated and returns the user ID (mock implementation)
+func (m *MockAuthService) RequireUserID(ctx context.Context) (string, error) {
+	m.mu.RLock()
+	requireIDFunc := m.requireUserIDFunc
+	m.mu.RUnlock()
+
+	if requireIDFunc != nil {
+		return requireIDFunc(ctx)
+	}
+
+	// Default behavior: get user ID from context
+	userID, ok := auth.GetUserIDFromContext(ctx)
+	if !ok {
+		return "", errors.Unauthorized("user ID not found in context")
+	}
+	return userID, nil
+}
+
+// RequireUserEmail ensures a user is authenticated and returns the user email (mock implementation)
+func (m *MockAuthService) RequireUserEmail(ctx context.Context) (string, error) {
+	m.mu.RLock()
+	requireEmailFunc := m.requireUserEmailFunc
+	m.mu.RUnlock()
+
+	if requireEmailFunc != nil {
+		return requireEmailFunc(ctx)
+	}
+
+	// Default behavior: get user email from context
+	email, ok := auth.GetUserEmailFromContext(ctx)
+	if !ok {
+		return "", errors.Unauthorized("user email not found in context")
+	}
+	return email, nil
+}
+
+// Health checks the health of the authentication service (mock implementation)
+func (m *MockAuthService) Health(ctx context.Context) error {
+	m.mu.RLock()
+	healthFunc := m.healthFunc
+	m.mu.RUnlock()
+
+	if healthFunc != nil {
+		return healthFunc(ctx)
+	}
+
+	// Default behavior: always healthy
+	return nil
+}
+
+// GetStats returns statistics about the authentication service (mock implementation)
+func (m *MockAuthService) GetStats() map[string]interface{} {
+	m.mu.RLock()
+	getStatsFunc := m.getStatsFunc
+	m.mu.RUnlock()
+
+	if getStatsFunc != nil {
+		return getStatsFunc()
+	}
+
+	// Default behavior: return mock stats
+	return map[string]interface{}{
+		"validator":     "mock",
+		"middleware":    "mock",
+		"rate_limiter":  "mock",
+		"healthy":       true,
+	}
+}
+
+// Mock configuration methods for MockAuthService
+func (m *MockAuthService) SetValidateTokenFunc(fn func(ctx context.Context, token string) (*auth.Claims, error)) {
+	m.mu.Lock()
+	m.validateTokenFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthService) SetCheckPermissionFunc(fn func(ctx context.Context, permission string) error) {
+	m.mu.Lock()
+	m.checkPermissionFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthService) SetGetUserInfoFunc(fn func(ctx context.Context) (map[string]interface{}, error)) {
+	m.mu.Lock()
+	m.getUserInfoFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthService) SetRequireUserFunc(fn func(ctx context.Context) (map[string]interface{}, error)) {
+	m.mu.Lock()
+	m.requireUserFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthService) SetRequireUserIDFunc(fn func(ctx context.Context) (string, error)) {
+	m.mu.Lock()
+	m.requireUserIDFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthService) SetRequireUserEmailFunc(fn func(ctx context.Context) (string, error)) {
+	m.mu.Lock()
+	m.requireUserEmailFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthService) SetHealthFunc(fn func(ctx context.Context) error) {
+	m.mu.Lock()
+	m.healthFunc = fn
+	m.mu.Unlock()
+}
+
+func (m *MockAuthService) SetGetStatsFunc(fn func() map[string]interface{}) {
+	m.mu.Lock()
+	m.getStatsFunc = fn
+	m.mu.Unlock()
+}
+
+// Reset clears all mock configurations for MockAuthService
+func (m *MockAuthService) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.validateTokenFunc = nil
+	m.checkPermissionFunc = nil
+	m.getUserInfoFunc = nil
+	m.requireUserFunc = nil
+	m.requireUserIDFunc = nil
+	m.requireUserEmailFunc = nil
+	m.healthFunc = nil
+	m.getStatsFunc = nil
 }

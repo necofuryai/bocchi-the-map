@@ -7,7 +7,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
+	reviewv1 "bocchi/api/gen/review/v1"
+	grpcSvc "bocchi/api/infrastructure/grpc"
 )
 
 // ReviewClient wraps gRPC client calls for review operations
@@ -40,16 +41,16 @@ func (c *ReviewClient) Close() error {
 }
 
 // CreateReview creates a new review via gRPC
-func (c *ReviewClient) CreateReview(ctx context.Context, req *grpcSvc.CreateReviewRequest) (*grpcSvc.CreateReviewResponse, error) {
+func (c *ReviewClient) CreateReview(ctx context.Context, req *reviewv1.CreateReviewRequest) (*reviewv1.CreateReviewResponse, error) {
 	return c.service.CreateReview(ctx, req)
 }
 
 // GetSpotReviews retrieves reviews for a spot via gRPC
-func (c *ReviewClient) GetSpotReviews(ctx context.Context, req *grpcSvc.GetSpotReviewsRequest) (*grpcSvc.GetSpotReviewsResponse, error) {
+func (c *ReviewClient) GetSpotReviews(ctx context.Context, req *reviewv1.GetSpotReviewsRequest) (*reviewv1.GetSpotReviewsResponse, error) {
 	return c.service.GetSpotReviews(ctx, req)
 }
 
 // GetUserReviews retrieves reviews by user via gRPC
-func (c *ReviewClient) GetUserReviews(ctx context.Context, req *grpcSvc.GetUserReviewsRequest) (*grpcSvc.GetUserReviewsResponse, error) {
+func (c *ReviewClient) GetUserReviews(ctx context.Context, req *reviewv1.GetUserReviewsRequest) (*reviewv1.GetUserReviewsResponse, error) {
 	return c.service.GetUserReviews(ctx, req)
 }

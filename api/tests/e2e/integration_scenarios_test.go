@@ -13,9 +13,9 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/interfaces/http/handlers"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
+	"bocchi/api/application/clients"
+	"bocchi/api/interfaces/http/handlers"
+	"bocchi/api/pkg/auth"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -36,6 +36,14 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 		setupOnce.Do(func() {
 		
 		By("Setting up complete API environment for integration testing")
+		
+		// Ensure testSuite is available
+		if testSuite == nil {
+			Fail("Test suite not initialized in setupAPIEnvironment")
+		}
+		if testSuite.TestDB == nil {
+			Fail("Test database not initialized in setupAPIEnvironment")
+		}
 		
 		// Create all clients
 		var err error
@@ -75,6 +83,11 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 	// The server instance will be closed when the test process exits
 
 	BeforeEach(func() {
+		// Ensure testSuite is initialized
+		if testSuite == nil {
+			Fail("Test suite not initialized. Make sure BeforeSuite has completed successfully.")
+		}
+		
 		// Setup API environment once
 		setupAPIEnvironment()
 		
@@ -514,6 +527,475 @@ var _ = Describe("End-to-End Integration Scenarios", func() {
 				Expect(updatedSpotResponse["average_rating"]).To(Equal(float64(4.5)), "Average should be (4+5)/2 = 4.5")
 				
 				By("Community content discovery scenario completed successfully!")
+			})
+		})
+	})
+
+	Describe("Token Blacklist Management", func() {
+		var (
+			userAccessToken string
+			createdUserID   string
+		)
+
+		Context("Given a user is authenticated with a valid JWT", func() {
+			BeforeEach(func() {
+				By("Setting up authenticated user for token blacklist testing")
+				// Create user
+				userRequestBody := map[string]interface{}{
+					"email":            "blacklist.test@example.com",
+					"display_name":     "Blacklist Test User",
+					"auth_provider":    "google",
+					"auth_provider_id": "google_blacklist_test_123",
+				}
+				
+				bodyBytes, err := json.Marshal(userRequestBody)
+				Expect(err).NotTo(HaveOccurred())
+				
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewReader(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
+				
+				resp := httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusCreated), "User registration should succeed")
+				
+				var userResponse map[string]interface{}
+				err = json.Unmarshal(resp.Body.Bytes(), &userResponse)
+				Expect(err).NotTo(HaveOccurred())
+				
+				createdUserID = userResponse["id"].(string)
+				Expect(createdUserID).To(Not(BeEmpty()), "User ID should be generated")
+				
+				// Generate token
+				tokenRequestBody := map[string]interface{}{
+					"email":            "blacklist.test@example.com",
+					"auth_provider":    "google",
+					"auth_provider_id": "google_blacklist_test_123",
+				}
+				
+				bodyBytes, err = json.Marshal(tokenRequestBody)
+				Expect(err).NotTo(HaveOccurred())
+				
+				req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
+				
+				resp = httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusOK), "Token generation should succeed")
+				
+				userAccessToken = extractBocchiAccessToken(resp)
+				Expect(userAccessToken).To(Not(BeEmpty()), "Access token should be generated")
+			})
+
+			It("Should blacklist token when user logs out and reject subsequent requests", func() {
+				By("Step 1: Verifying user can access protected resources with valid token")
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+				req.Header.Set("Authorization", "Bearer "+userAccessToken)
+				
+				resp := httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusOK), "User should be able to access protected resources")
+				
+				var profileResponse map[string]interface{}
+				err := json.Unmarshal(resp.Body.Bytes(), &profileResponse)
+				Expect(err).NotTo(HaveOccurred())
+				
+				Expect(profileResponse["id"]).To(Equal(createdUserID), "Profile should match authenticated user")
+				
+				By("Step 2: When the user logs out")
+				req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+				req.AddCookie(&http.Cookie{
+					Name:  "bocchi_access_token",
+					Value: userAccessToken,
+				})
+				
+				resp = httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusOK), "Logout should succeed")
+				
+				By("Step 3: Then the token should be added to blacklist")
+				// This step will initially fail because blacklist functionality doesn't exist yet
+				// We're implementing the BDD scenario first (RED phase)
+				
+				By("Step 4: And subsequent requests with that token should be rejected")
+				req = httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+				req.Header.Set("Authorization", "Bearer "+userAccessToken)
+				
+				resp = httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusUnauthorized), "Token should be rejected after logout")
+				
+				var errorResponse map[string]interface{}
+				err = json.Unmarshal(resp.Body.Bytes(), &errorResponse)
+				Expect(err).NotTo(HaveOccurred())
+				
+				Expect(errorResponse["error"]).To(ContainSubstring("token has been revoked"), "Error message should indicate token revocation")
+			})
+
+			It("Should clean up expired blacklisted tokens", func() {
+				By("Step 1: User logs out and token is blacklisted")
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+				req.AddCookie(&http.Cookie{
+					Name:  "bocchi_access_token",
+					Value: userAccessToken,
+				})
+				
+				resp := httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusOK), "Logout should succeed")
+				
+				By("Step 2: Verifying token is in blacklist")
+				// This will initially fail - we need to implement blacklist checking endpoint
+				req = httptest.NewRequest(http.MethodGet, "/api/v1/auth/blacklist/status", nil)
+				req.Header.Set("Authorization", "Bearer "+userAccessToken)
+				
+				resp = httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusOK), "Blacklist status check should succeed")
+				
+				var blacklistResponse map[string]interface{}
+				err := json.Unmarshal(resp.Body.Bytes(), &blacklistResponse)
+				Expect(err).NotTo(HaveOccurred())
+				
+				Expect(blacklistResponse["is_blacklisted"]).To(Equal(true), "Token should be blacklisted")
+				
+				By("Step 3: Expired tokens should be cleaned up from blacklist")
+				// This requires implementation of cleanup mechanism
+				// For now, we'll just verify the endpoint exists
+				req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/blacklist/cleanup", nil)
+				req.Header.Set("Authorization", "Bearer "+userAccessToken)
+				
+				resp = httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				// This will fail initially as the cleanup endpoint doesn't exist
+				Expect(resp.Code).To(Equal(http.StatusOK), "Cleanup operation should succeed")
+			})
+
+			It("Should handle multiple concurrent logout requests gracefully", func() {
+				By("Step 1: Multiple concurrent logout requests with same token")
+				var wg sync.WaitGroup
+				var responses []*httptest.ResponseRecorder
+				var mu sync.Mutex
+				
+				// Simulate 3 concurrent logout requests
+				for i := 0; i < 3; i++ {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						
+						req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+						req.AddCookie(&http.Cookie{
+							Name:  "bocchi_access_token",
+							Value: userAccessToken,
+						})
+						
+						resp := httptest.NewRecorder()
+						testServer.Config.Handler.ServeHTTP(resp, req)
+						
+						mu.Lock()
+						responses = append(responses, resp)
+						mu.Unlock()
+					}()
+				}
+				
+				wg.Wait()
+				
+				By("Step 2: All requests should succeed (idempotent logout)")
+				for i, resp := range responses {
+					Expect(resp.Code).To(Equal(http.StatusOK), fmt.Sprintf("Logout request %d should succeed", i+1))
+				}
+				
+				By("Step 3: Token should be blacklisted only once")
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+				req.Header.Set("Authorization", "Bearer "+userAccessToken)
+				
+				resp := httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusUnauthorized), "Token should be rejected after concurrent logouts")
+			})
+		})
+	})
+
+	Describe("Account Deletion", func() {
+		var (
+			userAccessToken string
+			createdUserID   string
+		)
+
+		Context("Given an authenticated user", func() {
+			BeforeEach(func() {
+				By("Setting up authenticated user for account deletion testing")
+				// Create user
+				userRequestBody := map[string]interface{}{
+					"email":            "delete.test@example.com",
+					"display_name":     "Delete Test User",
+					"auth_provider":    "google",
+					"auth_provider_id": "google_delete_test_123",
+				}
+				
+				bodyBytes, err := json.Marshal(userRequestBody)
+				Expect(err).NotTo(HaveOccurred())
+				
+				req := httptest.NewRequest(http.MethodPost, "/api/v1/users", bytes.NewReader(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
+				
+				resp := httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusCreated), "User registration should succeed")
+				
+				var userResponse map[string]interface{}
+				err = json.Unmarshal(resp.Body.Bytes(), &userResponse)
+				Expect(err).NotTo(HaveOccurred())
+				
+				createdUserID = userResponse["id"].(string)
+				Expect(createdUserID).To(Not(BeEmpty()), "User ID should be generated")
+				
+				// Generate token
+				tokenRequestBody := map[string]interface{}{
+					"email":            "delete.test@example.com",
+					"auth_provider":    "google",
+					"auth_provider_id": "google_delete_test_123",
+				}
+				
+				bodyBytes, err = json.Marshal(tokenRequestBody)
+				Expect(err).NotTo(HaveOccurred())
+				
+				req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/token", bytes.NewReader(bodyBytes))
+				req.Header.Set("Content-Type", "application/json")
+				
+				resp = httptest.NewRecorder()
+				testServer.Config.Handler.ServeHTTP(resp, req)
+				
+				Expect(resp.Code).To(Equal(http.StatusOK), "Token generation should succeed")
+				
+				userAccessToken = extractBocchiAccessToken(resp)
+				Expect(userAccessToken).To(Not(BeEmpty()), "Access token should be generated")
+			})
+
+			Context("When the user requests account deletion", func() {
+				It("Then user data should be removed and tokens invalidated", func() {
+					By("Step 1: Verifying user can access their profile before deletion")
+					req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+					req.Header.Set("Authorization", "Bearer "+userAccessToken)
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusOK), "User should be able to access their profile")
+					
+					var profileResponse map[string]interface{}
+					err := json.Unmarshal(resp.Body.Bytes(), &profileResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(profileResponse["id"]).To(Equal(createdUserID), "Profile should match authenticated user")
+					Expect(profileResponse["email"]).To(Equal("delete.test@example.com"))
+					
+					By("Step 2: When the user requests account deletion")
+					req = httptest.NewRequest(http.MethodDelete, "/api/v1/users/me", nil)
+					req.Header.Set("Authorization", "Bearer "+userAccessToken)
+					
+					resp = httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusOK), "Account deletion should succeed")
+					
+					var deleteResponse map[string]interface{}
+					err = json.Unmarshal(resp.Body.Bytes(), &deleteResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(deleteResponse["message"]).To(ContainSubstring("Account deleted successfully"))
+					
+					By("Step 3: Then the user data should be removed from database")
+					// Try to access user profile - should fail
+					req = httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
+					req.Header.Set("Authorization", "Bearer "+userAccessToken)
+					
+					resp = httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusUnauthorized), "User should not be able to access profile after deletion")
+					
+					By("Step 4: And the user should be logged out with token invalidated")
+					var errorResponse map[string]interface{}
+					err = json.Unmarshal(resp.Body.Bytes(), &errorResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(errorResponse["error"]).To(ContainSubstring("token has been revoked"), "Token should be invalidated")
+					
+					By("Step 5: And attempting to access user by ID should fail")
+					req = httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/users/%s", createdUserID), nil)
+					
+					resp = httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusNotFound), "User should not be found after deletion")
+				})
+			})
+
+			Context("When user has created content before deletion", func() {
+				It("Then user's reviews should be deleted but spots should remain", func() {
+					By("Step 1: User creates a spot")
+					spotRequestBody := map[string]interface{}{
+						"name":         "Test Spot for Deletion",
+						"latitude":     35.6762,
+						"longitude":    139.6503,
+						"category":     "cafe",
+						"address":      "Test Address",
+						"country_code": "JP",
+					}
+					
+					bodyBytes, err := json.Marshal(spotRequestBody)
+					Expect(err).NotTo(HaveOccurred())
+					
+					req := httptest.NewRequest(http.MethodPost, "/api/v1/spots", bytes.NewReader(bodyBytes))
+					req.Header.Set("Content-Type", "application/json")
+					req.Header.Set("Authorization", "Bearer "+userAccessToken)
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusCreated), "Spot creation should succeed")
+					
+					var spotResponse map[string]interface{}
+					err = json.Unmarshal(resp.Body.Bytes(), &spotResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					spotID := spotResponse["id"].(string)
+					Expect(spotID).To(Not(BeEmpty()), "Spot ID should be generated")
+					
+					By("Step 2: User creates a review for the spot")
+					reviewRequestBody := map[string]interface{}{
+						"spot_id": spotID,
+						"rating":  4,
+						"comment": "Test review before deletion",
+					}
+					
+					bodyBytes, err = json.Marshal(reviewRequestBody)
+					Expect(err).NotTo(HaveOccurred())
+					
+					req = httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewReader(bodyBytes))
+					req.Header.Set("Content-Type", "application/json")
+					req.Header.Set("Authorization", "Bearer "+userAccessToken)
+					
+					resp = httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusCreated), "Review creation should succeed")
+					
+					var reviewResponse map[string]interface{}
+					err = json.Unmarshal(resp.Body.Bytes(), &reviewResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					reviewID := reviewResponse["id"].(string)
+					Expect(reviewID).To(Not(BeEmpty()), "Review ID should be generated")
+					
+					By("Step 3: User deletes their account")
+					req = httptest.NewRequest(http.MethodDelete, "/api/v1/users/me", nil)
+					req.Header.Set("Authorization", "Bearer "+userAccessToken)
+					
+					resp = httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusOK), "Account deletion should succeed")
+					
+					By("Step 4: Then user's reviews should be deleted")
+					req = httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/reviews/%s", reviewID), nil)
+					
+					resp = httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusNotFound), "Review should be deleted")
+					
+					By("Step 5: But spots should remain accessible")
+					req = httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/v1/spots/%s", spotID), nil)
+					
+					resp = httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusOK), "Spot should remain accessible")
+					
+					var remainingSpotResponse map[string]interface{}
+					err = json.Unmarshal(resp.Body.Bytes(), &remainingSpotResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(remainingSpotResponse["name"]).To(Equal("Test Spot for Deletion"))
+					Expect(remainingSpotResponse["review_count"]).To(Equal(float64(0)), "Review count should be updated")
+					Expect(remainingSpotResponse["average_rating"]).To(Equal(float64(0)), "Average rating should be reset")
+				})
+			})
+
+			Context("When an unauthenticated user tries to delete account", func() {
+				It("Then the request should be rejected", func() {
+					By("Attempting to delete account without authentication")
+					req := httptest.NewRequest(http.MethodDelete, "/api/v1/users/me", nil)
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusUnauthorized), "Unauthenticated deletion should be rejected")
+					
+					var errorResponse map[string]interface{}
+					err := json.Unmarshal(resp.Body.Bytes(), &errorResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(errorResponse["error"]).To(ContainSubstring("authentication required"), "Should require authentication")
+				})
+			})
+
+			Context("When user tries to delete account with invalid token", func() {
+				It("Then the request should be rejected", func() {
+					By("Attempting to delete account with invalid token")
+					req := httptest.NewRequest(http.MethodDelete, "/api/v1/users/me", nil)
+					req.Header.Set("Authorization", "Bearer invalid-token")
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusUnauthorized), "Invalid token should be rejected")
+					
+					var errorResponse map[string]interface{}
+					err := json.Unmarshal(resp.Body.Bytes(), &errorResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(errorResponse["error"]).To(ContainSubstring("invalid token"), "Should indicate invalid token")
+				})
+			})
+
+			Context("When user tries to delete account twice", func() {
+				It("Then the second request should be rejected", func() {
+					By("First account deletion")
+					req := httptest.NewRequest(http.MethodDelete, "/api/v1/users/me", nil)
+					req.Header.Set("Authorization", "Bearer "+userAccessToken)
+					
+					resp := httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusOK), "First deletion should succeed")
+					
+					By("Second account deletion attempt")
+					req = httptest.NewRequest(http.MethodDelete, "/api/v1/users/me", nil)
+					req.Header.Set("Authorization", "Bearer "+userAccessToken)
+					
+					resp = httptest.NewRecorder()
+					testServer.Config.Handler.ServeHTTP(resp, req)
+					
+					Expect(resp.Code).To(Equal(http.StatusUnauthorized), "Second deletion should be rejected")
+					
+					var errorResponse map[string]interface{}
+					err := json.Unmarshal(resp.Body.Bytes(), &errorResponse)
+					Expect(err).NotTo(HaveOccurred())
+					
+					Expect(errorResponse["error"]).To(ContainSubstring("token has been revoked"), "Should indicate token revocation")
+				})
 			})
 		})
 	})

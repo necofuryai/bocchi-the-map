@@ -1,9 +1,12 @@
 ---
 name: E2E Test Progress Tracker
 
+env:
+  NODE_VERSION: '18'
+
 on:
   workflow_run:
-    workflows: ["E2E Tests", "Playwright Tests"]
+    workflows: ["E2E Tests"]
     types: [completed]
   schedule:
     # Run weekly to track progress trends
@@ -30,7 +33,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: 'web/package-lock.json'
 
@@ -48,7 +51,7 @@ jobs:
           # Run E2E tests with JSON reporter and capture exit code
           EXIT_CODE=0
           npx playwright test --reporter=json > \
-            ../e2e-results.json || EXIT_CODE=$?
+            e2e-results.json || EXIT_CODE=$?
           echo "JSON_TEST_EXIT_CODE=$EXIT_CODE" >> $GITHUB_ENV
 
           # Also generate HTML report for artifacts and capture exit code
@@ -72,14 +75,15 @@ jobs:
         run: |
           set -e
 
-          if [ ! -f "e2e-results.json" ]; then
+          if [ ! -f "web/e2e-results.json" ]; then
             echo "No E2E results found, creating placeholder"
+            mkdir -p web
             echo '{"stats":{"expected":0,"passed":0,"failed":0,' \
-              '"flaky":0,"skipped":0}}' > e2e-results.json
+              '"flaky":0,"skipped":0}}' > web/e2e-results.json
           fi
 
           # Parse test results using external script
-          eval $(node scripts/parse-e2e-results.js e2e-results.json)
+          eval $(node scripts/parse-e2e-results.js web/e2e-results.json)
 
           # Get current date
           CURRENT_DATE=$(date '+%Y-%m-%d')
@@ -210,7 +214,7 @@ jobs:
         with:
           name: e2e-progress-results
           path: |
-            e2e-results.json
+            web/e2e-results.json
             web/playwright-report/
             docs/e2e-test-progress.md
           if-no-files-found: ignore

@@ -44,10 +44,14 @@ The Go API follows strict onion architecture principles with clear layer separat
 - `http/handlers/` - HTTP request/response handling with Huma framework
 - `http/middleware/` - Cross-cutting concerns (auth, logging)
 
-### Protocol Buffers (`/proto/`)
+### Protocol Buffers (`/proto/` and `/gen/`)
 
-- API contracts with auto-generated OpenAPI documentation
-- Type-safe communication between layers
+- **✅ FULLY IMPLEMENTED**: Complete Protocol Buffers migration completed
+- `/proto/` - Source .proto files defining API contracts
+- `/gen/` - Auto-generated Go code from Protocol Buffers
+- Type-safe communication between all layers
+- Zero manual struct definitions - all types generated from protobuf
+- Auto-generated OpenAPI documentation from .proto files
 
 ## Frontend Architecture (web/)
 
@@ -64,13 +68,13 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - `Map component` - Main MapLibre GL JS wrapper with PMTiles support
 - `POI Features` - Point of interest rendering and interaction logic
-- `Auth Provider` - Auth.js session management
+- `Auth Provider` - Auth0 Universal Login session management
 - `Theme Provider` - Dark/light mode using next-themes
 
 ## Key Design Principles
 
 1. **Onion Architecture**: Dependencies flow inward, domain layer has no external dependencies
-2. **Protocol Buffers-Driven**: Type-safe API contracts with auto-generated documentation
+2. **Protocol Buffers-Driven**: ✅ **FULLY IMPLEMENTED** - Type-safe API contracts with auto-generated documentation, zero manual structs
 3. **Microservice-Ready**: Loose coupling for future service extraction
 4. **Type Safety**: Protocol Buffers for API, TypeScript for frontend
 5. **Multi-Country Support**: I18n-ready entities with localized names/addresses
@@ -128,7 +132,7 @@ The project strictly adheres to these core software development principles:
 
 - Every piece of knowledge should have a single, unambiguous representation
 - Extract common code into shared utilities
-- Use code generation (sqlc, Protocol Buffers) to eliminate repetition
+- Use code generation (sqlc, ✅ **Protocol Buffers fully implemented**) to eliminate repetition
 - Example: Common error handling patterns in `pkg/errors/` package
 
 ## Implementation Patterns
@@ -178,36 +182,274 @@ func (e ValidationError) Error() string {
 }
 ```
 
+#### Authentication Middleware Pattern
+
+```go
+// Enhanced authentication middleware with token blacklisting
+type AuthMiddleware struct {
+    jwtValidator *JWTValidator
+    queries      *database.Queries
+    rateLimiter  *RateLimiter
+    logger       zerolog.Logger
+}
+
+// Middleware function with comprehensive security checks
+func (am *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // 1. Extract and validate JWT token
+        token := extractTokenFromRequest(r)
+        claims, err := am.jwtValidator.ValidateToken(r.Context(), token)
+        if err != nil {
+            http.Error(w, "invalid token", http.StatusUnauthorized)
+            return
+        }
+        
+        // 2. Check token blacklist
+        if err := am.checkTokenBlacklist(r.Context(), claims.ID); err != nil {
+            http.Error(w, "token has been revoked", http.StatusUnauthorized)
+            return
+        }
+        
+        // 3. Add authentication context
+        ctx := am.addAuthContext(r.Context(), claims)
+        next.ServeHTTP(w, r.WithContext(ctx))
+    })
+}
+
+// Safe fail pattern for blacklist checking
+func (am *AuthMiddleware) checkTokenBlacklist(ctx context.Context, jti string) error {
+    if jti == "" {
+        return nil // No JTI means older token format, allow for backward compatibility
+    }
+    
+    isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, jti)
+    if err != nil {
+        // Log error but don't fail authentication - availability over security
+        am.logger.Warn("Blacklist check failed, allowing authentication", err)
+        return nil
+    }
+    
+    if isBlacklisted {
+        return errors.New("token has been revoked")
+    }
+    return nil
+}
+```
+
+#### Secure Account Deletion Pattern
+
+```go
+// Multi-step secure deletion with rollback capability
+func (s *UserService) DeleteUser(ctx context.Context, userID string) error {
+    // 1. Verify user exists and get associated data
+    user, err := s.queries.GetUser(ctx, userID)
+    if err != nil {
+        return status.Error(codes.NotFound, "user not found")
+    }
+    
+    // 2. Begin transaction for atomic deletion
+    tx, err := s.db.BeginTx(ctx, nil)
+    if err != nil {
+        return status.Error(codes.Internal, "failed to begin transaction")
+    }
+    defer tx.Rollback()
+    
+    // 3. Delete user (CASCADE will handle related data)
+    if err := s.queries.WithTx(tx).DeleteUser(ctx, userID); err != nil {
+        return status.Error(codes.Internal, "failed to delete user")
+    }
+    
+    // 4. Commit transaction
+    if err := tx.Commit(); err != nil {
+        return status.Error(codes.Internal, "failed to commit deletion")
+    }
+    
+    // 5. Log deletion for audit trail
+    s.logger.InfoWithFields("User account deleted", map[string]interface{}{
+        "user_id": userID,
+        "email":   user.Email,
+    })
+    
+    return nil
+}
+```
+
+#### Context Management Pattern
+
+```go
+// Type-safe context key management
+type contextKey string
+
+const (
+    userIDKey    contextKey = "user_id"
+    jtiKey       contextKey = "jti"
+    tokenExpKey  contextKey = "token_exp"
+)
+
+// Context helper functions with type safety
+func WithUserID(ctx context.Context, userID string) context.Context {
+    return context.WithValue(ctx, userIDKey, userID)
+}
+
+func GetUserIDFromContext(ctx context.Context) string {
+    if userID, ok := ctx.Value(userIDKey).(string); ok {
+        return userID
+    }
+    return ""
+}
+
+func WithJTI(ctx context.Context, jti string) context.Context {
+    return context.WithValue(ctx, jtiKey, jti)
+}
+
+func GetJTIFromContext(ctx context.Context) string {
+    if jti, ok := ctx.Value(jtiKey).(string); ok {
+        return jti
+    }
+    return ""
+}
+```
+
 ### Frontend Patterns
 
-#### Custom Hook Pattern
+#### TDD+BDD Component Pattern
 
 ```typescript
-// Map interaction hooks
-export function useMapInteraction() {
-  const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+// BDD-style component testing
+describe('SearchInput Component', () => {
+  describe('Given the SearchInput component is rendered', () => {
+    describe('When user types in the search input', () => {
+      it('Then the input value should update correctly', async () => {
+        // Given
+        const user = userEvent.setup()
+        render(<SearchInput onSearch={mockOnSearch} onClear={mockOnClear} />)
+        
+        // When
+        await user.type(searchInput, 'quiet cafe')
+        
+        // Then
+        expect(searchInput).toHaveValue('quiet cafe')
+      })
+    })
+  })
+})
+```
+
+#### Custom Hook TDD Pattern
+
+```typescript
+// TDD-driven custom hook development
+export function useSpotSearch(): UseSpotSearchReturn {
+  const [spots, setSpots] = useState<Spot[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
-  const handleSpotClick = useCallback((spot: Spot) => {
-    setSelectedSpot(spot);
-  }, []);
+  const search = useCallback(async (query: string) => {
+    // Implementation driven by tests
+    setLoading(true)
+    try {
+      const response = await searchSpots(query, filters)
+      setSpots(response.data)
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [filters])
   
-  return { selectedSpot, handleSpotClick };
+  return { spots, loading, error, search }
 }
+```
+
+#### BDD E2E Test Pattern
+
+```typescript
+// Playwright E2E tests with BDD structure
+test.describe('Spot Search Feature', () => {
+  test.describe('Given I am on the search page', () => {
+    test('When I search for "quiet cafe", Then I should see relevant results', async ({ page }) => {
+      // Given
+      await page.goto('/search')
+      
+      // When
+      await page.getByTestId('search-input').fill('quiet cafe')
+      await page.keyboard.press('Enter')
+      
+      // Then
+      await expect(page.getByTestId('search-results')).toBeVisible()
+    })
+  })
+})
 ```
 
 #### Component Composition Pattern
 
 ```typescript
-// Composable UI components
+// Composable UI components with testability
 export function SpotCard({ spot, onSelect }: SpotCardProps) {
   return (
-    <Card onClick={() => onSelect(spot)}>
+    <Card onClick={() => onSelect(spot)} data-testid="spot-item">
       <CardHeader>
-        <CardTitle>{spot.name}</CardTitle>
+        <CardTitle data-testid="spot-name">{spot.name}</CardTitle>
+        {spot.soloFriendly && (
+          <Badge data-testid="solo-friendly-badge">Solo-friendly</Badge>
+        )}
       </CardHeader>
     </Card>
   );
 }
+```
+
+#### Test Utilities Pattern
+
+```typescript
+// BDD-style test helpers and assertions
+export const BDDAssertions = {
+  expectLoadingState: () => {
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
+  },
+  
+  expectSearchResults: (count?: number) => {
+    const resultsContainer = screen.getByTestId('search-results')
+    expect(resultsContainer).toBeInTheDocument()
+    
+    if (count !== undefined) {
+      const spotItems = screen.getAllByTestId('spot-item')
+      expect(spotItems).toHaveLength(count)
+    }
+  }
+}
+
+export const BDDActions = {
+  performSearch: async (query: string) => {
+    const searchInput = screen.getByPlaceholderText('Search for spots...')
+    await userEvent.clear(searchInput)
+    await userEvent.type(searchInput, query)
+    await userEvent.keyboard('{Enter}')
+  }
+}
+```
+
+#### MSW API Mocking Pattern
+
+```typescript
+// Realistic API mocking for tests
+export const spotHandlers = [
+  http.get('/api/spots/search', ({ request }) => {
+    const url = new URL(request.url)
+    const query = url.searchParams.get('q')?.toLowerCase() || ''
+    
+    const filteredSpots = mockSpots.filter(spot =>
+      spot.name.toLowerCase().includes(query)
+    )
+    
+    return HttpResponse.json({
+      data: filteredSpots,
+      total: filteredSpots.length,
+      hasMore: false,
+    })
+  }),
+]
 ```
 
 ## Anti-Patterns to Avoid
@@ -219,28 +461,307 @@ export function SpotCard({ spot, onSelect }: SpotCardProps) {
 3. **Tight Coupling Between Layers**: Respect onion architecture dependencies
 4. **Inconsistent Error Handling**: Use structured error types consistently
 
+#### Authentication & Security Anti-Patterns
+
+5. **Storing JTI in Database Without Checking**: 
+   - ❌ Don't add tokens to blacklist without verifying they aren't already there
+   - ✅ Use proper unique constraints and handle duplicate key errors gracefully
+   
+6. **Failing Authentication on Database Errors**:
+   - ❌ Don't block all authentication when blacklist database is unavailable
+   - ✅ Implement graceful degradation - log errors but allow authentication
+   
+7. **Missing Token Context Information**:
+   - ❌ Don't store only user ID in request context
+   - ✅ Store JTI, expiration, and other token metadata for security operations
+   
+8. **Inconsistent Account Deletion Scope**:
+   - ❌ Don't leave orphaned data when deleting user accounts
+   - ✅ Use CASCADE constraints and verify all related data is cleaned up
+   
+9. **Hard Failure on Token Blacklisting**:
+   - ❌ Don't fail logout/deletion operations if blacklisting fails
+   - ✅ Log blacklist failures but complete the primary operation
+   
+10. **Missing Audit Trail for Security Operations**:
+    - ❌ Don't perform account deletion without logging
+    - ✅ Always log security-sensitive operations with sufficient context
+
+#### Context Management Anti-Patterns
+
+11. **String-based Context Keys**:
+    - ❌ `ctx.Value("user_id")`
+    - ✅ Use typed context keys: `ctx.Value(userIDKey)`
+    
+12. **Missing Context Value Type Assertions**:
+    - ❌ `userID := ctx.Value(userIDKey).(string)` (can panic)
+    - ✅ `userID, ok := ctx.Value(userIDKey).(string); if !ok { return "" }`
+    
+13. **Overloading Context with Non-Request Data**:
+    - ❌ Don't store application configuration in request context
+    - ✅ Only store request-scoped authentication and user data
+
 ### Frontend Anti-Patterns
 
+#### React Development Anti-Patterns
 1. **Direct State Mutation**: Use immutable updates with React state
 2. **Prop Drilling**: Use context or state management for deep component trees
 3. **Uncontrolled Side Effects**: Use useEffect dependencies properly
 4. **Missing Error Boundaries**: Implement error handling for async operations
 
+#### Frontend Testing Anti-Patterns
+1. **Testing Implementation Details**: 
+   - ❌ Don't test internal component state
+   - ✅ Test user-visible behavior and interactions
+   
+2. **Over-mocking in E2E Tests**: 
+   - ❌ Don't mock internal components in E2E tests
+   - ✅ Mock only external APIs and services
+   
+3. **Skipping TDD Cycles**: 
+   - ❌ Don't write component code before tests
+   - ✅ Always follow Red-Green-Refactor cycle
+   
+4. **Missing Accessibility Testing**:
+   - ❌ Don't ignore screen reader compatibility
+   - ✅ Always test with semantic queries and a11y tools
+   
+5. **Writing Tests After Implementation**:
+   - ❌ Don't write tests just to increase coverage
+   - ✅ Let tests drive your component design (TDD)
+   
+6. **Mixing Test Concerns**:
+   - ❌ Don't test BDD scenarios in unit tests
+   - ✅ Keep E2E (BDD) and component (TDD) tests separate
+   
+7. **Unrealistic Test Data**:
+   - ❌ Don't use overly simplified mock data
+   - ✅ Use realistic API responses with MSW
+
 ## Testing Strategies
 
-### Backend Testing
+### TDD+BDD Hybrid Methodology
+
+This project employs a sophisticated hybrid testing approach that combines the strengths of both Test-Driven Development (TDD) and Behavior-Driven Development (BDD):
+
+#### Core Philosophy
+- **Outside-In Development**: Start with BDD scenarios to define user behavior, then use TDD for implementation
+- **Double-Loop Testing**: Outer loop (BDD) drives user stories, inner loop (TDD) drives implementation details
+- **Specification by Example**: Use concrete examples to drive both behavior and implementation
+
+#### Layer-Specific Testing Strategy
+
+**Interface Layer (Handlers/Controllers)**
+- Primary: BDD approach with Ginkgo
+- Focus: User interactions and API contracts
+- Tools: E2E tests with Given-When-Then structure
+
+**Application Layer (Services)**
+- Primary: TDD with BDD context
+- Focus: Business logic orchestration
+- Tools: Standard Go testing with clear scenarios
+
+**Domain Layer (Core Business Logic)**
+- Primary: Pure TDD
+- Focus: Business rules and entities
+- Tools: Table-driven tests, property-based testing
+
+**Infrastructure Layer (Adapters)**
+- Primary: TDD with integration tests
+- Focus: External system interactions
+- Tools: Mocks and test containers
+
+#### Test Flow Pattern
+1. **Feature Request** → BDD scenario definition
+2. **E2E Test** → High-level behavior specification
+3. **TDD Cycle** → Implementation of supporting components
+4. **Integration** → Ensure all layers work together
+5. **Validation** → BDD scenarios pass end-to-end
+
+#### Benefits
+- **User-Centric**: BDD ensures features meet user needs
+- **Clean Implementation**: TDD ensures robust, testable code
+- **Comprehensive Coverage**: Both behavior and implementation are tested
+- **Maintainable**: Clear separation of concerns in test structure
+
+#### Security Feature Implementation Pattern
+
+When implementing security-critical features like authentication, token management, and account deletion, follow this specialized TDD+BDD approach:
+
+##### BDD Security Scenarios
+```gherkin
+Feature: Token Blacklist Management
+  Scenario: User logs out and token is blacklisted
+    Given a user is authenticated with a valid JWT
+    When the user logs out
+    Then the token should be added to blacklist
+    And subsequent requests with that token should be rejected
+
+Feature: Account Deletion Security
+  Scenario: User deletes account with data cleanup
+    Given a user is authenticated
+    When the user requests account deletion
+    Then the user data should be removed from database
+    And all user tokens should be blacklisted
+    And related content should be cleaned up via CASCADE
+```
+
+##### TDD Security Implementation
+```go
+// 1. Red Phase - Write failing test
+func TestAuthMiddleware_CheckTokenBlacklist(t *testing.T) {
+    tests := []struct {
+        name          string
+        jti           string
+        setupMock     func(*mocks.MockQuerier)
+        expectedError bool
+        errorMessage  string
+    }{
+        {
+            name: "revoked token should be rejected",
+            jti:  "test-jti-123",
+            setupMock: func(m *mocks.MockQuerier) {
+                m.EXPECT().IsTokenBlacklisted(gomock.Any(), "test-jti-123").Return(true, nil)
+            },
+            expectedError: true,
+            errorMessage:  "token has been revoked",
+        },
+        {
+            name: "database error should not block authentication",
+            jti:  "test-jti-456",
+            setupMock: func(m *mocks.MockQuerier) {
+                m.EXPECT().IsTokenBlacklisted(gomock.Any(), "test-jti-456").Return(false, errors.New("db error"))
+            },
+            expectedError: false, // Graceful degradation
+        },
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            // Test implementation
+        })
+    }
+}
+
+// 2. Green Phase - Implement minimal code to pass
+func (am *AuthMiddleware) checkTokenBlacklist(ctx context.Context, jti string) error {
+    // Implementation that makes tests pass
+}
+
+// 3. Refactor Phase - Optimize and clean up
+func (am *AuthMiddleware) checkTokenBlacklist(ctx context.Context, jti string) error {
+    // Refactored implementation with proper error handling
+}
+```
+
+##### E2E Security Validation
+```go
+// BDD E2E test using Ginkgo
+var _ = Describe("Token Blacklist Security", func() {
+    Context("Given a user is authenticated", func() {
+        BeforeEach(func() {
+            // Setup authenticated user context
+            user := authHelper.CreateTestUser()
+            token = authHelper.GenerateTokenForUser(user)
+        })
+        
+        Context("When the user logs out", func() {
+            It("Then subsequent requests should be rejected", func() {
+                By("Successfully logging out")
+                response := authHelper.Logout(token)
+                Expect(response.StatusCode).To(Equal(200))
+                
+                By("Rejecting subsequent authenticated requests")
+                response = authHelper.MakeAuthenticatedRequest(token, "/api/v1/users/me")
+                Expect(response.StatusCode).To(Equal(401))
+                Expect(response.Body).To(ContainSubstring("token has been revoked"))
+            })
+        })
+    })
+})
+```
+
+##### Security Testing Best Practices
+
+1. **Always Test Security Boundaries**:
+   - Test unauthorized access attempts
+   - Test with expired tokens
+   - Test with malformed tokens
+   - Test account deletion edge cases
+
+2. **Test Graceful Degradation**:
+   - Database unavailability scenarios
+   - Partial system failures
+   - Network timeouts and retries
+
+3. **Audit Trail Verification**:
+   - Verify security operations are logged
+   - Test log content and format
+   - Ensure sensitive data is not logged
+
+4. **Data Consistency Validation**:
+   - Verify CASCADE deletions work correctly
+   - Test transaction rollback scenarios
+   - Validate orphaned data cleanup
+
+### Traditional Testing Approaches
+
+#### Backend Testing
 
 - **Unit Tests**: Test domain entities and services in isolation
 - **Integration Tests**: Test repository implementations with real database
 - **BDD Tests**: Use Ginkgo for behavior specifications
 - **Contract Tests**: Verify Protocol Buffer contracts
 
-### Frontend Testing
+#### Frontend Testing
 
+The frontend adopts the same TDD+BDD hybrid methodology as the backend, adapted for React/Next.js development:
+
+**TDD+BDD Frontend Hybrid Approach:**
+
+**Presentation Layer (React Components)**
+- Primary: BDD approach for user interactions
+- Focus: Component behavior, props, and user events  
+- Tools: React Testing Library with user-event
+- Pattern: Given-When-Then for component behavior
+
+**Logic Layer (Custom Hooks)**
+- Primary: TDD with BDD context
+- Focus: Business logic, state management, side effects
+- Tools: Vitest with React Testing Library renderHook
+- Pattern: Red-Green-Refactor for hook logic
+
+**Integration Layer (API Calls)**  
+- Primary: TDD with mocking
+- Focus: Data fetching, caching, error handling
+- Tools: MSW (Mock Service Worker) for API mocking
+- Pattern: Test doubles for external dependencies
+
+**E2E Layer (User Journeys)**
+- Primary: Pure BDD
+- Focus: Complete user workflows
+- Tools: Playwright for full browser automation
+- Pattern: User story scenarios
+
+**Frontend Testing Infrastructure:**
+- **Test Utilities**: Comprehensive test helpers with BDD-style assertions
+- **API Mocking**: MSW integration for realistic API responses
+- **Accessibility Testing**: Automated a11y validation with jest-axe
+- **Visual Testing**: Component screenshot comparison capabilities
+
+**Example Frontend TDD+BDD Workflow:**
+1. Write E2E BDD scenario (e.g., `spot-search.spec.ts`)
+2. Implement components with TDD (e.g., `SearchInput`, `useSpotSearch`)
+3. Create integration tests for component cooperation
+4. Validate E2E scenarios pass end-to-end
+
+**Frontend Test Types:**
 - **Unit Tests**: Test utility functions and custom hooks with Vitest
-- **Component Tests**: Test React components in isolation
+- **Component Tests**: Test React components in isolation with BDD structure
 - **Integration Tests**: Test component interactions and data flow
 - **E2E Tests**: Test complete user workflows with Playwright
+- **Accessibility Tests**: Automated accessibility compliance testing
+- **Visual Regression Tests**: UI consistency validation
 
 ## Performance Considerations
 
@@ -400,10 +921,108 @@ func (c *Config) Validate() error {
 
 ### Authentication & Authorization
 
-- Use JWT tokens with proper expiration
-- Implement CSRF protection
-- Validate all user inputs
-- Use HTTPS everywhere
+#### Core Authentication Features
+- **JWT Token Management**: Use JWT tokens with proper expiration and Auth0 validation
+- **Token Blacklisting**: Implement JWT ID (JTI) based token revocation for logout security
+- **Account Management**: Secure account deletion with CASCADE data removal
+- **CSRF Protection**: Implement CSRF protection for state-changing operations
+- **Input Validation**: Validate all user inputs at multiple layers
+- **HTTPS Enforcement**: Use HTTPS everywhere in production
+
+#### Advanced Security Patterns
+
+##### Token Blacklist Implementation
+```go
+// JWT ID (JTI) extraction and blacklist management
+type Claims struct {
+    ID          string   `json:"jti,omitempty"`     // JWT ID for blacklist tracking
+    Audience    []string `json:"aud,omitempty"`
+    Subject     string   `json:"sub,omitempty"`
+    Email       string   `json:"email,omitempty"`
+    Permissions []string `json:"permissions,omitempty"`
+    jwt.RegisteredClaims
+}
+
+// Blacklist check in authentication middleware
+func (am *AuthMiddleware) checkTokenBlacklist(ctx context.Context, jti string) error {
+    isBlacklisted, err := am.queries.IsTokenBlacklisted(ctx, jti)
+    if err != nil {
+        // Fail safely - don't block authentication on DB issues
+        am.logger.Warn("Failed to check token blacklist", err)
+        return nil
+    }
+    if isBlacklisted {
+        return errors.New("token has been revoked")
+    }
+    return nil
+}
+```
+
+##### Secure Account Deletion Pattern
+```go
+// Account deletion with security checks and cascade operations
+func (h *UserHandler) DeleteCurrentUser(ctx context.Context, input *DeleteCurrentUserInput) (*DeleteCurrentUserOutput, error) {
+    // 1. Extract authenticated user from context
+    userID := auth.GetUserIDFromContext(ctx)
+    if userID == "" {
+        return nil, huma.Error401Unauthorized("authentication required")
+    }
+    
+    // 2. Delete user via gRPC service (triggers CASCADE deletion)
+    err := h.userClient.DeleteUser(ctx, userID)
+    if err != nil {
+        return nil, huma.Error500InternalServerError("failed to delete user account")
+    }
+    
+    // 3. Blacklist current token to prevent further access
+    if jti := auth.GetJTIFromContext(ctx); jti != "" {
+        if err := h.authMiddleware.Logout(ctx); err != nil {
+            h.logger.Warn("Failed to blacklist token during account deletion", err)
+        }
+    }
+    
+    return &DeleteCurrentUserOutput{}, nil
+}
+```
+
+#### Authentication Context Management
+```go
+// Context keys for authentication data
+const (
+    UserIDContextKey    = "user_id"
+    JTIContextKey      = "jti"
+    TokenExpContextKey = "token_exp"
+)
+
+// Helper functions for context management
+func GetJTIFromContext(ctx context.Context) string {
+    if jti, ok := ctx.Value(JTIContextKey).(string); ok {
+        return jti
+    }
+    return ""
+}
+
+func GetTokenExpirationFromContext(ctx context.Context) *time.Time {
+    if exp, ok := ctx.Value(TokenExpContextKey).(*time.Time); ok {
+        return exp
+    }
+    return nil
+}
+```
+
+#### Database Security Patterns
+```sql
+-- Secure user deletion with CASCADE constraints
+DELETE FROM users WHERE id = ?;
+-- Related reviews are automatically deleted via CASCADE
+
+-- Token blacklist with automatic cleanup
+INSERT INTO token_blacklist (jti, token_type, expires_at) 
+VALUES (?, 'access', ?);
+
+-- Cleanup expired tokens (run periodically)
+DELETE FROM token_blacklist WHERE expires_at < NOW();
+```
 
 ### Data Protection
 
@@ -532,7 +1151,7 @@ func (c *UserClient) convertGRPCUserToEntity(grpcUser *grpcSvc.User) *entities.U
 
 #### 3. **Type Safety**
 
-- Protocol Buffers ensure contract consistency
+- ✅ **Protocol Buffers fully implemented** - 100% contract consistency across all services
 - sqlc generates type-safe database operations
 - Compile-time verification of all service calls
 

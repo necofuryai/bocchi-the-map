@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package bocchi.spot.v1;
 
-option go_package = "github.com/necofuryai/bocchi-the-map/api/gen/spot/v1;spotv1";
+option go_package = "bocchi/api/gen/spot/v1;spotv1";
 
 import "google/protobuf/timestamp.proto";
 import "common.proto";

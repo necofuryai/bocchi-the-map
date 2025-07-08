@@ -9,7 +9,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
+	"bocchi/api/infrastructure/database"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

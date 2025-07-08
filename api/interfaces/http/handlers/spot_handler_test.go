@@ -14,8 +14,8 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/tests/helpers"
+	"bocchi/api/application/clients"
+	"bocchi/api/tests/helpers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -412,7 +412,7 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 	Describe("Listing spots", func() {
 		BeforeEach(func() {
 			By("Creating multiple test spots")
-			testSuite.FixtureManager.SetupStandardFixtures()
+			testSuite.FixtureManager.SetupStandardFixtures(context.Background())
 		})
 
 		Context("Given existing spots in the database", func() {

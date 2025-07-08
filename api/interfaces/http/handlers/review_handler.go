@@ -3,14 +3,13 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"time"
 
 	"github.com/danielgtaylor/huma/v2"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/errors"
-	grpcSvc "github.com/necofuryai/bocchi-the-map/api/infrastructure/grpc"
+	"bocchi/api/application/clients"
+	"bocchi/api/pkg/auth"
+	"bocchi/api/pkg/errors"
+	reviewv1 "bocchi/api/gen/review/v1"
+	commonv1 "bocchi/api/gen/common/v1"
 )
 
 // ReviewHandler handles review-related HTTP requests
@@ -28,42 +27,6 @@ func NewReviewHandler(reviewClient *clients.ReviewClient) *ReviewHandler {
 	}
 }
 
-// grpcToHTTPError converts gRPC errors to appropriate HTTP error responses
-func grpcToHTTPError(err error, defaultMessage string) error {
-	if err == nil {
-		return nil
-	}
-
-	st, ok := status.FromError(err)
-	if !ok {
-		return huma.Error500InternalServerError(defaultMessage)
-	}
-
-	switch st.Code() {
-	case codes.NotFound:
-		return huma.Error404NotFound(st.Message())
-	case codes.InvalidArgument:
-		return huma.Error400BadRequest(st.Message())
-	case codes.AlreadyExists:
-		return huma.Error409Conflict(st.Message())
-	case codes.PermissionDenied:
-		return huma.Error403Forbidden(st.Message())
-	case codes.Unauthenticated:
-		return huma.Error401Unauthorized(st.Message())
-	case codes.FailedPrecondition:
-		return huma.Error412PreconditionFailed(st.Message())
-	case codes.OutOfRange:
-		return huma.Error400BadRequest(st.Message())
-	case codes.Unimplemented:
-		return huma.Error501NotImplemented(st.Message())
-	case codes.Unavailable:
-		return huma.Error503ServiceUnavailable(st.Message())
-	case codes.DeadlineExceeded:
-		return huma.Error503ServiceUnavailable(st.Message())
-	default:
-		return huma.Error500InternalServerError(defaultMessage)
-	}
-}
 
 // CreateReviewInput represents the review creation request
 type CreateReviewInput struct {
@@ -75,18 +38,9 @@ type CreateReviewInput struct {
 	}
 }
 
-// CreateReviewOutput represents the response for review creation
+// CreateReviewOutput represents the response for review creation (using protobuf Review type)
 type CreateReviewOutput struct {
-	Body struct {
-		ID            string            `json:"id" doc:"Review ID"`
-		SpotID        string            `json:"spot_id" doc:"Spot ID"`
-		UserID        string            `json:"user_id" doc:"User ID"`
-		Rating        int32             `json:"rating" doc:"Rating from 1 to 5"`
-		Comment       string            `json:"comment,omitempty" doc:"Review comment"`
-		RatingAspects map[string]int32  `json:"rating_aspects,omitempty" doc:"Aspect ratings"`
-		CreatedAt     time.Time         `json:"created_at" doc:"Creation timestamp"`
-		UpdatedAt     time.Time         `json:"updated_at" doc:"Last update timestamp"`
-	}
+	Body *reviewv1.Review `json:"review" doc:"Created review data"`
 }
 
 // GetSpotReviewsInput represents the request to get reviews for a spot
@@ -96,12 +50,12 @@ type GetSpotReviewsInput struct {
 	Limit  int32  `query:"limit" minimum:"1" maximum:"50" default:"20" doc:"Number of reviews per page"`
 }
 
-// GetSpotReviewsOutput represents the response for getting spot reviews
+// GetSpotReviewsOutput represents the response for getting spot reviews (using protobuf types)
 type GetSpotReviewsOutput struct {
 	Body struct {
-		Reviews    []ReviewResponse     `json:"reviews" doc:"List of reviews"`
-		Pagination PaginationResponse   `json:"pagination" doc:"Pagination information"`
-		Statistics ReviewStatistics     `json:"statistics" doc:"Review statistics"`
+		Reviews    []*reviewv1.Review          `json:"reviews" doc:"List of reviews"`
+		Pagination *commonv1.PaginationResponse `json:"pagination" doc:"Pagination information"`
+		Statistics *reviewv1.ReviewStatistics   `json:"statistics" doc:"Review statistics"`
 	}
 }
 
@@ -112,54 +66,18 @@ type GetUserReviewsInput struct {
 	Limit  int32  `query:"limit" minimum:"1" maximum:"50" default:"20" doc:"Number of reviews per page"`
 }
 
-// GetUserReviewsOutput represents the response for getting user reviews
+// GetUserReviewsOutput represents the response for getting user reviews (using protobuf types)
 type GetUserReviewsOutput struct {
 	Body struct {
-		Reviews    []ReviewResponse     `json:"reviews" doc:"List of reviews"`
-		Pagination PaginationResponse   `json:"pagination" doc:"Pagination information"`
+		Reviews    []*reviewv1.Review          `json:"reviews" doc:"List of reviews"`
+		Pagination *commonv1.PaginationResponse `json:"pagination" doc:"Pagination information"`
 	}
 }
 
-// ReviewResponse represents a review in HTTP responses
-type ReviewResponse struct {
-	ID            string            `json:"id" doc:"Review ID"`
-	SpotID        string            `json:"spot_id" doc:"Spot ID"`
-	UserID        string            `json:"user_id" doc:"User ID"`
-	Rating        int32             `json:"rating" doc:"Rating from 1 to 5"`
-	Comment       string            `json:"comment,omitempty" doc:"Review comment"`
-	RatingAspects map[string]int32  `json:"rating_aspects,omitempty" doc:"Aspect ratings"`
-	CreatedAt     time.Time         `json:"created_at" doc:"Creation timestamp"`
-	UpdatedAt     time.Time         `json:"updated_at" doc:"Last update timestamp"`
-}
-
-// PaginationResponse represents pagination information
-type PaginationResponse struct {
-	TotalCount int32 `json:"total_count" doc:"Total number of items"`
-	Page       int32 `json:"page" doc:"Current page number"`
-	PageSize   int32 `json:"page_size" doc:"Number of items per page"`
-	TotalPages int32 `json:"total_pages" doc:"Total number of pages"`
-}
-
-// ReviewStatistics represents review statistics for a spot
-type ReviewStatistics struct {
-	AverageRating      float64           `json:"average_rating" doc:"Average rating"`
-	TotalCount         int32             `json:"total_count" doc:"Total number of reviews"`
-	RatingDistribution map[int32]int32   `json:"rating_distribution" doc:"Distribution of ratings (1-5)"`
-}
 
 // RegisterRoutes registers review routes
 func (h *ReviewHandler) RegisterRoutes(api huma.API) {
-	// Create review
-	huma.Register(api, huma.Operation{
-		OperationID: "create-review",
-		Method:      http.MethodPost,
-		Path:        "/api/v1/reviews",
-		Summary:     "Create a review",
-		Description: "Create a new review for a spot",
-		Tags:        []string{"Reviews"},
-	}, h.CreateReview)
-
-	// Get reviews for a spot
+	// Get reviews for a spot (public)
 	huma.Register(api, huma.Operation{
 		OperationID: "get-spot-reviews",
 		Method:      http.MethodGet,
@@ -169,7 +87,7 @@ func (h *ReviewHandler) RegisterRoutes(api huma.API) {
 		Tags:        []string{"Reviews"},
 	}, h.GetSpotReviews)
 
-	// Get reviews by a user
+	// Get reviews by a user (public)
 	huma.Register(api, huma.Operation{
 		OperationID: "get-user-reviews",
 		Method:      http.MethodGet,
@@ -178,6 +96,22 @@ func (h *ReviewHandler) RegisterRoutes(api huma.API) {
 		Description: "Get paginated reviews created by a specific user",
 		Tags:        []string{"Reviews"},
 	}, h.GetUserReviews)
+}
+
+// RegisterRoutesWithAuth registers review routes with authentication middleware
+func (h *ReviewHandler) RegisterRoutesWithAuth(api huma.API, authMiddleware *auth.AuthMiddleware) {
+	// Register public routes first
+	h.RegisterRoutes(api)
+
+	// Create review (protected - requires authentication)
+	huma.Register(api, authMiddleware.CreateProtectedOperation(huma.Operation{
+		OperationID: "create-review",
+		Method:      http.MethodPost,
+		Path:        "/api/v1/reviews",
+		Summary:     "Create a review",
+		Description: "Create a new review for a spot (requires authentication)",
+		Tags:        []string{"Reviews"},
+	}), h.CreateReview)
 }
 
 // CreateReview creates a new review
@@ -192,8 +126,8 @@ func (h *ReviewHandler) CreateReview(ctx context.Context, input *CreateReviewInp
 	ctx = errors.WithUserID(ctx, userID)
 
 	// Call gRPC service via client with authenticated user context
-	resp, err := h.reviewClient.CreateReview(ctx, &grpcSvc.CreateReviewRequest{
-		SpotID:        input.Body.SpotID,
+	resp, err := h.reviewClient.CreateReview(ctx, &reviewv1.CreateReviewRequest{
+		SpotId:        input.Body.SpotID,
 		Rating:        input.Body.Rating,
 		Comment:       input.Body.Comment,
 		RatingAspects: input.Body.RatingAspects,
@@ -204,25 +138,16 @@ func (h *ReviewHandler) CreateReview(ctx context.Context, input *CreateReviewInp
 
 	// Convert gRPC response to HTTP response
 	return &CreateReviewOutput{
-		Body: ReviewResponse{
-			ID:            resp.Review.ID,
-			SpotID:        resp.Review.SpotID,
-			UserID:        resp.Review.UserID,
-			Rating:        resp.Review.Rating,
-			Comment:       resp.Review.Comment,
-			RatingAspects: resp.Review.RatingAspects,
-			CreatedAt:     resp.Review.CreatedAt,
-			UpdatedAt:     resp.Review.UpdatedAt,
-		},
+		Body: resp.Review,
 	}, nil
 }
 
 // GetSpotReviews gets reviews for a specific spot
 func (h *ReviewHandler) GetSpotReviews(ctx context.Context, input *GetSpotReviewsInput) (*GetSpotReviewsOutput, error) {
 	// Call gRPC service via client
-	resp, err := h.reviewClient.GetSpotReviews(ctx, &grpcSvc.GetSpotReviewsRequest{
-		SpotID: input.SpotID,
-		Pagination: &grpcSvc.PaginationRequest{
+	resp, err := h.reviewClient.GetSpotReviews(ctx, &reviewv1.GetSpotReviewsRequest{
+		SpotId: input.SpotID,
+		Pagination: &commonv1.PaginationRequest{
 			Page:     input.Page,
 			PageSize: input.Limit,
 		},
@@ -231,44 +156,15 @@ func (h *ReviewHandler) GetSpotReviews(ctx context.Context, input *GetSpotReview
 		return nil, grpcToHTTPError(err, "failed to get spot reviews")
 	}
 
-	// Convert gRPC reviews to HTTP format
-	reviews := make([]ReviewResponse, len(resp.Reviews))
-	for i, review := range resp.Reviews {
-		reviews[i] = ReviewResponse{
-			ID:            review.ID,
-			SpotID:        review.SpotID,
-			UserID:        review.UserID,
-			Rating:        review.Rating,
-			Comment:       review.Comment,
-			RatingAspects: review.RatingAspects,
-			CreatedAt:     review.CreatedAt,
-			UpdatedAt:     review.UpdatedAt,
-		}
-	}
-
-	// Convert pagination and statistics
-	pagination := PaginationResponse{
-		TotalCount: resp.Pagination.TotalCount,
-		Page:       resp.Pagination.Page,
-		PageSize:   resp.Pagination.PageSize,
-		TotalPages: resp.Pagination.TotalPages,
-	}
-
-	statistics := ReviewStatistics{
-		AverageRating:      resp.Statistics.AverageRating,
-		TotalCount:         resp.Statistics.TotalCount,
-		RatingDistribution: resp.Statistics.RatingDistribution,
-	}
-
 	return &GetSpotReviewsOutput{
 		Body: struct {
-			Reviews    []ReviewResponse     `json:"reviews" doc:"List of reviews"`
-			Pagination PaginationResponse   `json:"pagination" doc:"Pagination information"`
-			Statistics ReviewStatistics     `json:"statistics" doc:"Review statistics"`
+			Reviews    []*reviewv1.Review          `json:"reviews" doc:"List of reviews"`
+			Pagination *commonv1.PaginationResponse `json:"pagination" doc:"Pagination information"`
+			Statistics *reviewv1.ReviewStatistics   `json:"statistics" doc:"Review statistics"`
 		}{
-			Reviews:    reviews,
-			Pagination: pagination,
-			Statistics: statistics,
+			Reviews:    resp.Reviews,
+			Pagination: resp.Pagination,
+			Statistics: resp.Statistics,
 		},
 	}, nil
 }
@@ -276,9 +172,9 @@ func (h *ReviewHandler) GetSpotReviews(ctx context.Context, input *GetSpotReview
 // GetUserReviews gets reviews by a specific user
 func (h *ReviewHandler) GetUserReviews(ctx context.Context, input *GetUserReviewsInput) (*GetUserReviewsOutput, error) {
 	// Call gRPC service via client
-	resp, err := h.reviewClient.GetUserReviews(ctx, &grpcSvc.GetUserReviewsRequest{
-		UserID: input.UserID,
-		Pagination: &grpcSvc.PaginationRequest{
+	resp, err := h.reviewClient.GetUserReviews(ctx, &reviewv1.GetUserReviewsRequest{
+		UserId: input.UserID,
+		Pagination: &commonv1.PaginationRequest{
 			Page:     input.Page,
 			PageSize: input.Limit,
 		},
@@ -287,36 +183,13 @@ func (h *ReviewHandler) GetUserReviews(ctx context.Context, input *GetUserReview
 		return nil, grpcToHTTPError(err, "failed to get user reviews")
 	}
 
-	// Convert gRPC reviews to HTTP format
-	reviews := make([]ReviewResponse, len(resp.Reviews))
-	for i, review := range resp.Reviews {
-		reviews[i] = ReviewResponse{
-			ID:            review.ID,
-			SpotID:        review.SpotID,
-			UserID:        review.UserID,
-			Rating:        review.Rating,
-			Comment:       review.Comment,
-			RatingAspects: review.RatingAspects,
-			CreatedAt:     review.CreatedAt,
-			UpdatedAt:     review.UpdatedAt,
-		}
-	}
-
-	// Convert pagination
-	pagination := PaginationResponse{
-		TotalCount: resp.Pagination.TotalCount,
-		Page:       resp.Pagination.Page,
-		PageSize:   resp.Pagination.PageSize,
-		TotalPages: resp.Pagination.TotalPages,
-	}
-
 	return &GetUserReviewsOutput{
 		Body: struct {
-			Reviews    []ReviewResponse     `json:"reviews" doc:"List of reviews"`
-			Pagination PaginationResponse   `json:"pagination" doc:"Pagination information"`
+			Reviews    []*reviewv1.Review          `json:"reviews" doc:"List of reviews"`
+			Pagination *commonv1.PaginationResponse `json:"pagination" doc:"Pagination information"`
 		}{
-			Reviews:    reviews,
-			Pagination: pagination,
+			Reviews:    resp.Reviews,
+			Pagination: resp.Pagination,
 		},
 	}, nil
 }

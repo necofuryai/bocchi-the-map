@@ -1,12 +1,40 @@
 import '@testing-library/jest-dom'
-import { beforeEach, vi } from 'vitest'
+import { beforeAll, beforeEach, afterEach, afterAll, vi } from 'vitest'
 import { type ReactNode } from 'react'
+import { cleanup } from '@testing-library/react'
+import { server } from '@/mocks/server'
+
+// Setup MSW for API mocking
+beforeAll(() => {
+  // Start the server before all tests
+  server.listen({ onUnhandledRequest: 'error' })
+})
+
+afterEach(() => {
+  // Reset any request handlers that we may add during the tests
+  server.resetHandlers()
+  // Cleanup DOM after each test
+  cleanup()
+})
+
+afterAll(() => {
+  // Clean up after the tests are finished
+  server.close()
+})
 
 // Global test setup
 beforeEach(() => {
   // Reset any mocks or state before each test
   vi.clearAllMocks()
   vi.resetModules()
+  
+  // Reset any global state that might affect tests
+  if (typeof window !== 'undefined') {
+    // Clear localStorage
+    window.localStorage.clear()
+    // Clear sessionStorage
+    window.sessionStorage.clear()
+  }
 })
 
 // Mock Next.js router

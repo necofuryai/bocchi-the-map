@@ -17,9 +17,43 @@ interface APIResponse<T = any> {
 // Generic API client class with automatic authentication
 export class APIClient {
   private baseURL: string
+  private accessToken: string | null = null
 
-  constructor(baseURL?: string) {
+  constructor(baseURL?: string, accessToken?: string) {
     this.baseURL = baseURL || API_BASE_URL
+    this.accessToken = accessToken || null
+  }
+
+  // Set access token manually (useful for server-side usage)
+  setAccessToken(token: string | null): void {
+    this.accessToken = token
+  }
+
+  // Get Auth0 access token dynamically
+  private async getAccessToken(): Promise<string | null> {
+    // If token is already set, use it
+    if (this.accessToken) {
+      return this.accessToken
+    }
+
+    // On client side, try to get token from API route
+    if (typeof window !== 'undefined') {
+      try {
+        const response = await fetch('/api/auth/access-token', {
+          method: 'GET',
+          credentials: 'include',
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          return data.accessToken || null
+        }
+      } catch (error) {
+        console.warn('Failed to get access token:', error)
+      }
+    }
+
+    return null
   }
 
   // Make authenticated request with automatic token refresh
@@ -31,9 +65,13 @@ export class APIClient {
     const headers = new Headers(options.headers)
     headers.set('Content-Type', 'application/json')
 
-    // Authentication handled by HttpOnly cookies
+    // Try to get Auth0 access token
+    const accessToken = await this.getAccessToken()
+    if (accessToken) {
+      headers.set('Authorization', `Bearer ${accessToken}`)
+    }
 
-    // Make the request with credentials to include cookies
+    // Make the request with credentials to include cookies (fallback auth)
     let response: Response
     try {
       response = await fetch(`${this.baseURL}${endpoint}`, {
@@ -53,12 +91,37 @@ export class APIClient {
 
     // Handle 401 Unauthorized - authentication required
     if (response.status === 401) {
+      // If we have an access token but still get 401, it might be expired
+      if (accessToken) {
+        // Clear the cached token and potentially redirect to login
+        this.accessToken = null
+        
+        return {
+          error: {
+            message: 'Authentication expired',
+            details: 'Your session has expired. Please log in again.',
+          },
+          status: 401,
+        }
+      }
+      
       return {
         error: {
           message: 'Authentication required',
           details: 'Please log in to access this resource',
         },
         status: 401,
+      }
+    }
+
+    // Handle 403 Forbidden - insufficient permissions
+    if (response.status === 403) {
+      return {
+        error: {
+          message: 'Access forbidden',
+          details: 'You do not have permission to access this resource',
+        },
+        status: 403,
       }
     }
 
@@ -137,6 +200,11 @@ export class APIClient {
 // Default API client instance
 export const apiClient = new APIClient()
 
+// Create an authenticated API client with access token (for server-side usage)
+export function createAuthenticatedAPIClient(accessToken?: string): APIClient {
+  return new APIClient(undefined, accessToken)
+}
+
 // Convenience functions for common API operations
 export const api = {
   // User operations
@@ -187,9 +255,20 @@ export async function isAuthenticated(): Promise<boolean> {
   try {
     // Check authentication by calling a protected endpoint
     const result = await apiClient.get('/api/v1/users/me')
-    return !result.error
+    return !result.error && result.status === 200
   } catch (error) {
     // Any error means not authenticated
+    return false
+  }
+}
+
+// Helper function to check if user is authenticated with specific token
+export async function isAuthenticatedWithToken(accessToken: string): Promise<boolean> {
+  try {
+    const authenticatedClient = createAuthenticatedAPIClient(accessToken)
+    const result = await authenticatedClient.get('/api/v1/users/me')
+    return !result.error && result.status === 200
+  } catch (error) {
     return false
   }
 }
@@ -201,6 +280,18 @@ export function handleAPIError(error: APIError, fallbackMessage = 'An error occu
   }
   
   return error.message || fallbackMessage
+}
+
+// Helper function to handle authentication errors specifically
+export function handleAuthError(error: APIError): { shouldRedirectToLogin: boolean; message: string } {
+  const isExpired = error.message?.includes('expired')
+  const isUnauthorized = error.message?.includes('Authentication required') || 
+                         error.message?.includes('Authentication expired')
+  
+  return {
+    shouldRedirectToLogin: isUnauthorized || isExpired,
+    message: error.message || 'Authentication error occurred'
+  }
 }
 
 export default apiClient

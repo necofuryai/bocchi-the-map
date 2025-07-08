@@ -32,8 +32,8 @@ SELECT
   r.rating_aspects,
   r.created_at,
   r.updated_at,
-  u.display_name  AS user_name,
-  u.avatar_url    AS user_avatar
+  u.name          AS user_name,
+  u.picture       AS user_avatar
 FROM reviews r
 JOIN users u ON r.user_id = u.id
 WHERE r.spot_id = ?

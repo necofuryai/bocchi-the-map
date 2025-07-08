@@ -20,13 +20,13 @@ import (
 	"github.com/go-chi/cors"
 	"google.golang.org/grpc"
 
-	"github.com/necofuryai/bocchi-the-map/api/application/clients"
-	"github.com/necofuryai/bocchi-the-map/api/infrastructure/database"
-	"github.com/necofuryai/bocchi-the-map/api/interfaces/http/handlers"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/auth"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/config"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/monitoring"
+	"bocchi/api/application/clients"
+	"bocchi/api/infrastructure/database"
+	"bocchi/api/interfaces/http/handlers"
+	"bocchi/api/pkg/auth"
+	"bocchi/api/pkg/config"
+	"bocchi/api/pkg/logger"
+	"bocchi/api/pkg/monitoring"
 )
 
 // Options for the CLI
@@ -154,15 +154,38 @@ func main() {
 		router.Use(monitoring.MonitoringMiddleware())
 		router.Use(monitoring.PerformanceMiddleware())
 
-		// Initialize authentication middleware with token blacklist support
-		authMiddleware := auth.NewAuthMiddleware(cfg.Auth.JWTSecret, queries)
+		// Initialize authentication service with full Auth0 configuration
+		authService, err := auth.NewServiceFromConfig(cfg, queries)
+		if err != nil {
+			logger.Fatal("Failed to initialize authentication service", err)
+		}
 		
-		// Initialize rate limiter (5 requests per 5 minutes for auth endpoints)
-		// Rate limiting is applied per IP address, not per user
-		rateLimiter := auth.NewRateLimiter(5, 5*time.Minute)
+		// Get components from auth service
+		authMiddleware := authService.GetMiddleware()
+		rateLimiter := authService.GetRateLimiter()
+		
+		// Ensure proper cleanup of auth service on shutdown
+		hooks.OnStop(func() {
+			authService.Stop()
+		})
 
-		// Create Huma API
-		api := humachi.New(router, huma.DefaultConfig("Bocchi The Map API", cfg.App.Version))
+		// Create Huma API with security definitions
+		config := huma.DefaultConfig("Bocchi The Map API", cfg.App.Version)
+		
+		// Add security scheme for Bearer token authentication
+		config.Components.SecuritySchemes = map[string]*huma.SecurityScheme{
+			"bearerAuth": {
+				Type:         "http",
+				Scheme:       "bearer",
+				BearerFormat: "JWT",
+				Description:  "Auth0 JWT token authentication",
+			},
+		}
+		
+		api := humachi.New(router, config)
+
+		// Add Huma v2 middleware for authentication on protected routes
+		api.UseMiddleware(authMiddleware.HumaMiddleware())
 
 		// Register routes with gRPC clients and database queries
 		registerRoutes(api, spotClient, userClient, reviewClient, queries, cfg, authMiddleware, rateLimiter)
@@ -264,10 +287,10 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 	})
 
 	// Spot routes
-	registerSpotRoutes(api, spotClient)
+	registerSpotRoutes(api, spotClient, authMiddleware)
 
 	// Review routes
-	registerReviewRoutes(api, reviewClient)
+	registerReviewRoutes(api, reviewClient, authMiddleware)
 
 	// User routes
 	registerUserRoutes(api, userClient, queries, authMiddleware)
@@ -277,18 +300,18 @@ func registerRoutes(api huma.API, spotClient *clients.SpotClient, userClient *cl
 }
 
 // registerSpotRoutes registers spot-related routes
-func registerSpotRoutes(api huma.API, spotClient *clients.SpotClient) {
+func registerSpotRoutes(api huma.API, spotClient *clients.SpotClient, authMiddleware *auth.AuthMiddleware) {
 	spotHandler := handlers.NewSpotHandler(spotClient)
-	spotHandler.RegisterRoutes(api)
-	logger.Info("Spot routes registered")
+	spotHandler.RegisterRoutesWithAuth(api, authMiddleware)
+	logger.Info("Spot routes registered with authentication")
 }
 
-func registerReviewRoutes(api huma.API, reviewClient *clients.ReviewClient) {
+func registerReviewRoutes(api huma.API, reviewClient *clients.ReviewClient, authMiddleware *auth.AuthMiddleware) {
 	reviewHandler := handlers.NewReviewHandler(reviewClient)
 	
-	// Register standard API routes (under /api/v1/reviews)
-	reviewHandler.RegisterRoutes(api)
-	logger.Info("Review routes registered")
+	// Register routes with authentication support
+	reviewHandler.RegisterRoutesWithAuth(api, authMiddleware)
+	logger.Info("Review routes registered with authentication")
 }
 
 func registerUserRoutes(api huma.API, userClient *clients.UserClient, queries *database.Queries, authMiddleware *auth.AuthMiddleware) {

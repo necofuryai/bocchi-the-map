@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package bocchi.common.v1;
 
-option go_package = "github.com/necofuryai/bocchi-the-map/api/gen/common/v1;commonv1";
+option go_package = "bocchi/api/gen/common/v1;commonv1";
 
 // Pagination request parameters
 message PaginationRequest {

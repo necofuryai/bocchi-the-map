@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"bocchi/api/pkg/logger"
 )
 
 var (

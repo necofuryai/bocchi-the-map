@@ -6,23 +6,28 @@ package database
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
+	// Token blacklist queries for logout and security
 	AddToBlacklist(ctx context.Context, arg AddToBlacklistParams) error
 	BlacklistAccessToken(ctx context.Context, arg BlacklistAccessTokenParams) error
 	BlacklistRefreshToken(ctx context.Context, arg BlacklistRefreshTokenParams) error
 	CleanupExpiredTokens(ctx context.Context) error
 	CountReviewsBySpot(ctx context.Context, spotID string) (int64, error)
-	CountReviewsByUser(ctx context.Context, userID string) (int64, error)
+	CountReviewsByUser(ctx context.Context, userID sql.NullString) (int64, error)
 	CountTopRatedSpots(ctx context.Context, id string) (int64, error)
 	CreateReview(ctx context.Context, arg CreateReviewParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteReview(ctx context.Context, id string) error
+	DeleteUser(ctx context.Context, id string) error
 	GetReviewByID(ctx context.Context, id string) (Review, error)
 	GetReviewByUserAndSpot(ctx context.Context, arg GetReviewByUserAndSpotParams) (Review, error)
 	GetSpotRatingStats(ctx context.Context, spotID string) (GetSpotRatingStatsRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
+	// User management queries for Bocchi The Map API
+	// These queries support Auth0 integration and user profile management
 	GetUserByID(ctx context.Context, id string) (User, error)
 	GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (User, error)
 	IsTokenBlacklisted(ctx context.Context, jti string) (bool, error)

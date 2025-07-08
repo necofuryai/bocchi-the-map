@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/necofuryai/bocchi-the-map/api/pkg/logger"
+	"bocchi/api/pkg/logger"
 )
 
 // contextKey is a custom type for context keys to prevent collisions
@@ -168,4 +168,93 @@ func randomString(length int) string {
 		b[i] = charset[randomBytes[i]%byte(len(charset))]
 	}
 	return string(b)
+}
+
+// GetRequestID extracts the request ID from context
+func GetRequestID(ctx context.Context) string {
+	if requestID, ok := ctx.Value(requestIDKey).(string); ok {
+		return requestID
+	}
+	return ""
+}
+
+// StartTrace starts a new trace span for monitoring
+func StartTrace(ctx context.Context, name string) context.Context {
+	// Add breadcrumb to Sentry for tracing
+	AddBreadcrumb(ctx, &sentry.Breadcrumb{
+		Message: "Trace Started: " + name,
+		Level:   sentry.LevelInfo,
+		Data: map[string]interface{}{
+			"trace_name": name,
+			"timestamp":  time.Now().Unix(),
+		},
+	})
+	
+	// Return context with trace information
+	return context.WithValue(ctx, "trace_name", name)
+}
+
+// EndTrace ends a trace span
+func EndTrace(ctx context.Context) {
+	if traceName, ok := ctx.Value("trace_name").(string); ok {
+		AddBreadcrumb(ctx, &sentry.Breadcrumb{
+			Message: "Trace Ended: " + traceName,
+			Level:   sentry.LevelInfo,
+			Data: map[string]interface{}{
+				"trace_name": traceName,
+				"timestamp":  time.Now().Unix(),
+			},
+		})
+	}
+}
+
+// AddUserContext adds user information to monitoring context
+func AddUserContext(ctx context.Context, userID, email string) {
+	// Set user context in Sentry
+	SetUser(ctx, sentry.User{
+		ID:    userID,
+		Email: email,
+	})
+	
+	// Set tags for better filtering
+	SetTag(ctx, "user_id", userID)
+	if email != "" {
+		SetTag(ctx, "user_email", email)
+	}
+}
+
+// RecordAuthFailure records authentication failure metrics
+func RecordAuthFailure(ctx context.Context, errorType string) {
+	// Record custom metric to New Relic
+	RecordCustomMetric("Custom/Auth/FailureCount", 1)
+	RecordCustomMetric("Custom/Auth/Failure/"+errorType, 1)
+	
+	// Add breadcrumb to Sentry
+	AddBreadcrumb(ctx, &sentry.Breadcrumb{
+		Message: "Authentication Failed",
+		Level:   sentry.LevelWarning,
+		Data: map[string]interface{}{
+			"error_type": errorType,
+			"timestamp":  time.Now().Unix(),
+		},
+	})
+}
+
+// RecordRateLimitExceeded records rate limit exceeded metrics
+func RecordRateLimitExceeded(ctx context.Context, ip string) {
+	// Record custom metric to New Relic
+	RecordCustomMetric("Custom/RateLimit/ExceededCount", 1)
+	
+	// Add breadcrumb to Sentry
+	AddBreadcrumb(ctx, &sentry.Breadcrumb{
+		Message: "Rate Limit Exceeded",
+		Level:   sentry.LevelWarning,
+		Data: map[string]interface{}{
+			"ip":        ip,
+			"timestamp": time.Now().Unix(),
+		},
+	})
+	
+	// Set context for this incident
+	SetTag(ctx, "rate_limit_ip", ip)
 }
