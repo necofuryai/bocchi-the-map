@@ -11,10 +11,11 @@
  * - Race condition handling
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useCallback, useRef } from 'react'
+import { useSearchStore } from '@/stores/use-search-store'
 
-// Type definitions
-interface Spot {
+// Re-export types from the store
+export interface Spot {
   id: string
   name: string
   type: string
@@ -31,7 +32,7 @@ interface Spot {
   openingHours?: Record<string, string>
 }
 
-interface SearchFilters {
+export interface SearchFilters {
   soloFriendly?: boolean
   type?: string
   [key: string]: any
@@ -60,7 +61,7 @@ interface UseSpotSearchReturn {
 }
 
 // Mock search API function for development
-const searchSpots = async (query: string, options: any = {}): Promise<SearchResponse> => {
+const searchSpots = async (query: string, _options: Record<string, unknown> = {}): Promise<SearchResponse> => {
   // This would be replaced with actual API call
   // For now, return mock data for testing
   return new Promise((resolve) => {
@@ -77,25 +78,40 @@ const searchSpots = async (query: string, options: any = {}): Promise<SearchResp
 }
 
 export function useSpotSearch(): UseSpotSearchReturn {
-  // State management
-  const [spots, setSpots] = useState<Spot[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(true)
-  const [query, setQuery] = useState('')
-  const [filters, setFilters] = useState<SearchFilters>({})
-  const [total, setTotal] = useState(0)
+  // State management using Zustand store
+  const {
+    spots,
+    loading,
+    error,
+    hasMore,
+    query,
+    filters,
+    total,
+    setSpots,
+    setLoading,
+    setError,
+    setHasMore,
+    setQuery,
+    setFilters,
+    setTotal,
+    addRecentSearch,
+  } = useSearchStore()
 
   // Reference for tracking the latest search request
   const searchIdRef = useRef(0)
 
   // Helper function to extract error message
-  const getErrorMessage = (error: any): string => {
-    if (error?.response?.data?.error) {
-      return error.response.data.error
-    }
-    if (error?.message) {
-      return error.message
+  const getErrorMessage = (error: unknown): string => {
+    if (typeof error === 'object' && error !== null) {
+      if ('response' in error) {
+        const response = (error as { response?: { data?: { error?: string } } }).response
+        if (response?.data?.error) {
+          return response.data.error
+        }
+      }
+      if ('message' in error && typeof (error as { message: unknown }).message === 'string') {
+        return (error as { message: string }).message
+      }
     }
     return 'An unexpected error occurred'
   }
@@ -112,6 +128,7 @@ export function useSpotSearch(): UseSpotSearchReturn {
     setLoading(true)
     setError(null)
     setQuery(searchQuery)
+    addRecentSearch(searchQuery)
 
     try {
       const searchOptions = {
@@ -129,7 +146,7 @@ export function useSpotSearch(): UseSpotSearchReturn {
         setHasMore(response.hasMore)
         setLoading(false)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Only update error if this is still the latest search
       if (currentSearchId === searchIdRef.current) {
         setError(getErrorMessage(err))
@@ -138,7 +155,7 @@ export function useSpotSearch(): UseSpotSearchReturn {
         setTotal(0)
       }
     }
-  }, [filters])
+  }, [filters, setLoading, setError, setQuery, addRecentSearch, setSpots, setTotal, setHasMore])
 
   // Load more function
   const loadMore = useCallback(async () => {
@@ -162,11 +179,11 @@ export function useSpotSearch(): UseSpotSearchReturn {
       setHasMore(response.hasMore)
       setTotal(response.total)
       setLoading(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getErrorMessage(err))
       setLoading(false)
     }
-  }, [hasMore, loading, query, spots.length, filters])
+  }, [hasMore, loading, query, spots.length, filters, setLoading, setError, setSpots, setHasMore, setTotal])
 
   // Clear search function
   const clearSearch = useCallback(() => {
@@ -176,7 +193,7 @@ export function useSpotSearch(): UseSpotSearchReturn {
     setTotal(0)
     setHasMore(true)
     setLoading(false)
-  }, [])
+  }, [setSpots, setQuery, setError, setTotal, setHasMore, setLoading])
 
   // Update filters function
   const updateFilters = useCallback(async (newFilters: SearchFilters) => {
@@ -209,14 +226,14 @@ export function useSpotSearch(): UseSpotSearchReturn {
           setHasMore(response.hasMore)
           setLoading(false)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (currentSearchId === searchIdRef.current) {
           setError(getErrorMessage(err))
           setLoading(false)
         }
       }
     }
-  }, [query])
+  }, [query, setFilters, setSpots, setTotal, setHasMore, setLoading, setError])
 
   return {
     spots,

@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import { createMapStyle } from "@/components/mapStyle";
 import { setupPOIFeatures, updatePOIFilter } from "@/components/map/poi-features";
-import type { MapError, MapState } from "@/components/map/types";
+import type { MapError } from "@/components/map/types";
+import { useMapStore } from '@/stores/use-map-store';
 
 interface UseMaplibreOptions {
   onClick?: (event: maplibregl.MapMouseEvent) => void;
@@ -23,8 +24,7 @@ export const useMaplibre = ({
 }: UseMaplibreOptions = {}) => {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [error, setError] = useState<MapError | null>(null);
-  const [mapState, setMapState] = useState<MapState>('loading');
+  const { mapState, error, setMapState, setError } = useMapStore();
   // Optimization pattern to manage onClick callback with ref to avoid useEffect re-execution
   // To prevent main useEffect from re-executing every time onClick changes,
   // store the latest callback in ref and access it within the effect
@@ -40,7 +40,7 @@ export const useMaplibre = ({
         type: 'configuration',
         message: 'NEXT_PUBLIC_MAP_STYLE_URL is not configured'
       };
-      setError(configError);
+      setError(configError.message);
       setMapState('error');
       onError?.(configError);
       return;
@@ -80,7 +80,7 @@ export const useMaplibre = ({
           message: 'Failed to load map',
           originalError: e
         };
-        setError(loadError);
+        setError(loadError.message);
         setMapState('error');
         onError?.(loadError);
       });
@@ -100,7 +100,7 @@ export const useMaplibre = ({
             ? error
             : undefined
        };
-      setError(initError);
+      setError(initError.message);
       setMapState('error');
       onError?.(initError);
     }

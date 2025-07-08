@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useMapStore } from '@/stores/use-map-store';
 
 // POI kind types
 export type POIKind =
@@ -25,70 +26,73 @@ export interface MapFilter {
 
 // Hook for managing map filter state
 export const useMapFilter = (initialKinds: readonly POIKind[] = []) => {
-  const [filter, setFilter] = useState<MapFilter>({
-    kinds: [...initialKinds],
-    enabled: initialKinds.length > 0,
-  });
+  const { filters, setFilters } = useMapStore();
+  
+  // Get current filter state from store
+  const filter: MapFilter = {
+    kinds: (filters.kinds as POIKind[]) || [...initialKinds],
+    enabled: filters.enabled ?? initialKinds.length > 0,
+  };
 
   // Update filter kinds
   const updateKinds = useCallback((kinds: readonly POIKind[]) => {
-    setFilter(prev => {
-      const uniqueKinds = Array.from(new Set(kinds));
-      if (
-        uniqueKinds.length === prev.kinds.length &&
-        uniqueKinds.every(k => prev.kinds.includes(k))
-      ) {
-        return prev; // No change, avoid unnecessary state update
-      }
-      return {
-        ...prev,
-        kinds: uniqueKinds,
-        enabled: uniqueKinds.length > 0,
-      };
+    const uniqueKinds = Array.from(new Set(kinds));
+    const currentKinds = filter.kinds;
+    
+    if (
+      uniqueKinds.length === currentKinds.length &&
+      uniqueKinds.every(k => currentKinds.includes(k))
+    ) {
+      return; // No change, avoid unnecessary state update
+    }
+    
+    setFilters({
+      ...filters,
+      kinds: uniqueKinds,
+      enabled: uniqueKinds.length > 0,
     });
-  }, []);
+  }, [filter.kinds, filters, setFilters]);
 
   // Toggle filter enabled state
   const toggleEnabled = useCallback(() => {
-    setFilter(prev => ({
-      ...prev,
-      enabled: !prev.enabled,
-    }));
-  }, []);
+    setFilters({
+      ...filters,
+      enabled: !filter.enabled,
+    });
+  }, [filters, filter.enabled, setFilters]);
 
   // Add kind to filter
   const addKind = useCallback((kind: POIKind) => {
-    setFilter(prev => {
-      if (prev.kinds.includes(kind)) {
-        return prev;
-      }
-      return {
-        ...prev,
-        kinds: [...prev.kinds, kind],
-        enabled: true,
-      };
+    if (filter.kinds.includes(kind)) {
+      return;
+    }
+    
+    setFilters({
+      ...filters,
+      kinds: [...filter.kinds, kind],
+      enabled: true,
     });
-  }, []);
+  }, [filter.kinds, filters, setFilters]);
 
   // Remove kind from filter
   const removeKind = useCallback((kind: POIKind) => {
-    setFilter(prev => {
-      const newKinds = prev.kinds.filter(k => k !== kind);
-      return {
-        ...prev,
-        kinds: newKinds,
-        enabled: newKinds.length > 0,
-      };
+    const newKinds = filter.kinds.filter(k => k !== kind);
+    
+    setFilters({
+      ...filters,
+      kinds: newKinds,
+      enabled: newKinds.length > 0,
     });
-  }, []);
+  }, [filter.kinds, filters, setFilters]);
 
   // Clear all filters
   const clearFilter = useCallback(() => {
-    setFilter({
+    setFilters({
+      ...filters,
       kinds: [],
       enabled: false,
     });
-  }, []);
+  }, [filters, setFilters]);
 
   // Generate MapLibre GL filter expression - show only specified POI types with valid names
   const filterExpression = useMemo((): FilterExpression => {

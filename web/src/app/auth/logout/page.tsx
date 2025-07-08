@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@auth0/nextjs-auth0';
+import { useUserStore } from '@/stores/use-user-store';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
  * Handles user logout confirmation and Auth0 logout process
  */
 export default function LogoutPage() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useUserStore();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 

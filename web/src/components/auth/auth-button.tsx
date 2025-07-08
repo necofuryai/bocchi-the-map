@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useUser } from '@auth0/nextjs-auth0';
+import { useUserStore } from '@/stores/use-user-store';
 import { Button } from '@/components/ui/button';
 
 interface AuthButtonProps {
@@ -17,7 +17,7 @@ export function AuthButton({
   size = 'default',
   showFullText = true 
 }: AuthButtonProps) {
-  const { user, isLoading } = useUser();
+  const { user, isLoading } = useUserStore();
 
   if (isLoading) {
     return (

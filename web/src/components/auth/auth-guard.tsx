@@ -1,7 +1,7 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { useUser } from '@auth0/nextjs-auth0';
+import { useUserStore } from '@/stores/use-user-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -18,7 +18,7 @@ export function AuthGuard({
   loadingComponent,
   errorComponent,
 }: AuthGuardProps) {
-  const { user, isLoading, error } = useUser();
+  const { user, isLoading, error } = useUserStore();
 
   // Show loading state
   if (isLoading) {

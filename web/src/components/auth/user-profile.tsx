@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useUser } from '@auth0/nextjs-auth0';
+import { useUserStore } from '@/stores/use-user-store';
 import { Card } from '@/components/ui/card';
 
 interface UserProfileProps {
@@ -9,7 +9,7 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ className }: UserProfileProps) {
-  const { user, isLoading, error } = useUser();
+  const { user, isLoading, error } = useUserStore();
 
   if (isLoading) {
     return (
