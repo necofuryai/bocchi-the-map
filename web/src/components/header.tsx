@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MapPinIcon, MenuIcon, SearchIcon, HelpCircle } from "lucide-react"
+import { MapPinIcon, Bars3Icon, MagnifyingGlassIcon, QuestionMarkCircleIcon } from "@heroicons/react/24/outline"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -25,12 +25,12 @@ export function Header() {
           <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden mr-4" aria-label="モバイルメニューを開く" aria-expanded={mobileMenuOpen}>
-                <MenuIcon className="h-5 w-5" />
+                <Bars3Icon className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuItem aria-label="スポットを探す">
-                <SearchIcon className="h-4 w-4 mr-2" />
+                <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
                 スポットを探す
               </DropdownMenuItem>
               <DropdownMenuItem aria-label="レビューを書く">
@@ -41,7 +41,7 @@ export function Header() {
           
           <div className="hidden md:flex items-center space-x-2">
             <Button variant="ghost" size="sm">
-              <SearchIcon className="h-4 w-4 mr-2" />
+              <MagnifyingGlassIcon className="h-4 w-4 mr-2" />
               スポットを探す
             </Button>
             <Button variant="ghost" size="sm">
@@ -59,7 +59,7 @@ export function Header() {
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" aria-label="ヘルプを表示">
-                <HelpCircle className="h-4 w-4" />
+                <QuestionMarkCircleIcon className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80">

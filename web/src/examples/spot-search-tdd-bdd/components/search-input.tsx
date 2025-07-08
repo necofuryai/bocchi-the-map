@@ -13,7 +13,7 @@
 'use client'
 
 import { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from 'react'
-import { Search, X, Loader2 } from 'lucide-react'
+import { MagnifyingGlassIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 
 interface SearchInputProps {
   onSearch: (query: string) => void
@@ -171,7 +171,7 @@ export function SearchInput({
             data-testid="search-loading"
             className="absolute right-3 flex items-center"
           >
-            <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            <ArrowPathIcon className="w-5 h-5 animate-spin text-gray-400" />
           </div>
         )}
 
@@ -184,7 +184,7 @@ export function SearchInput({
             className="absolute right-3 p-1 hover:bg-gray-100 rounded-full transition-colors"
             aria-label="Clear search"
           >
-            <X className="w-4 h-4 text-gray-400" />
+            <XMarkIcon className="w-4 h-4 text-gray-400" />
           </button>
         )}
 
@@ -204,9 +204,9 @@ export function SearchInput({
             `}
           >
             {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <ArrowPathIcon className="w-4 h-4 animate-spin" />
             ) : (
-              <Search className="w-4 h-4" />
+              <MagnifyingGlassIcon className="w-4 h-4" />
             )}
             <span className="hidden sm:inline">Search</span>
           </button>
@@ -242,7 +242,7 @@ export function SearchInput({
               className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors"
             >
               <div className="flex items-center gap-2">
-                <Search className="w-4 h-4 text-gray-400" />
+                <MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />
                 <span className="text-sm text-gray-700">{search}</span>
               </div>
             </button>
