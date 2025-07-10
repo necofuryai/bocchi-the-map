@@ -1,11 +1,11 @@
-## Git & Commit Standards
+# Git & Commit Standards
 
 - **Commit Format**: Use conventional commit format with scopes: `type(scope): description`
 - **No Auto-Signatures**: Do NOT include Claude Code attribution or co-authorship signatures in commit messages
 - **Clean History**: Keep commit messages concise and focused on the actual changes
 - **English Only**: All commit messages must be written in English
 
-### Conventional Commit Format with Scopes
+## Conventional Commit Format with Scopes
 
 **Format**: `type(scope): description`
 
