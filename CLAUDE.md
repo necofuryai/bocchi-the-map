@@ -85,6 +85,7 @@ This project systematically manages knowledge through the following files:
 - `discuss-with-gemini.md` - Gemini CLI discussion support for enhanced analysis
 - `gemini-search.md` - Gemini CLI web search integration
 - `orchestrator.md` - Complex task orchestration patterns
+- `commit.md` - Git commit standards and workflow guidelines
 
 ### Additional Documentation
 
