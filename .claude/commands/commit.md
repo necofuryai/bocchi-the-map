@@ -39,3 +39,43 @@ refactor(scripts): consolidate test scripts
 - `config`: Configuration files
 - `auth`: Authentication-related changes
 - `db`: Database migrations and changes
+
+## Commit Workflow
+
+When using this command file, follow these steps:
+
+1. **Review Changes**: Check all modified files with `git status` and `git diff`
+2. **Apply Standards**: Follow the Git & Commit Standards above when creating commits
+3. **Stage Files**: Use `git add` to stage appropriate files for each commit
+4. **Create Commit**: Use the conventional commit format with appropriate type and scope
+
+## Multiple File Commits
+
+When multiple files have been updated:
+
+1. **Group by Feature/Scope**: Group related changes together
+2. **Split Logical Changes**: Create separate commits for:
+   - Different features or bug fixes
+   - Different layers (frontend/backend/infrastructure)
+   - Documentation updates vs code changes
+   - Dependency updates vs feature changes
+
+3. **Commit Order**: Consider dependencies between changes
+   - Infrastructure changes before application changes
+   - Core changes before dependent features
+   - Breaking changes clearly marked
+
+Example workflow for multiple files:
+```bash
+# First commit: Backend API changes
+git add api/*.go
+git commit -m "feat(api): add user profile endpoint"
+
+# Second commit: Frontend integration
+git add web/src/services/* web/src/components/*
+git commit -m "feat(web): integrate user profile API"
+
+# Third commit: Documentation
+git add docs/*.md README.md
+git commit -m "docs: update API documentation for user profiles"
+```
