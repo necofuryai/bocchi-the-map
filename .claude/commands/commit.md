@@ -40,6 +40,50 @@ refactor(scripts): consolidate test scripts
 - `auth`: Authentication-related changes
 - `db`: Database migrations and changes
 
+## Linus Torvalds' Ideal Commit Message Principles
+
+For non-trivial changes, follow Linus Torvalds' commit message principles:
+
+### 1. **Explain WHY, not WHAT**
+The code shows WHAT changed. The commit message should explain:
+- **Why** was this change necessary?
+- What **problem** did it solve?
+- What **effect** does it have?
+
+### 2. **Structure for Complex Changes**
+```
+Short (50 chars or less) summary line
+
+More detailed explanatory text, if necessary. Wrap it to
+about 72 characters or so. The blank line separating the
+summary from the body is critical.
+
+Explain the problem that this commit is solving. Focus on
+why you are making this change as opposed to how (the code
+explains that). Are there side effects or other unintuitive
+consequences of this change? Here's the place to explain them.
+
+Further paragraphs come after blank lines.
+
+- Bullet points are okay, too
+- Typically a hyphen or asterisk is used for the bullet,
+  preceded by a single space
+```
+
+### 3. **Good vs Bad Examples**
+
+**❌ Bad:** `fix: update code`  
+**✅ Good:** `fix(api): prevent race condition in user session handling`
+
+**❌ Bad:** `feat: add new feature`  
+**✅ Good:** `feat(web): add solo-friendly rating to improve UX for target users`
+
+### 4. **When to Apply These Principles**
+
+- **Always apply** for: Features, bug fixes, refactoring, performance improvements
+- **Can be simplified** for: Typo fixes, dependency updates, formatting changes
+- **Rule of thumb**: If you need to think about the change, explain your thinking
+
 ## Commit Workflow
 
 When using this command file, follow these steps:
