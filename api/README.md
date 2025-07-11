@@ -2,7 +2,7 @@
 
 > **High-performance Go API with Onion Architecture** - Built for scale, designed for maintainability
 
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://golang.org/)
 [![Huma](https://img.shields.io/badge/Huma-v2.19.0-FF6B6B?style=flat)](https://huma.rocks/)
 [![Protocol Buffers](https://img.shields.io/badge/Protocol_Buffers-Latest-4285F4?style=flat&logo=google)](https://protobuf.dev/)
 [![gRPC](https://img.shields.io/badge/gRPC-Latest-40BC86?style=flat&logo=grpc)](https://grpc.io/)
