@@ -4,6 +4,7 @@
 - **No Auto-Signatures**: Do NOT include Claude Code attribution or co-authorship signatures in commit messages
 - **Clean History**: Keep commit messages concise and focused on the actual changes
 - **English Only**: All commit messages must be written in English
+- **No Symbols/Emojis**: Do NOT use symbols or emojis in commit messages to prevent character encoding issues
 
 ## Conventional Commit Format with Scopes
 
@@ -71,6 +72,8 @@ Further paragraphs come after blank lines.
 ```
 
 ### 3. **Good vs Bad Examples**
+
+**Note**: The symbols below are for documentation only - do NOT use them in actual commit messages.
 
 **❌ Bad:** `fix: update code`  
 **✅ Good:** `fix(api): prevent race condition in user session handling`
