@@ -13,18 +13,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a full-stack monorepo application built with modern technologies: Go backend with Onion Architecture, Next.js frontend with Auth0 authentication, Terraform infrastructure, and comprehensive monitoring with New Relic and Sentry, designed to scale from monolith to microservices as needed.
 
-### Current Project Status (2025-06-30)
+### Current Project Status (2025-07-11)
 
 **Authentication Integration:** ✅ **Production-Ready (97% Complete)**
 - Auth0 integration fully implemented with JWT validation
 - Comprehensive security features (CORS, rate limiting, input validation)
-- E2E testing infrastructure with 33/34 tests passing
+- E2E testing infrastructure with 18/20 tests passing (90% success rate)
 - Ready for production deployment with configuration updates
+- **Note**: Go build issues need resolution for 100% test success
 
-**Development Environment:** ✅ **Optimized**
-- VSCode configuration optimized for TypeScript development
-- Enhanced tooling and debugging capabilities
+**Development Environment:** ⚠️ **Partially Optimized**
+- Enhanced tooling and debugging capabilities documented
 - Comprehensive testing patterns established
+- **Note**: VSCode configuration setup needed (`.vscode` directory missing)
 
 ## Knowledge Management Structure
 
@@ -56,23 +57,23 @@ This project systematically manages knowledge through the following files:
 - Deployment commands (see "Cloud Run and Docker Deployment Patterns" section)
 - TDD+BDD hybrid testing templates and workflow commands
 
-#### `.claude/tdd-bdd-hybrid.md`
-- Comprehensive TDD+BDD hybrid methodology guide
+#### `.claude/tdd-bdd-methodology.md`
+- Core TDD+BDD hybrid methodology and theory
 - Three hybrid approaches: Outside-In TDD, Double-Loop TDD, Specification by Example
-- Layer-specific testing strategies and practical workflows
-- Anti-patterns to avoid and best practices
+- Layer-specific testing strategies and best practices
+- Anti-patterns to avoid and continuous improvement guidelines
 
-#### `.claude/tdd-bdd-example.md`
-- Complete implementation example of TDD+BDD hybrid approach
-- Solo-Friendly Rating feature as reference implementation
-- Step-by-step guide from BDD scenarios to TDD implementation
+#### `.claude/tdd-bdd-implementation-guide.md`
+- Practical implementation patterns for both frontend and backend
+- Frontend patterns: React/Next.js, Vitest, Playwright, React Testing Library
+- Backend patterns: Go, Ginkgo, standard testing, tooling integration
+- Step-by-step workflows and test organization strategies
+
+#### `.claude/tdd-bdd-examples.md`
+- Complete implementation examples: Solo-Friendly Rating and Auth0 authentication
+- Real-world production results (Auth0: 97% success rate, 34 test cases)
+- Frontend component examples and backend service examples
 - Executable code examples and test execution patterns
-
-#### `.claude/frontend-tdd-bdd-hybrid.md`
-- Frontend-specific TDD+BDD hybrid methodology for React/Next.js
-- Component testing patterns and UI-first development approaches
-- Integration with Playwright for E2E testing and React Testing Library for component testing
-- Frontend-specific testing strategies and best practices
 
 #### `.claude/design-philosophy.md`
 - Design principles inspired by John Carmack, Robert C. Martin, and Rob Pike
@@ -87,6 +88,44 @@ This project systematically manages knowledge through the following files:
 - `orchestrator.md` - Complex task orchestration patterns
 - `commit.md` - Git commit standards and workflow guidelines
 
+### Core Configuration Files
+
+#### Root Configuration
+- `package.json` - Monorepo root configuration with Husky pre-commit hooks and workspace management
+- `pnpm-workspace.yaml` - Workspace configuration for monorepo structure
+- `renovate.json` - Automated dependency management with Docker and security updates
+- `.commitlintrc.js` - Commit message standards enforcing conventional commits
+- `.gitignore` - Comprehensive Git exclusion patterns for security and clean commits
+
+#### API Configuration
+- `api/go.mod` - Go module definition with dependencies and version requirements
+- `api/sqlc.yaml` - SQL code generation configuration for type-safe database access
+- `api/Dockerfile` - Container configuration for production Cloud Run deployment
+- `api/docker-compose.yml` - Development environment orchestration for database and services
+- `api/Makefile` - Build automation and development workflow commands
+
+#### Web Configuration
+- `web/package.json` - Frontend dependencies and modern React/Next.js stack configuration
+- `web/vitest.config.ts` - Unit testing setup critical for TDD workflow
+- `web/playwright.config.ts` - E2E testing configuration for comprehensive browser testing
+- `web/tsconfig.json` - TypeScript configuration for type checking and build settings
+
+#### Infrastructure
+- `infra/main.tf` - Terraform configuration for cloud infrastructure as code
+- `infra/README.md` - Infrastructure documentation with deployment procedures
+
+### Scripts & Automation
+
+#### Testing & Validation Scripts
+- `scripts/e2e-auth-test.sh` - Comprehensive E2E authentication testing (642 lines, 34 test cases)
+- `scripts/validate-env.js` - Environment configuration validation for setup verification
+- `scripts/record-milestone.sh` - Automatic milestone recording for documentation updates
+
+#### GitHub Actions & CI/CD
+- `.github/workflows/` - CI/CD pipelines for testing and deployment automation
+- `.github/actions/setup-go-test-env/` - Custom reusable GitHub Action components
+- `.husky/` - Git hooks for pre-commit validation and code quality
+
 ### Additional Documentation
 
 #### `CHANGELOG.md`
@@ -98,18 +137,26 @@ This project systematically manages knowledge through the following files:
 - Current system status and major achievements
 - Implementation milestones tracking
 
+#### `docs/DOCUMENTATION_SYNC_GUIDE.md`
+- Automated documentation workflow and maintenance procedures
+- Critical for maintaining documentation consistency
+
+#### `docs/performance-comparison-report.md`
+- Performance benchmarking results and optimization metrics
+- Important for system performance tracking
+
 #### `.github/actions/setup-go-test-env/README.md`
 - Recent security, debugging, and migration improvements
 - GitHub Actions configuration details
 
 #### Authentication & Security Documentation
-- `AUTH0_SETUP_GUIDE.md` - Complete Auth0 implementation guide
-- `AUTH0_NEXT_STEPS.md` - Production deployment checklist and recommendations
-- `e2e_auth_test_simple.sh` - Automated authentication testing script
+- `docs/AUTH0_SETUP_GUIDE.md` - Complete Auth0 implementation guide
+- `docs/AUTH0_NEXT_STEPS.md` - Production deployment checklist and recommendations
+- `scripts/e2e-auth-test.sh` - Automated authentication testing script with 34 test cases
 
 #### Development Environment
-- `.vscode/settings.json` - Optimized TypeScript development configuration
 - Enhanced ESLint and Prettier integration for web development
+- **Note**: VSCode configuration setup needed for optimal TypeScript development
 
 **Important**: When making new implementations or important decisions, please update the corresponding files.
 
@@ -134,11 +181,11 @@ This project systematically manages knowledge through the following files:
 
 ### Development Environment Standards
 
-- **IDE Optimization**: VSCode configured for optimal TypeScript development
 - **Code Quality**: ESLint and Prettier integration for consistent code formatting
 - **Testing Infrastructure**: TDD+BDD hybrid testing patterns with comprehensive coverage
 - **Testing Methodology**: Outside-In development with BDD scenarios driving TDD implementation
 - **Documentation**: Comprehensive guides for setup, deployment, and troubleshooting
+- **Note**: IDE optimization pending (VSCode configuration setup needed)
 
 ### TDD+BDD Hybrid Testing Guidelines
 
@@ -147,7 +194,7 @@ When implementing new features, follow the TDD+BDD hybrid methodology:
 1. **Start with BDD** - Define user behavior with Given-When-Then scenarios
 2. **Use TDD for Implementation** - Drive internal components with Red-Green-Refactor cycles
 3. **Layer-Specific Approach** - BDD for interfaces, TDD for domain logic
-4. **Reference Documentation** - Use `.claude/tdd-bdd-hybrid.md` for methodology and `.claude/tdd-bdd-example.md` for implementation patterns
+4. **Reference Documentation** - Use `.claude/tdd-bdd-methodology.md` for theory, `.claude/tdd-bdd-implementation-guide.md` for patterns, and `.claude/tdd-bdd-examples.md` for concrete examples
 5. **Update Templates** - Extend `.claude/common-patterns.md` with new testing patterns as needed
 
 ## Important Instruction Reminders
