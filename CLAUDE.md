@@ -89,6 +89,11 @@ This project systematically manages knowledge through the following files:
 
 ### Additional Documentation
 
+#### `CHANGELOG.md`
+- Official release history following [Keep a Changelog](https://keepachangelog.com/) format
+- User-facing changes and version updates
+- Production releases and breaking changes
+
 #### `docs/IMPLEMENTATION_LOG.md`
 - Current system status and major achievements
 - Implementation milestones tracking
