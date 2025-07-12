@@ -67,3 +67,6 @@ temp/
 
 # Claude Code
 .claude/sessions/
+
+# MCP
+.mcp.json

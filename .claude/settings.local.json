@@ -1,6 +1,11 @@
 {
+  "cleanupPeriodDays": 60,
+  "env": {
+    "MAX_THINKING_TOKENS": "31999"
+  },
   "permissions": {
     "allow": [
+      "Read(**)",
       "Bash(cat:*)",
       "Bash(cd:*)",
       "Bash(cp:*)",
@@ -21,13 +26,16 @@
       "Bash(npm:*)",
       "Bash(npx:*)",
       "Bash(open:*)",
+      "Bash(osascript -e:*)",
       "Bash(pnpm:*)",
       "Bash(pwd)",
       "Bash(rg:*)",
       "Bash(touch:*)",
       "Bash(uv:*)",
       "Bash(xargs:*)",
-      "WebFetch(domain:*)"
+      "WebFetch(domain:*)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
     ],
     "deny": [
       "Bash(pip:*)",
@@ -46,10 +54,11 @@
       "Bash(npm remove:*)"
     ]
   },
-  "cleanupPeriodDays": 60,
-  "env": {
-    "MAX_THINKING_TOKENS": "31999"
-  },
+  "enabledMcpjsonServers": [
+    "mcp-installer",
+    "context7",
+    "playwright"
+  ],
   "hooks": {
     "PreToolUse": [
       {
@@ -58,9 +67,27 @@
           {
             "type": "command",
             "command": "~/bocchi-the-map/.claude/hooks/enforce-uv.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/bocchi-the-map/.claude/hooks/hook_pre_commands.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/bocchi-the-map/.claude/hooks/hook_stop_words.sh"
           }
         ]
       }
     ]
-  }
+  },
+  "disabledMcpjsonServers": [
+    "github"
+  ]
 }
