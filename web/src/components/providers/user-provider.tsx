@@ -1,38 +1,69 @@
-'use client';
+'use client'
 
-import React, { ReactNode, useEffect } from 'react';
-import { Auth0Provider, useUser } from '@auth0/nextjs-auth0';
-import { useUserStore } from '@/stores/use-user-store';
+import React, { createContext, useContext, useEffect, useState } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 
-// Props for the UserProvider component
-interface UserProviderProps {
-  children: ReactNode;
+// Types for the auth context
+interface AuthContextType {
+  user: User | null
+  loading: boolean
+  signOut: () => Promise<void>
 }
 
-// Internal component that syncs Auth0 state to Zustand store
-function UserStoreSync({ children }: UserProviderProps) {
-  const { user, error, isLoading } = useUser();
-  const { setUser, setError, setIsLoading } = useUserStore();
+// Create the auth context
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// Props for the AuthProvider component
+interface AuthProviderProps {
+  children: React.ReactNode
+}
+
+// Main AuthProvider component
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
 
   useEffect(() => {
-    setUser(user || undefined);
-    setError(error || undefined);
-    setIsLoading(isLoading);
-  }, [user, error, isLoading, setUser, setError, setIsLoading]);
+    // Get initial session
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setUser(session?.user ?? null)
+      setLoading(false)
+    }
 
-  return <>{children}</>;
+    getInitialSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event: AuthChangeEvent, session: Session | null) => {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [supabase.auth])
+
+  const signOut = async () => {
+    await supabase.auth.signOut()
+  }
+
+  const value = {
+    user,
+    loading,
+    signOut,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-// Main UserProvider component that wraps Auth0Provider and UserStoreSync
-export function UserProvider({ children }: UserProviderProps) {
-  return (
-    <Auth0Provider>
-      <UserStoreSync>
-        {children}
-      </UserStoreSync>
-    </Auth0Provider>
-  );
+// Hook to use the auth context
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }
-
-// Export Auth0 hooks for direct use when needed
-export { useUser } from '@auth0/nextjs-auth0';

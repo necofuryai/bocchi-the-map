@@ -1,5 +1,21 @@
 import { http, HttpResponse } from 'msw'
 
+// Request body interfaces for review operations
+interface CreateReviewRequest {
+  rating: number
+  soloFriendlyRating: number
+  comment: string
+  tags?: string[]
+  photos?: string[]
+}
+
+// Type alias for update requests - all fields from CreateReviewRequest are optional
+type UpdateReviewRequest = Partial<CreateReviewRequest>
+
+interface RateReviewRequest {
+  helpful: boolean
+}
+
 // Mock review data
 const mockReviews = [
   {
@@ -73,11 +89,11 @@ export const reviewHandlers = [
     const sortBy = url.searchParams.get('sort_by') || 'created_at'
     const order = url.searchParams.get('order') || 'desc'
 
-    let spotReviews = mockReviews.filter(review => review.spotId === params.spotId)
+    const spotReviews = mockReviews.filter(review => review.spotId === params.spotId)
 
     // Sort reviews
     spotReviews.sort((a, b) => {
-      let valueA: any, valueB: any
+      let valueA: number | Date, valueB: number | Date
       
       switch (sortBy) {
         case 'rating':
@@ -143,7 +159,7 @@ export const reviewHandlers = [
       )
     }
 
-    const body = await request.json() as any
+    const body = await request.json() as CreateReviewRequest
     
     // Validation
     if (!body.rating || !body.soloFriendlyRating || !body.comment) {
@@ -240,7 +256,7 @@ export const reviewHandlers = [
       )
     }
 
-    const body = await request.json() as any
+    const body = await request.json() as UpdateReviewRequest
     
     const updatedReview = {
       ...review,
@@ -298,7 +314,7 @@ export const reviewHandlers = [
       )
     }
 
-    const body = await request.json() as any
+    const body = await request.json() as RateReviewRequest
     const isHelpful = body.helpful === true
 
     const reviewIndex = mockReviews.findIndex(r => r.id === params.reviewId)

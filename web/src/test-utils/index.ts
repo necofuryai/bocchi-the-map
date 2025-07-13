@@ -16,7 +16,11 @@ export * from './accessibility-helpers'
 
 // Re-export testing library utilities
 export * from '@testing-library/react'
-export { userEvent } from '@testing-library/user-event'
+export { default as userEvent } from '@testing-library/user-event'
+
+// Import screen for internal use in utility functions
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 
 // Common test utilities
 export { vi, expect, describe, test, it, beforeEach, afterEach, beforeAll, afterAll } from 'vitest'
@@ -25,43 +29,17 @@ export { vi, expect, describe, test, it, beforeEach, afterEach, beforeAll, after
 export { server } from '@/mocks/server'
 export { http, HttpResponse } from 'msw'
 
+// Import domain types for proper typing
+import type { Review, DomainUser } from '@/types'
+
 /**
  * Common test data factories
  */
 export const TestDataFactory = {
   /**
-   * Create a mock spot for testing
-   */
-  createMockSpot: (overrides: any = {}) => ({
-    id: 'test-spot-1',
-    name: 'Test Cafe',
-    type: 'cafe',
-    address: '123 Test St, Tokyo',
-    latitude: 35.6762,
-    longitude: 139.6503,
-    soloFriendly: true,
-    soloFriendlyRating: 4.5,
-    averageRating: 4.2,
-    reviewCount: 42,
-    amenities: ['wifi', 'quiet', 'power_outlets'],
-    description: 'A test cafe for unit testing',
-    photos: ['/images/test-cafe.jpg'],
-    openingHours: {
-      monday: '08:00-20:00',
-      tuesday: '08:00-20:00',
-      wednesday: '08:00-20:00',
-      thursday: '08:00-20:00',
-      friday: '08:00-20:00',
-      saturday: '09:00-21:00',
-      sunday: '09:00-21:00',
-    },
-    ...overrides,
-  }),
-
-  /**
    * Create a mock user for testing
    */
-  createMockUser: (overrides: any = {}) => ({
+  createMockUser: (overrides: Partial<DomainUser> = {}) => ({
     id: 'test-user-1',
     email: 'test@example.com',
     name: 'Test User',
@@ -78,7 +56,7 @@ export const TestDataFactory = {
   /**
    * Create a mock review for testing
    */
-  createMockReview: (overrides: any = {}) => ({
+  createMockReview: (overrides: Partial<Review> = {}) => ({
     id: 'test-review-1',
     spotId: 'test-spot-1',
     userId: 'test-user-1',
@@ -96,22 +74,6 @@ export const TestDataFactory = {
     ...overrides,
   }),
 
-  /**
-   * Create mock search results for testing
-   */
-  createMockSearchResults: (count = 3, overrides: any = {}) => ({
-    data: Array.from({ length: count }, (_, i) => 
-      TestDataFactory.createMockSpot({
-        id: `test-spot-${i + 1}`,
-        name: `Test Spot ${i + 1}`,
-        ...overrides,
-      })
-    ),
-    total: count,
-    hasMore: false,
-    offset: 0,
-    limit: 10,
-  }),
 }
 
 /**
@@ -137,32 +99,12 @@ export const BDDAssertions = {
     }
   },
 
-  /**
-   * Assert that search results are displayed
-   */
-  expectSearchResults: (count?: number) => {
-    const resultsContainer = screen.getByTestId('search-results')
-    expect(resultsContainer).toBeInTheDocument()
-    
-    if (count !== undefined) {
-      const spotItems = screen.getAllByTestId('spot-item')
-      expect(spotItems).toHaveLength(count)
-    }
-  },
 
   /**
    * Assert that authentication is required
    */
   expectAuthenticationRequired: () => {
     expect(screen.getByTestId('login-prompt')).toBeInTheDocument()
-  },
-
-  /**
-   * Assert that a specific spot is displayed
-   */
-  expectSpotDetails: (spotName: string) => {
-    expect(screen.getByTestId('spot-details')).toBeInTheDocument()
-    expect(screen.getByTestId('spot-title')).toHaveTextContent(spotName)
   },
 
   /**
@@ -181,44 +123,6 @@ export const BDDAssertions = {
  * Common user interaction helpers for BDD testing
  */
 export const BDDActions = {
-  /**
-   * Simulate user performing a search
-   */
-  performSearch: async (query: string) => {
-    const searchInput = screen.getByPlaceholderText('Search for spots...')
-    await userEvent.clear(searchInput)
-    await userEvent.type(searchInput, query)
-    await userEvent.keyboard('{Enter}')
-  },
-
-  /**
-   * Simulate user clicking a spot item
-   */
-  clickSpotItem: async (index = 0) => {
-    const spotItems = screen.getAllByTestId('spot-item')
-    await userEvent.click(spotItems[index])
-  },
-
-  /**
-   * Simulate user applying filters
-   */
-  applyFilters: async (filters: { soloFriendly?: boolean; type?: string }) => {
-    const filterButton = screen.getByTestId('filter-button')
-    await userEvent.click(filterButton)
-
-    if (filters.soloFriendly) {
-      const soloFriendlyFilter = screen.getByTestId('solo-friendly-filter')
-      await userEvent.click(soloFriendlyFilter)
-    }
-
-    if (filters.type) {
-      const typeFilter = screen.getByTestId(`type-filter-${filters.type}`)
-      await userEvent.click(typeFilter)
-    }
-
-    const applyButton = screen.getByTestId('apply-filters')
-    await userEvent.click(applyButton)
-  },
 
   /**
    * Simulate user login

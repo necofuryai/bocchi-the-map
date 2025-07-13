@@ -5,13 +5,15 @@ import { useMaplibre } from "../hooks/useMaplibre";
 import { MapErrorDisplay, MapLoadingDisplay } from "./map/map-status";
 import type { MapComponentProps } from "./map/types";
 
+// Default map height - can be overridden via environment variable or props
+const DEFAULT_MAP_HEIGHT = process.env.NEXT_PUBLIC_DEFAULT_MAP_HEIGHT || "480px";
+
 export default function MapComponent({ 
   className = "", 
-  height = "480px", 
+  height = DEFAULT_MAP_HEIGHT, 
   onClick, 
   onLoad,
-  onError,
-  poiFilter
+  onError
 }: MapComponentProps) {
   // Initialize PMTiles protocol
   usePmtiles();
@@ -20,13 +22,12 @@ export default function MapComponent({
   const { containerRef, mapState, error } = useMaplibre({ 
     onClick, 
     onLoad, 
-    onError,
-    poiFilter
+    onError
   });
 
   // Display error state
   if (mapState === 'error' && error) {
-    return <MapErrorDisplay error={error} className={className} height={height} />;
+    return <MapErrorDisplay error={{ type: 'initialization', message: error }} className={className} height={height} />;
   }
 
   return (

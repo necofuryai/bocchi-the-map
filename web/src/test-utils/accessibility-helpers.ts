@@ -1,10 +1,27 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { axe, toHaveNoViolations } from 'jest-axe'
+import type { AxeResults } from 'axe-core'
 import { ReactElement } from 'react'
 import { renderWithProviders } from './render-with-providers'
+import '@testing-library/jest-dom'
 
 // Extend Jest matchers for accessibility testing
 expect.extend(toHaveNoViolations)
+
+// Accessibility test results interface
+interface AccessibilityTestResults {
+  axe?: AxeResults
+  keyboard?: unknown
+  screenReader?: unknown
+  colorContrast?: unknown
+}
+
+// Custom matcher return type
+interface MatcherResult {
+  pass: boolean
+  message: () => string
+}
 
 /**
  * Test a component for accessibility violations using axe-core
@@ -33,7 +50,14 @@ export async function testKeyboardNavigation(
   renderWithProviders(component)
   
   // Get all focusable elements
-  const focusableElements = screen.getAllByRole(/button|link|textbox|combobox|checkbox|radio|tab/)
+  const roleTypes = ['button', 'link', 'textbox', 'combobox', 'checkbox', 'radio', 'tab']
+  const focusableElements = roleTypes.flatMap(role => {
+    try {
+      return screen.queryAllByRole(role)
+    } catch {
+      return []
+    }
+  })
   
   if (expectedFocusableElements !== undefined) {
     expect(focusableElements).toHaveLength(expectedFocusableElements)
@@ -118,11 +142,11 @@ export async function runAccessibilityTestSuite(
     skipColorContrast?: boolean
     expectedFocusableElements?: number
   } = {}
-) {
-  const results: any = {}
+): Promise<AccessibilityTestResults> {
+  const results: AccessibilityTestResults = {}
   
   if (!options.skipAxe) {
-    results.axe = await testAccessibility(component)
+    results.axe = await testAccessibility(component) as AxeResults
   }
   
   if (!options.skipKeyboard) {
@@ -187,13 +211,11 @@ export const accessibilityMatchers = {
   },
 }
 
-// Extend expect with custom matchers
-declare global {
-  namespace Vi {
-    interface AsymmetricMatchersContaining {
-      toHaveProperAriaAttributes(): any
-      toBeFocusable(): any
-    }
+// Extend expect with custom matchers using modern module syntax
+declare module '@vitest/expect' {
+  interface AsymmetricMatchersContaining {
+    toHaveProperAriaAttributes(): MatcherResult
+    toBeFocusable(): MatcherResult
   }
 }
 

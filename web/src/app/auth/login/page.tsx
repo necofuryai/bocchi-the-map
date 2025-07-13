@@ -1,91 +1,83 @@
-'use client';
+'use client'
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUserStore } from '@/stores/use-user-store';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react'
+import Link from 'next/link'
+import { MapPinIcon } from '@heroicons/react/24/outline'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { AuthButton } from '@/components/auth/auth-button'
 
-/**
- * Login page component
- * Handles user authentication via Auth0 and redirects authenticated users
- */
 export default function LoginPage() {
-  const { user, isLoading } = useUserStore();
-  const router = useRouter();
-
-  // Redirect authenticated users to home page
-  useEffect(() => {
-    if (user && !isLoading) {
-      router.push('/');
-    }
-  }, [user, isLoading, router]);
-
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md p-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">認証状態を確認中...</p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  // If user is already authenticated, don't show login form
-  if (user) {
-    return null;
-  }
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-8 space-y-6">
+      <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-4">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Bocchi The Map
-          </h1>
+          <Link href="/" className="inline-flex items-center space-x-2">
+            <MapPinIcon className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold">Bocchi The Map</h1>
+          </Link>
           <p className="text-muted-foreground">
-            おひとりさま向けスポットレビューアプリ
+            おひとりさまスポットを見つけよう
           </p>
         </div>
 
-        <div className="space-y-4">
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold">ログイン</h2>
-            <p className="text-sm text-muted-foreground">
-              アカウントにサインインして、お気に入りのスポットを見つけましょう
-            </p>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-center">ログイン / 新規登録</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium">
+                メールアドレス
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                required
+              />
+            </div>
 
-          <a href="/api/auth/login" className="block">
-            <Button className="w-full h-12 text-base">
-              サインイン
-            </Button>
-          </a>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                パスワード
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="パスワードを入力"
+                className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                required
+              />
+            </div>
 
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">
-              サインインすることで、
-              <a href="/terms" className="underline hover:text-primary">利用規約</a>
-              および
-              <a href="/privacy" className="underline hover:text-primary">プライバシーポリシー</a>
-              に同意したことになります
-            </p>
-          </div>
+            <AuthButton
+              email={email}
+              password={password}
+            />
+
+            <div className="text-center">
+              <Link href="/">
+                <Button variant="link" size="sm">
+                  ホームに戻る
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="text-center text-sm text-muted-foreground">
+          新規登録の場合、確認メールが送信されます
         </div>
-
-        <div className="text-center pt-4 border-t">
-          <a 
-            href="/" 
-            className="text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            ← ホームに戻る
-          </a>
-        </div>
-      </Card>
+      </div>
     </div>
-  );
+  )
 }

@@ -1,6 +1,18 @@
 import * as maplibregl from "maplibre-gl";
 import { layers, namedFlavor } from "@protomaps/basemaps";
 
+// Map style configuration constants
+const MAP_STYLE_CONFIG = {
+  glyphsUrl: process.env.NEXT_PUBLIC_MAP_GLYPHS_URL || "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+  spriteUrl: process.env.NEXT_PUBLIC_MAP_SPRITE_URL || "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
+  textFont: ["Noto Sans Regular"] as string[],
+  textSize: 11,
+  textColor: "#333",
+  textHaloColor: "#fff",
+  textHaloWidth: 1,
+  textOffset: [0, 0.7] as [number, number]
+};
+
 /**
  * Function to generate style configuration for MapLibre GL
  * @param mapStyleUrl Map style URL for PMTiles
@@ -9,8 +21,8 @@ import { layers, namedFlavor } from "@protomaps/basemaps";
 export function createMapStyle(mapStyleUrl: string): maplibregl.StyleSpecification {
   return {
     version: 8,
-    glyphs: "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-    sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
+    glyphs: MAP_STYLE_CONFIG.glyphsUrl,
+    sprite: MAP_STYLE_CONFIG.spriteUrl,
     sources: {
       protomaps: {
         type: "vector" as const,
@@ -27,16 +39,16 @@ export function createMapStyle(mapStyleUrl: string): maplibregl.StyleSpecificati
         "source-layer": "pois",
         layout: {
           "text-field": ["get", "name"],
-          "text-font": ["Noto Sans Regular"],
-          "text-size": 11,
+          "text-font": MAP_STYLE_CONFIG.textFont,
+          "text-size": MAP_STYLE_CONFIG.textSize,
           "text-anchor": "top",
-          "text-offset": [0, 0.7],
+          "text-offset": MAP_STYLE_CONFIG.textOffset,
           "icon-allow-overlap": true
         },
         paint: {
-          "text-color": "#333",
-          "text-halo-color": "#fff",
-          "text-halo-width": 1
+          "text-color": MAP_STYLE_CONFIG.textColor,
+          "text-halo-color": MAP_STYLE_CONFIG.textHaloColor,
+          "text-halo-width": MAP_STYLE_CONFIG.textHaloWidth
         }
       }
     ]

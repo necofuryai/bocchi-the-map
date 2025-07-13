@@ -1,9 +1,18 @@
 import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import { createMapStyle } from "@/components/mapStyle";
-import { setupPOIFeatures, updatePOIFilter } from "@/components/map/poi-features";
+import { setupPOIFeatures } from "@/components/map/poi-features";
 import type { MapError } from "@/components/map/types";
 import { useMapStore } from '@/stores/use-map-store';
+
+// Map default configuration
+const MAP_DEFAULTS = {
+  center: [
+    parseFloat(process.env.NEXT_PUBLIC_DEFAULT_MAP_LONGITUDE || '139.767'),
+    parseFloat(process.env.NEXT_PUBLIC_DEFAULT_MAP_LATITUDE || '35.681')
+  ] as [number, number],
+  zoom: parseFloat(process.env.NEXT_PUBLIC_DEFAULT_MAP_ZOOM || '15')
+};
 
 interface UseMaplibreOptions {
   onClick?: (event: maplibregl.MapMouseEvent) => void;
@@ -11,16 +20,14 @@ interface UseMaplibreOptions {
   onError?: (error: MapError) => void;
   defaultCenter?: [number, number];
   defaultZoom?: number;
-  poiFilter?: maplibregl.FilterSpecification | null;
 }
 
 export const useMaplibre = ({ 
   onClick, 
   onLoad, 
   onError,
-  defaultCenter = [139.767, 35.681],
-  defaultZoom = 15,
-  poiFilter
+  defaultCenter = MAP_DEFAULTS.center,
+  defaultZoom = MAP_DEFAULTS.zoom
 }: UseMaplibreOptions = {}) => {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -67,7 +74,7 @@ export const useMaplibre = ({
         setError(null);
         
         if (mapRef.current) {
-          setupPOIFeatures(mapRef.current, poiFilter || null);
+          setupPOIFeatures(mapRef.current);
           onLoad?.(mapRef.current);
         }
       });
@@ -90,15 +97,12 @@ export const useMaplibre = ({
         mapRef.current.on('click', handleClick);
       }
 
-    } catch (error: unknown) {
+    } catch (error) {
        console.error("Map initialization failed:", error);
        const initError: MapError = {
          type: 'initialization',
          message: 'Failed to initialize map',
-        originalError:
-          error instanceof maplibregl.ErrorEvent
-            ? error
-            : undefined
+         originalError: error instanceof maplibregl.ErrorEvent ? error : undefined
        };
       setError(initError.message);
       setMapState('error');
@@ -117,8 +121,6 @@ export const useMaplibre = ({
         mapRef.current = null;
       }
     };
-    // Note: poiFilter is intentionally excluded from dependencies to prevent map recreation
-    // POI filter updates are handled by a separate useEffect below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onLoad, onError, onClick, defaultCenter, defaultZoom]);
 
@@ -127,12 +129,6 @@ export const useMaplibre = ({
     currentOnClickRef.current = onClick;
   }, [onClick]);
 
-  // Update POI filter when poiFilter prop changes
-  useEffect(() => {
-    if (mapRef.current && mapState === 'loaded') {
-      updatePOIFilter(mapRef.current, poiFilter || null);
-    }
-  }, [poiFilter, mapState]);
 
   return {
     containerRef,

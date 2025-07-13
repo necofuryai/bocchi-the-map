@@ -1,20 +1,4 @@
 // Domain entities
-export interface Spot {
-  id: string
-  name: string
-  nameI18n?: Record<string, string>
-  latitude: number
-  longitude: number
-  category: string
-  address: string
-  addressI18n?: Record<string, string>
-  countryCode: string
-  averageRating: number
-  reviewCount: number
-  createdAt: string
-  updatedAt: string
-}
-
 export interface Review {
   id: string
   spotId: string
@@ -86,13 +70,38 @@ export interface Auth0Session {
   refreshToken?: string
 }
 
+// Auth0 configuration types
+interface Auth0RedirectOptions {
+  appState?: Record<string, string | number | boolean>
+  fragment?: string
+  redirectUri?: string
+  screen_hint?: 'signup' | 'login'
+  prompt?: 'none' | 'login' | 'consent' | 'select_account'
+  max_age?: number
+  login_hint?: string
+  acr_values?: string
+  scope?: string
+  audience?: string
+  connection?: string
+  [key: string]: string | number | boolean | Record<string, string | number | boolean> | undefined
+}
+
+interface Auth0LogoutOptions {
+  logoutParams?: {
+    returnTo?: string
+    client_id?: string
+    federated?: boolean
+  }
+  returnTo?: string
+}
+
 export interface Auth0Context {
   user?: Auth0User
   isLoading: boolean
   error?: Error
   checkSession: () => Promise<void>
-  loginWithRedirect: (options?: any) => Promise<void>
-  logout: (options?: any) => void
+  loginWithRedirect: (options?: Auth0RedirectOptions) => Promise<void>
+  logout: (options?: Auth0LogoutOptions) => void
 }
 
 // Auth page component types

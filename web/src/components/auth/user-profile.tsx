@@ -1,85 +1,65 @@
-'use client';
+'use client'
 
-import React from 'react';
-import { useUserStore } from '@/stores/use-user-store';
-import { Card } from '@/components/ui/card';
+import Image from 'next/image'
+import { UserCircleIcon } from '@heroicons/react/24/outline'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { useAuth } from '@/components/providers/user-provider'
 
-interface UserProfileProps {
-  className?: string;
-}
-
-export function UserProfile({ className }: UserProfileProps) {
-  const { user, isLoading, error } = useUserStore();
-
-  if (isLoading) {
-    return (
-      <Card className={className}>
-        <div className="p-4">
-          <div className="animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className={className}>
-        <div className="p-4 text-red-600">
-          <p>Error loading user profile: {error.message}</p>
-        </div>
-      </Card>
-    );
-  }
+export function UserProfile() {
+  const { user, signOut } = useAuth()
 
   if (!user) {
-    return (
-      <Card className={className}>
-        <div className="p-4">
-          <p className="text-gray-500">Please sign in to view your profile.</p>
-        </div>
-      </Card>
-    );
+    return null
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      window.location.href = '/'
+    } catch (error) {
+      console.error('Sign out error:', error)
+    }
   }
 
   return (
-    <Card className={className}>
-      <div className="p-4">
-        <div className="flex items-center space-x-4">
-          {user.picture && (
-            <img
-              src={user.picture}
-              alt={user.name || 'User'}
-              className="h-10 w-10 rounded-full"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="flex items-center space-x-2 h-8 px-2">
+          {user.user_metadata?.avatar_url ? (
+            <Image
+              src={user.user_metadata.avatar_url}
+              alt={user.user_metadata?.full_name || 'User'}
+              width={24}
+              height={24}
+              className="h-6 w-6 rounded-full"
             />
+          ) : (
+            <UserCircleIcon className="h-6 w-6" />
           )}
-          <div>
-            <h3 className="text-lg font-semibold">
-              {user.name || 'Anonymous User'}
-            </h3>
-            {user.email && (
-              <p className="text-sm text-gray-600">{user.email}</p>
-            )}
-          </div>
+          <span className="hidden md:inline text-sm">
+            {user.user_metadata?.full_name || user.email?.split('@')[0] || 'ユーザー'}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <div className="px-2 py-1.5">
+          <p className="text-sm font-medium">
+            {user.user_metadata?.full_name || user.email?.split('@')[0]}
+          </p>
+          <p className="text-xs text-muted-foreground">{user.email}</p>
         </div>
-        {user.email_verified !== undefined && (
-          <div className="mt-3">
-            <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                user.email_verified
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}
-            >
-              {user.email_verified ? 'Verified' : 'Unverified'}
-            </span>
-          </div>
-        )}
-      </div>
-    </Card>
-  );
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut}>
+          ログアウト
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
-
-export default UserProfile;

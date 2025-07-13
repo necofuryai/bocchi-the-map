@@ -7,7 +7,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
-    exclude: ['e2e/**/*', 'node_modules/**/*'],
+    exclude: ['e2e/**/*', '**/e2e/**/*', 'node_modules/**/*'],
     typecheck: {
       tsconfig: './tsconfig.test.json',
     },

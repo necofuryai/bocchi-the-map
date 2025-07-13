@@ -1,5 +1,33 @@
 import { http, HttpResponse } from 'msw'
 
+// Request body interfaces for auth operations
+interface LoginRequest {
+  email: string
+  password: string
+}
+
+interface RegisterRequest {
+  email: string
+  password: string
+  name: string
+  avatar?: string
+}
+
+interface UpdateUserRequest {
+  name?: string
+  email?: string
+  avatar?: string
+  preferences?: {
+    theme?: string
+    notifications?: boolean
+    language?: string
+  }
+}
+
+interface PasswordResetRequest {
+  email: string
+}
+
 // Mock user data
 const mockUsers = [
   {
@@ -34,7 +62,7 @@ const mockSessions = new Map<string, { userId: string; expires: Date }>()
 export const authHandlers = [
   // Login/Authentication
   http.post('/api/auth/login', async ({ request }) => {
-    const body = await request.json() as any
+    const body = await request.json() as LoginRequest
     
     if (!body.email || !body.password) {
       return HttpResponse.json(
@@ -154,8 +182,15 @@ export const authHandlers = [
       )
     }
 
-    const body = await request.json() as any
-    const updatedUser = { ...mockUsers[userIndex], ...body }
+    const body = await request.json() as UpdateUserRequest
+    const currentUser = mockUsers[userIndex]
+    const updatedUser = { 
+      ...currentUser, 
+      ...body,
+      preferences: body.preferences 
+        ? { ...currentUser.preferences, ...body.preferences }
+        : currentUser.preferences
+    }
     
     mockUsers[userIndex] = updatedUser
 
@@ -173,7 +208,7 @@ export const authHandlers = [
 
   // Register new user
   http.post('/api/auth/register', async ({ request }) => {
-    const body = await request.json() as any
+    const body = await request.json() as RegisterRequest
     
     if (!body.email || !body.password || !body.name) {
       return HttpResponse.json(
@@ -230,7 +265,7 @@ export const authHandlers = [
 
   // Password reset request
   http.post('/api/auth/password-reset-request', async ({ request }) => {
-    const body = await request.json() as any
+    const body = await request.json() as PasswordResetRequest
     
     if (!body.email) {
       return HttpResponse.json(

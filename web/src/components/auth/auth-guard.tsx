@@ -1,81 +1,35 @@
-'use client';
+'use client'
 
-import React, { ReactNode } from 'react';
-import { useUserStore } from '@/stores/use-user-store';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/components/providers/user-provider'
 
 interface AuthGuardProps {
-  children: ReactNode;
-  fallback?: ReactNode;
-  loadingComponent?: ReactNode;
-  errorComponent?: (error: Error) => ReactNode;
+  children: React.ReactNode
+  redirectTo?: string
 }
 
-export function AuthGuard({
-  children,
-  fallback,
-  loadingComponent,
-  errorComponent,
-}: AuthGuardProps) {
-  const { user, isLoading, error } = useUserStore();
+export function AuthGuard({ children, redirectTo = '/auth/login' }: AuthGuardProps) {
+  const { user, loading } = useAuth()
+  const router = useRouter()
 
-  // Show loading state
-  if (isLoading) {
-    if (loadingComponent) {
-      return <>{loadingComponent}</>;
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push(redirectTo)
     }
+  }, [user, loading, router, redirectTo])
 
+  if (loading) {
     return (
-      <Card className="p-8 text-center">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-        </div>
-      </Card>
-    );
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
-  // Show error state
-  if (error) {
-    if (errorComponent) {
-      return <>{errorComponent(error)}</>;
-    }
-
-    return (
-      <Card className="p-8 text-center">
-        <div className="text-red-600">
-          <h2 className="text-xl font-semibold mb-2">Authentication Error</h2>
-          <p className="mb-4">{error.message}</p>
-          <a href="/auth/login">
-            <Button>Try Again</Button>
-          </a>
-        </div>
-      </Card>
-    );
-  }
-
-  // Show unauthenticated state
   if (!user) {
-    if (fallback) {
-      return <>{fallback}</>;
-    }
-
-    return (
-      <Card className="p-8 text-center">
-        <h2 className="text-xl font-semibold mb-2">Sign In Required</h2>
-        <p className="text-gray-600 mb-4">
-          You need to sign in to access this content.
-        </p>
-        <a href="/auth/login">
-          <Button>Sign In</Button>
-        </a>
-      </Card>
-    );
+    return null
   }
 
-  // User is authenticated, render children
-  return <>{children}</>;
+  return <>{children}</>
 }
-
-export default AuthGuard;

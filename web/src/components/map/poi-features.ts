@@ -11,9 +11,8 @@ export const POI_COLORS = {
 /**
  * Function to set up POI features
  * @param map MapLibre GL map instance
- * @param filter Optional filter expression for POI layers
  */
-export const setupPOIFeatures = (map: maplibregl.Map, filter?: maplibregl.FilterSpecification | null): void => {
+export const setupPOIFeatures = (map: maplibregl.Map): void => {
   // Variable to track the current popup
   let currentPopup: maplibregl.Popup | null = null;
   
@@ -74,10 +73,6 @@ export const setupPOIFeatures = (map: maplibregl.Map, filter?: maplibregl.Filter
         },
       };
       
-      // Apply filter if provided
-      if (filter) {
-        layerConfig.filter = filter;
-      }
       
       map.addLayer(layerConfig);
     }
@@ -103,10 +98,6 @@ export const setupPOIFeatures = (map: maplibregl.Map, filter?: maplibregl.Filter
         },
       };
       
-      // Apply filter if provided
-      if (filter) {
-        iconLayerConfig.filter = filter;
-      }
       
       map.addLayer(iconLayerConfig);
     }
@@ -127,28 +118,3 @@ export const setupPOIFeatures = (map: maplibregl.Map, filter?: maplibregl.Filter
   }
 };
 
-/**
- * Function to update POI filter on existing layers
- * @param map MapLibre GL map instance
- * @param filter Filter expression to apply (null to remove filter)
- */
-export const updatePOIFilter = (
-  map: maplibregl.Map,
-  filter: maplibregl.FilterSpecification | null
-): void => {
-  const layerIds = ["poi-dots", "poi-icons"];
-  
-  const applyFilter = () => {
-    layerIds.forEach((layerId) => {
-      if (map.getLayer(layerId)) {
-        map.setFilter(layerId, filter);
-      }
-    });
-  };
-
-  if (map.isStyleLoaded()) {
-    applyFilter();
-  } else {
-    map.once("styledata", applyFilter);
-  }
-};

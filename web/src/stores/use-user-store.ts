@@ -1,20 +1,18 @@
 import { create } from 'zustand'
-import { UserProfile } from '@auth0/nextjs-auth0/client'
+import type { User } from '@supabase/supabase-js'
 
 interface UserState {
-  user: UserProfile | undefined
-  error: Error | undefined
-  isLoading: boolean
-  setUser: (user: UserProfile | undefined) => void
-  setError: (error: Error | undefined) => void
-  setIsLoading: (isLoading: boolean) => void
+  user: User | null
+  loading: boolean
+  setUser: (user: User | null) => void
+  setLoading: (loading: boolean) => void
+  clear: () => void
 }
 
 export const useUserStore = create<UserState>((set) => ({
-  user: undefined,
-  error: undefined,
-  isLoading: true,
+  user: null,
+  loading: true,
   setUser: (user) => set({ user }),
-  setError: (error) => set({ error }),
-  setIsLoading: (isLoading) => set({ isLoading }),
+  setLoading: (loading) => set({ loading }),
+  clear: () => set({ user: null, loading: false }),
 }))

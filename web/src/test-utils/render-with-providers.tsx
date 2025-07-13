@@ -12,7 +12,7 @@ export function renderWithProviders(
     defaultOptions: {
       queries: {
         retry: false,
-        cacheTime: 0,
+        gcTime: 0,
         staleTime: 0,
       },
       mutations: {
@@ -40,7 +40,7 @@ export function createWrapper() {
     defaultOptions: {
       queries: {
         retry: false,
-        cacheTime: 0,
+        gcTime: 0,
         staleTime: 0,
       },
       mutations: {
@@ -49,13 +49,17 @@ export function createWrapper() {
     },
   })
 
-  return ({ children }: { children: ReactNode }) => (
+  const TestWrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         {children}
       </ThemeProvider>
     </QueryClientProvider>
   )
+
+  TestWrapper.displayName = 'TestWrapper'
+
+  return TestWrapper
 }
 
 // Re-export everything from testing-library for convenience

@@ -3,7 +3,7 @@ import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { UserProvider } from "@/components/providers/user-provider";
+import { AuthProvider } from "@/components/providers/user-provider";
 
 const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
@@ -25,7 +25,7 @@ export default function RootLayout({
       <body
         className={`${notoSansJP.variable} font-sans antialiased`}
       >
-        <UserProvider>
+        <AuthProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -34,7 +34,7 @@ export default function RootLayout({
           >
             {children}
           </ThemeProvider>
-        </UserProvider>
+        </AuthProvider>
       </body>
     </html>
   );

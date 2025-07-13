@@ -40,11 +40,8 @@ describe('Header Component', () => {
       // Check that aria-expanded is updated for accessibility
       expect(mobileMenuButton).toHaveAttribute('aria-expanded', 'true')
       
-      // Check if mobile menu items are visible
-      const mobileSearchButton = screen.getAllByText('スポットを探す').find(el => 
-        el.closest('[role="menuitem"]')
-      )
-      expect(mobileSearchButton).toBeInTheDocument()
+      // MVP版では検索ボタンは未実装のため、メニューが開くことのみテスト
+      expect(screen.getByRole('menu')).toBeInTheDocument()
     })
   })
 

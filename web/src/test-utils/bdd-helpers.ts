@@ -1,4 +1,4 @@
-import { describe, test, beforeEach, afterEach } from 'vitest'
+import { describe, test, beforeEach, afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 
 /**
