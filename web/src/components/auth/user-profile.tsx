@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { UserCircleIcon } from '@heroicons/react/24/outline'
+import { User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -41,7 +41,7 @@ export function UserProfile() {
               className="h-6 w-6 rounded-full"
             />
           ) : (
-            <UserCircleIcon className="h-6 w-6" />
+            <User className="h-6 w-6" />
           )}
           <span className="hidden md:inline text-sm">
             {user.user_metadata?.full_name || user.email?.split('@')[0] || 'ユーザー'}

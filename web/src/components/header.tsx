@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { MapPinIcon, Bars3Icon, QuestionMarkCircleIcon } from "@heroicons/react/24/outline"
+import { MapPin, Menu, HelpCircle } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,7 +28,7 @@ export function Header() {
           <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden mr-4" aria-label="モバイルメニューを開く" aria-expanded={mobileMenuOpen}>
-                <Bars3Icon className="h-5 w-5" />
+                <Menu className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
@@ -43,7 +43,7 @@ export function Header() {
         
         <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-2">
           <Link href="/" className="flex items-center space-x-2">
-            <MapPinIcon className="h-6 w-6 text-primary" aria-hidden="true" />
+            <MapPin className="h-6 w-6 text-primary" aria-hidden="true" />
             <h1 className="text-xl font-bold">Bocchi The Map</h1>
           </Link>
         </div>
@@ -52,7 +52,7 @@ export function Header() {
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" aria-label="ヘルプを表示">
-                <QuestionMarkCircleIcon className="h-4 w-4" />
+                <HelpCircle className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80">
