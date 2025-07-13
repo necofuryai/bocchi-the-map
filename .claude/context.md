@@ -24,8 +24,8 @@ This is a monorepo with three main modules:
   - Rationale: Full-stack React framework with excellent developer experience and production optimizations
 - **Styling**: Tailwind CSS + Shadcn/ui
   - Rationale: Utility-first CSS with pre-built accessible components
-- **Authentication**: Auth0 Universal Login
-  - Rationale: Enterprise-grade authentication with comprehensive OAuth provider support
+- **Authentication**: Supabase Auth with email/password and SSR support  
+  - Rationale: Modern authentication with Next.js App Router compatibility and simplified setup
 - **Maps**: MapLibre GL JS
   - Rationale: Open-source alternative to Mapbox with PMTiles support
 - **Testing**: Vitest (unit/component) + Playwright (E2E)
@@ -68,7 +68,7 @@ This is a monorepo with three main modules:
 1. **Solo-Friendly Spot Discovery**: Focus on locations suitable for solo activities
 2. **User Reviews**: Community-driven reviews with solo-specific insights
 3. **Map Integration**: Interactive map showing spot locations
-4. **User Authentication**: Social login with Google/X OAuth
+4. **User Authentication**: Email/password authentication with Supabase Auth
 5. **Multi-Device Support**: Responsive design for mobile and desktop
 
 ### Technical Constraints

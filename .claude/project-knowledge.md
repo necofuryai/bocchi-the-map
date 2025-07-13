@@ -68,7 +68,7 @@ The Go API follows strict onion architecture principles with clear layer separat
 
 - `Map component` - Main MapLibre GL JS wrapper with PMTiles support
 - `POI Features` - Point of interest rendering and interaction logic
-- `Auth Provider` - Auth0 Universal Login session management
+- `Auth Provider` - Supabase Auth session management with SSR support
 - `Theme Provider` - Dark/light mode using next-themes
 
 ## Key Design Principles
@@ -922,7 +922,7 @@ func (c *Config) Validate() error {
 ### Authentication & Authorization
 
 #### Core Authentication Features
-- **JWT Token Management**: Use JWT tokens with proper expiration and Auth0 validation
+- **JWT Token Management**: Use JWT tokens with proper expiration and Supabase Auth validation
 - **Token Blacklisting**: Implement JWT ID (JTI) based token revocation for logout security
 - **Account Management**: Secure account deletion with CASCADE data removal
 - **CSRF Protection**: Implement CSRF protection for state-changing operations

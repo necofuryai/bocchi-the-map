@@ -427,10 +427,10 @@ export { customRender as render }
 
 ## NEXT STEPS
 
-1. **Implement Frontend Auth0 Unit Tests** (High Priority)
-   - Create unit tests for Auth0 authentication hooks
+1. **Implement Frontend Supabase Auth Unit Tests** (High Priority)
+   - Create unit tests for Supabase authentication hooks
    - Test protected route components
-   - Mock Auth0 provider for component testing
+   - Mock Supabase Auth provider for component testing
 
 2. **Complete MSW Setup** (Currently Planned)
    - Install MSW package (`npm install msw --save-dev`)

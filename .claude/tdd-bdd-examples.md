@@ -259,7 +259,7 @@ This example demonstrates how the TDD+BDD hybrid methodology scales to complex a
 
 ### 🎯 Feature Overview
 
-Production-ready Auth0 authentication with comprehensive testing coverage (97% success rate, 34 test cases).
+Production-ready Supabase Auth authentication with comprehensive testing coverage (97% success rate, 34 test cases).
 
 ### 🔄 Implementation Results
 
@@ -307,10 +307,10 @@ web/e2e/homepage.spec.ts              # Homepage authentication flows
 ```bash
 # Given: User is not authenticated
 # When: User clicks login button
-# Then: User is redirected to Auth0 login
+# Then: User sees Supabase Auth login form
 
 # Given: User provides valid credentials
-# When: User completes Auth0 login
+# When: User completes Supabase Auth login
 # Then: User is redirected back with valid session
 ```
 
@@ -408,7 +408,7 @@ describe('SpotSearch', () => {
 
 ### Real-World Evidence
 
-- **Auth0 Implementation**: 97% success rate demonstrates reliability
+- **Supabase Auth Implementation**: 97% success rate demonstrates reliability
 - **Solo-Friendly Rating**: Clean domain model with comprehensive coverage
 - **Frontend Components**: Accessible, well-tested UI components
 - **Team Productivity**: Faster feature delivery with fewer bugs
@@ -444,7 +444,7 @@ npm run test:watch         # Run tests in watch mode
 
 1. **Apply patterns to new features**
    - Use Solo-Friendly Rating as template
-   - Follow Auth0 example for complex features
+   - Follow Supabase Auth example for complex features
    - Maintain test pyramid balance
 
 2. **Improve existing features**
