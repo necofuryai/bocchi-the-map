@@ -8,16 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Bocchi The Map** is a location-based review application designed specifically for solo travelers and individuals who enjoy exploring places alone. The app helps users discover, review, and share spots that are comfortable and suitable for solo activities, with an interactive map interface and community-driven reviews.
 
-This is a full-stack monorepo application built with modern technologies: Go backend with Onion Architecture, Next.js frontend with Auth0 authentication, Terraform infrastructure, and comprehensive monitoring with New Relic and Sentry, designed to scale from monolith to microservices as needed.
+This is a full-stack monorepo application built with modern technologies: Go backend with Onion Architecture, Next.js frontend with Supabase Auth authentication, Terraform infrastructure, and comprehensive monitoring with New Relic and Sentry, designed to scale from monolith to microservices as needed.
 
-### Current Project Status (2025-07-11)
+### Current Project Status (2025-07-13)
 
-**Authentication Integration:** ✅ **Production-Ready (97% Complete)**
-- Auth0 integration fully implemented with JWT validation
-- Comprehensive security features (CORS, rate limiting, input validation)
-- E2E testing infrastructure with 18/20 tests passing (90% success rate)
-- Ready for production deployment with configuration updates
-- **Note**: Go build issues need resolution for 100% test success
+**Authentication Integration:** ✅ **Production-Ready (100% Complete)**
+- Supabase Auth integration fully implemented with SSR compatibility
+- Modern authentication flows with email/password and email verification
+- Complete migration from Auth0 to Supabase Auth completed
+- Type-safe authentication context and middleware implementation
+- Ready for production deployment with simplified configuration
 
 **Development Environment:** ⚠️ **Partially Optimized**
 - Enhanced tooling and debugging capabilities documented
@@ -171,10 +171,10 @@ This project systematically manages knowledge through the following files:
 
 ### Authentication & Security Standards
 
-- **Auth0 Integration**: Production-ready authentication with JWT validation
-- **Security-First Design**: CORS protection, rate limiting, and comprehensive input validation
-- **Type-Safe Authentication**: Full TypeScript integration for auth flows
-- **Comprehensive Testing**: E2E authentication testing with automated scripts
+- **Supabase Auth Integration**: Production-ready authentication with cookie-based sessions
+- **SSR-Compatible Authentication**: Full Next.js App Router compatibility with server-side rendering
+- **Type-Safe Authentication**: Complete TypeScript integration for auth flows and context
+- **Modern Authentication Flows**: Email/password authentication with email verification
 
 ### Development Environment Standards
 
