@@ -36,37 +36,20 @@ func (q *Queries) CountReviewsByUser(ctx context.Context, userID sql.NullString)
 	return count, err
 }
 
-const countTopRatedSpots = `-- name: CountTopRatedSpots :one
-SELECT COUNT(*) FROM (
-  SELECT s.id FROM spots s
-  LEFT JOIN reviews r ON s.id = r.spot_id
-  GROUP BY s.id
-  HAVING COUNT(r.id) >= ?
-) AS filtered_spots
-`
-
-func (q *Queries) CountTopRatedSpots(ctx context.Context, id string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countTopRatedSpots, id)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createReview = `-- name: CreateReview :exec
 INSERT INTO reviews (
-    id, spot_id, user_id, rating, comment, rating_aspects
+    id, spot_id, user_id, rating, comment
 ) VALUES (
-    ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?
 )
 `
 
 type CreateReviewParams struct {
-	ID            string          `json:"id"`
-	SpotID        string          `json:"spot_id"`
-	UserID        sql.NullString  `json:"user_id"`
-	Rating        int32           `json:"rating"`
-	Comment       sql.NullString  `json:"comment"`
-	RatingAspects json.RawMessage `json:"rating_aspects"`
+	ID      string         `json:"id"`
+	SpotID  string         `json:"spot_id"`
+	UserID  sql.NullString `json:"user_id"`
+	Rating  int32          `json:"rating"`
+	Comment sql.NullString `json:"comment"`
 }
 
 func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) error {
@@ -76,7 +59,6 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) erro
 		arg.UserID,
 		arg.Rating,
 		arg.Comment,
-		arg.RatingAspects,
 	)
 	return err
 }
@@ -143,38 +125,20 @@ func (q *Queries) GetReviewByUserAndSpot(ctx context.Context, arg GetReviewByUse
 const getSpotRatingStats = `-- name: GetSpotRatingStats :one
 SELECT 
     AVG(rating) as average_rating,
-    COUNT(*) as review_count,
-    SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as five_star_count,
-    SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as four_star_count,
-    SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as three_star_count,
-    SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as two_star_count,
-    SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one_star_count
+    COUNT(*) as review_count
 FROM reviews 
 WHERE spot_id = ?
 `
 
 type GetSpotRatingStatsRow struct {
-	AverageRating  interface{} `json:"average_rating"`
-	ReviewCount    int64       `json:"review_count"`
-	FiveStarCount  interface{} `json:"five_star_count"`
-	FourStarCount  interface{} `json:"four_star_count"`
-	ThreeStarCount interface{} `json:"three_star_count"`
-	TwoStarCount   interface{} `json:"two_star_count"`
-	OneStarCount   interface{} `json:"one_star_count"`
+	AverageRating interface{} `json:"average_rating"`
+	ReviewCount   int64       `json:"review_count"`
 }
 
 func (q *Queries) GetSpotRatingStats(ctx context.Context, spotID string) (GetSpotRatingStatsRow, error) {
 	row := q.db.QueryRowContext(ctx, getSpotRatingStats, spotID)
 	var i GetSpotRatingStatsRow
-	err := row.Scan(
-		&i.AverageRating,
-		&i.ReviewCount,
-		&i.FiveStarCount,
-		&i.FourStarCount,
-		&i.ThreeStarCount,
-		&i.TwoStarCount,
-		&i.OneStarCount,
-	)
+	err := row.Scan(&i.AverageRating, &i.ReviewCount)
 	return i, err
 }
 
@@ -185,7 +149,6 @@ SELECT
   r.user_id,
   r.rating,
   r.comment,
-  r.rating_aspects,
   r.created_at,
   r.updated_at,
   u.name          AS user_name,
@@ -204,16 +167,15 @@ type ListReviewsBySpotParams struct {
 }
 
 type ListReviewsBySpotRow struct {
-	ID            string          `json:"id"`
-	SpotID        string          `json:"spot_id"`
-	UserID        sql.NullString  `json:"user_id"`
-	Rating        int32           `json:"rating"`
-	Comment       sql.NullString  `json:"comment"`
-	RatingAspects json.RawMessage `json:"rating_aspects"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
-	UserName      sql.NullString  `json:"user_name"`
-	UserAvatar    sql.NullString  `json:"user_avatar"`
+	ID         string         `json:"id"`
+	SpotID     string         `json:"spot_id"`
+	UserID     sql.NullString `json:"user_id"`
+	Rating     int32          `json:"rating"`
+	Comment    sql.NullString `json:"comment"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	UserName   sql.NullString `json:"user_name"`
+	UserAvatar sql.NullString `json:"user_avatar"`
 }
 
 func (q *Queries) ListReviewsBySpot(ctx context.Context, arg ListReviewsBySpotParams) ([]ListReviewsBySpotRow, error) {
@@ -231,7 +193,6 @@ func (q *Queries) ListReviewsBySpot(ctx context.Context, arg ListReviewsBySpotPa
 			&i.UserID,
 			&i.Rating,
 			&i.Comment,
-			&i.RatingAspects,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.UserName,
@@ -314,114 +275,19 @@ func (q *Queries) ListReviewsByUser(ctx context.Context, arg ListReviewsByUserPa
 	return items, nil
 }
 
-const listTopRatedSpots = `-- name: ListTopRatedSpots :many
-SELECT
-  s.id,
-  s.name,
-  s.category,
-  s.address,
-  s.latitude,
-  s.longitude,
-  s.country_code,
-  s.created_at,
-  s.updated_at,
-  ra.avg_rating,
-  ra.total_reviews
-FROM spots s
-INNER JOIN (
-  SELECT
-    r.spot_id,
-    AVG(r.rating) AS avg_rating,
-    COUNT(r.id) AS total_reviews
-  FROM reviews r
-  WHERE r.rating >= ?
-  GROUP BY r.spot_id
-  HAVING COUNT(r.id) >= ?
-) ra ON s.id = ra.spot_id
-ORDER BY ra.avg_rating DESC, ra.total_reviews DESC
-LIMIT ? OFFSET ?
-`
-
-type ListTopRatedSpotsParams struct {
-	Rating int32  `json:"rating"`
-	ID     string `json:"id"`
-	Limit  int32  `json:"limit"`
-	Offset int32  `json:"offset"`
-}
-
-type ListTopRatedSpotsRow struct {
-	ID           string      `json:"id"`
-	Name         string      `json:"name"`
-	Category     string      `json:"category"`
-	Address      string      `json:"address"`
-	Latitude     string      `json:"latitude"`
-	Longitude    string      `json:"longitude"`
-	CountryCode  string      `json:"country_code"`
-	CreatedAt    time.Time   `json:"created_at"`
-	UpdatedAt    time.Time   `json:"updated_at"`
-	AvgRating    interface{} `json:"avg_rating"`
-	TotalReviews int64       `json:"total_reviews"`
-}
-
-func (q *Queries) ListTopRatedSpots(ctx context.Context, arg ListTopRatedSpotsParams) ([]ListTopRatedSpotsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listTopRatedSpots,
-		arg.Rating,
-		arg.ID,
-		arg.Limit,
-		arg.Offset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListTopRatedSpotsRow{}
-	for rows.Next() {
-		var i ListTopRatedSpotsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Category,
-			&i.Address,
-			&i.Latitude,
-			&i.Longitude,
-			&i.CountryCode,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.AvgRating,
-			&i.TotalReviews,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const updateReview = `-- name: UpdateReview :exec
 UPDATE reviews 
-SET rating = ?, comment = ?, rating_aspects = ?, updated_at = CURRENT_TIMESTAMP
+SET rating = ?, comment = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 `
 
 type UpdateReviewParams struct {
-	Rating        int32           `json:"rating"`
-	Comment       sql.NullString  `json:"comment"`
-	RatingAspects json.RawMessage `json:"rating_aspects"`
-	ID            string          `json:"id"`
+	Rating  int32          `json:"rating"`
+	Comment sql.NullString `json:"comment"`
+	ID      string         `json:"id"`
 }
 
 func (q *Queries) UpdateReview(ctx context.Context, arg UpdateReviewParams) error {
-	_, err := q.db.ExecContext(ctx, updateReview,
-		arg.Rating,
-		arg.Comment,
-		arg.RatingAspects,
-		arg.ID,
-	)
+	_, err := q.db.ExecContext(ctx, updateReview, arg.Rating, arg.Comment, arg.ID)
 	return err
 }

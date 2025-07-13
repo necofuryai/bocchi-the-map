@@ -7,39 +7,89 @@ package database
 
 import (
 	"context"
-	"encoding/json"
+	"time"
 )
+
+const countSpots = `-- name: CountSpots :one
+SELECT COUNT(*) FROM spots 
+WHERE (? = '' OR name LIKE ?)
+  AND (? = '' OR category = ?)
+  AND (? = '' OR country_code = ?)
+`
+
+type CountSpotsParams struct {
+	Column1     interface{} `json:"column_1"`
+	Name        string      `json:"name"`
+	Column3     interface{} `json:"column_3"`
+	Category    string      `json:"category"`
+	Column5     interface{} `json:"column_5"`
+	CountryCode string      `json:"country_code"`
+}
+
+func (q *Queries) CountSpots(ctx context.Context, arg CountSpotsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSpots,
+		arg.Column1,
+		arg.Name,
+		arg.Column3,
+		arg.Category,
+		arg.Column5,
+		arg.CountryCode,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countSpotsByCategory = `-- name: CountSpotsByCategory :one
+SELECT COUNT(*) FROM spots 
+WHERE category = ?
+`
+
+func (q *Queries) CountSpotsByCategory(ctx context.Context, category string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSpotsByCategory, category)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countSpotsByCountry = `-- name: CountSpotsByCountry :one
+SELECT COUNT(*) FROM spots 
+WHERE country_code = ?
+`
+
+func (q *Queries) CountSpotsByCountry(ctx context.Context, countryCode string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countSpotsByCountry, countryCode)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const createSpot = `-- name: CreateSpot :exec
 INSERT INTO spots (
-    id, name, name_i18n, latitude, longitude, category, address, address_i18n, country_code
+    id, name, latitude, longitude, category, address, country_code
 ) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?
 )
 `
 
 type CreateSpotParams struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
-	NameI18n    json.RawMessage `json:"name_i18n"`
-	Latitude    string          `json:"latitude"`
-	Longitude   string          `json:"longitude"`
-	Category    string          `json:"category"`
-	Address     string          `json:"address"`
-	AddressI18n json.RawMessage `json:"address_i18n"`
-	CountryCode string          `json:"country_code"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Latitude    string `json:"latitude"`
+	Longitude   string `json:"longitude"`
+	Category    string `json:"category"`
+	Address     string `json:"address"`
+	CountryCode string `json:"country_code"`
 }
 
 func (q *Queries) CreateSpot(ctx context.Context, arg CreateSpotParams) error {
 	_, err := q.db.ExecContext(ctx, createSpot,
 		arg.ID,
 		arg.Name,
-		arg.NameI18n,
 		arg.Latitude,
 		arg.Longitude,
 		arg.Category,
 		arg.Address,
-		arg.AddressI18n,
 		arg.CountryCode,
 	)
 	return err
@@ -56,22 +106,34 @@ func (q *Queries) DeleteSpot(ctx context.Context, id string) error {
 }
 
 const getSpotByID = `-- name: GetSpotByID :one
-SELECT id, name, name_i18n, latitude, longitude, category, address, address_i18n, country_code, average_rating, review_count, created_at, updated_at FROM spots 
+SELECT id, name, latitude, longitude, category, address, country_code, average_rating, review_count, created_at, updated_at FROM spots 
 WHERE id = ?
 `
 
-func (q *Queries) GetSpotByID(ctx context.Context, id string) (Spot, error) {
+type GetSpotByIDRow struct {
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Latitude      string    `json:"latitude"`
+	Longitude     string    `json:"longitude"`
+	Category      string    `json:"category"`
+	Address       string    `json:"address"`
+	CountryCode   string    `json:"country_code"`
+	AverageRating string    `json:"average_rating"`
+	ReviewCount   int32     `json:"review_count"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetSpotByID(ctx context.Context, id string) (GetSpotByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getSpotByID, id)
-	var i Spot
+	var i GetSpotByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.NameI18n,
 		&i.Latitude,
 		&i.Longitude,
 		&i.Category,
 		&i.Address,
-		&i.AddressI18n,
 		&i.CountryCode,
 		&i.AverageRating,
 		&i.ReviewCount,
@@ -81,42 +143,48 @@ func (q *Queries) GetSpotByID(ctx context.Context, id string) (Spot, error) {
 	return i, err
 }
 
-const listSpotsByLocation = `-- name: ListSpotsByLocation :many
-SELECT id, name, name_i18n, latitude, longitude, category, address, address_i18n, country_code, average_rating, review_count, created_at, updated_at FROM spots 
-WHERE (6371 * acos(
-    cos(radians(?)) * cos(radians(latitude)) * 
-    cos(radians(longitude) - radians(?)) + 
-    sin(radians(?)) * sin(radians(latitude))
-)) <= ?
-ORDER BY (6371 * acos(
-    cos(radians(?)) * cos(radians(latitude)) * 
-    cos(radians(longitude) - radians(?)) + 
-    sin(radians(?)) * sin(radians(latitude))
-))
+const listSpots = `-- name: ListSpots :many
+SELECT id, name, latitude, longitude, category, address, country_code, average_rating, review_count, created_at, updated_at FROM spots 
+WHERE (? = '' OR name LIKE ?)
+  AND (? = '' OR category = ?)
+  AND (? = '' OR country_code = ?)
+ORDER BY average_rating DESC, review_count DESC, created_at DESC
 LIMIT ? OFFSET ?
 `
 
-type ListSpotsByLocationParams struct {
-	Latitude   string `json:"latitude"`
-	Longitude  string `json:"longitude"`
-	Latitude_2 string `json:"latitude_2"`
-	RadiusKm   string `json:"radius_km"`
-	Latitude_3 string `json:"latitude_3"`
-	Longitude_2 string `json:"longitude_2"`
-	Latitude_4 string `json:"latitude_4"`
-	Limit      int32  `json:"limit"`
-	Offset     int32  `json:"offset"`
+type ListSpotsParams struct {
+	Column1     interface{} `json:"column_1"`
+	Name        string      `json:"name"`
+	Column3     interface{} `json:"column_3"`
+	Category    string      `json:"category"`
+	Column5     interface{} `json:"column_5"`
+	CountryCode string      `json:"country_code"`
+	Limit       int32       `json:"limit"`
+	Offset      int32       `json:"offset"`
 }
 
-func (q *Queries) ListSpotsByLocation(ctx context.Context, arg ListSpotsByLocationParams) ([]Spot, error) {
-	rows, err := q.db.QueryContext(ctx, listSpotsByLocation,
-		arg.Latitude,
-		arg.Longitude,
-		arg.Latitude_2,
-		arg.RadiusKm,
-		arg.Latitude_3,
-		arg.Longitude_2,
-		arg.Latitude_4,
+type ListSpotsRow struct {
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Latitude      string    `json:"latitude"`
+	Longitude     string    `json:"longitude"`
+	Category      string    `json:"category"`
+	Address       string    `json:"address"`
+	CountryCode   string    `json:"country_code"`
+	AverageRating string    `json:"average_rating"`
+	ReviewCount   int32     `json:"review_count"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) ListSpots(ctx context.Context, arg ListSpotsParams) ([]ListSpotsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSpots,
+		arg.Column1,
+		arg.Name,
+		arg.Column3,
+		arg.Category,
+		arg.Column5,
+		arg.CountryCode,
 		arg.Limit,
 		arg.Offset,
 	)
@@ -124,18 +192,16 @@ func (q *Queries) ListSpotsByLocation(ctx context.Context, arg ListSpotsByLocati
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Spot{}
+	items := []ListSpotsRow{}
 	for rows.Next() {
-		var i Spot
+		var i ListSpotsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.NameI18n,
 			&i.Latitude,
 			&i.Longitude,
 			&i.Category,
 			&i.Address,
-			&i.AddressI18n,
 			&i.CountryCode,
 			&i.AverageRating,
 			&i.ReviewCount,
@@ -155,101 +221,111 @@ func (q *Queries) ListSpotsByLocation(ctx context.Context, arg ListSpotsByLocati
 	return items, nil
 }
 
-const countSpotsByLocation = `-- name: CountSpotsByLocation :one
-SELECT COUNT(*) FROM spots 
-WHERE (6371 * acos(
-    cos(radians(?)) * cos(radians(latitude)) * 
-    cos(radians(longitude) - radians(?)) + 
-    sin(radians(?)) * sin(radians(latitude))
-)) <= ?
-`
-
-type CountSpotsByLocationParams struct {
-	Latitude   string `json:"latitude"`
-	Longitude  string `json:"longitude"`
-	Latitude_2 string `json:"latitude_2"`
-	RadiusKm   string `json:"radius_km"`
-}
-
-func (q *Queries) CountSpotsByLocation(ctx context.Context, arg CountSpotsByLocationParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countSpotsByLocation,
-		arg.Latitude,
-		arg.Longitude,
-		arg.Latitude_2,
-		arg.RadiusKm,
-	)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const searchSpots = `-- name: SearchSpots :many
-SELECT id, name, name_i18n, latitude, longitude, category, address, address_i18n, country_code, average_rating, review_count, created_at, updated_at FROM spots 
-WHERE (name LIKE ? OR address LIKE ?)
-  AND (? = '' OR category = ?)
-  AND (? = '' OR country_code = ?)
-  AND (? = 0 OR (6371 * acos(
-      cos(radians(?)) * cos(radians(latitude)) * 
-      cos(radians(longitude) - radians(?)) + 
-      sin(radians(?)) * sin(radians(latitude))
-  )) <= ?)
-ORDER BY 
-  CASE WHEN name LIKE ? THEN 1 ELSE 2 END,
-  average_rating DESC,
-  review_count DESC
+const listSpotsByCategory = `-- name: ListSpotsByCategory :many
+SELECT id, name, latitude, longitude, category, address, country_code, average_rating, review_count, created_at, updated_at FROM spots 
+WHERE category = ?
+ORDER BY created_at DESC
 LIMIT ? OFFSET ?
 `
 
-type SearchSpotsParams struct {
-	Name        string `json:"name"`
-	Address     string `json:"address"`
-	Category    string `json:"category"`
-	Category_2  string `json:"category_2"`
-	CountryCode string `json:"country_code"`
-	CountryCode_2 string `json:"country_code_2"`
-	RadiusKm    string `json:"radius_km"`
-	Latitude    string `json:"latitude"`
-	Longitude   string `json:"longitude"`
-	Latitude_2  string `json:"latitude_2"`
-	RadiusKm_2  string `json:"radius_km_2"`
-	Name_2      string `json:"name_2"`
-	Limit       int32  `json:"limit"`
-	Offset      int32  `json:"offset"`
+type ListSpotsByCategoryParams struct {
+	Category string `json:"category"`
+	Limit    int32  `json:"limit"`
+	Offset   int32  `json:"offset"`
 }
 
-func (q *Queries) SearchSpots(ctx context.Context, arg SearchSpotsParams) ([]Spot, error) {
-	rows, err := q.db.QueryContext(ctx, searchSpots,
-		arg.Name,
-		arg.Address,
-		arg.Category,
-		arg.Category_2,
-		arg.CountryCode,
-		arg.CountryCode_2,
-		arg.RadiusKm,
-		arg.Latitude,
-		arg.Longitude,
-		arg.Latitude_2,
-		arg.RadiusKm_2,
-		arg.Name_2,
-		arg.Limit,
-		arg.Offset,
-	)
+type ListSpotsByCategoryRow struct {
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Latitude      string    `json:"latitude"`
+	Longitude     string    `json:"longitude"`
+	Category      string    `json:"category"`
+	Address       string    `json:"address"`
+	CountryCode   string    `json:"country_code"`
+	AverageRating string    `json:"average_rating"`
+	ReviewCount   int32     `json:"review_count"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) ListSpotsByCategory(ctx context.Context, arg ListSpotsByCategoryParams) ([]ListSpotsByCategoryRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSpotsByCategory, arg.Category, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Spot{}
+	items := []ListSpotsByCategoryRow{}
 	for rows.Next() {
-		var i Spot
+		var i ListSpotsByCategoryRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.NameI18n,
 			&i.Latitude,
 			&i.Longitude,
 			&i.Category,
 			&i.Address,
-			&i.AddressI18n,
+			&i.CountryCode,
+			&i.AverageRating,
+			&i.ReviewCount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSpotsByCountry = `-- name: ListSpotsByCountry :many
+SELECT id, name, latitude, longitude, category, address, country_code, average_rating, review_count, created_at, updated_at FROM spots 
+WHERE country_code = ?
+ORDER BY created_at DESC
+LIMIT ? OFFSET ?
+`
+
+type ListSpotsByCountryParams struct {
+	CountryCode string `json:"country_code"`
+	Limit       int32  `json:"limit"`
+	Offset      int32  `json:"offset"`
+}
+
+type ListSpotsByCountryRow struct {
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Latitude      string    `json:"latitude"`
+	Longitude     string    `json:"longitude"`
+	Category      string    `json:"category"`
+	Address       string    `json:"address"`
+	CountryCode   string    `json:"country_code"`
+	AverageRating string    `json:"average_rating"`
+	ReviewCount   int32     `json:"review_count"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func (q *Queries) ListSpotsByCountry(ctx context.Context, arg ListSpotsByCountryParams) ([]ListSpotsByCountryRow, error) {
+	rows, err := q.db.QueryContext(ctx, listSpotsByCountry, arg.CountryCode, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSpotsByCountryRow{}
+	for rows.Next() {
+		var i ListSpotsByCountryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Latitude,
+			&i.Longitude,
+			&i.Category,
+			&i.Address,
 			&i.CountryCode,
 			&i.AverageRating,
 			&i.ReviewCount,
@@ -271,32 +347,28 @@ func (q *Queries) SearchSpots(ctx context.Context, arg SearchSpotsParams) ([]Spo
 
 const updateSpot = `-- name: UpdateSpot :exec
 UPDATE spots 
-SET name = ?, name_i18n = ?, latitude = ?, longitude = ?, category = ?, 
-    address = ?, address_i18n = ?, country_code = ?, updated_at = CURRENT_TIMESTAMP
+SET name = ?, latitude = ?, longitude = ?, category = ?, 
+    address = ?, country_code = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?
 `
 
 type UpdateSpotParams struct {
-	Name        string          `json:"name"`
-	NameI18n    json.RawMessage `json:"name_i18n"`
-	Latitude    string          `json:"latitude"`
-	Longitude   string          `json:"longitude"`
-	Category    string          `json:"category"`
-	Address     string          `json:"address"`
-	AddressI18n json.RawMessage `json:"address_i18n"`
-	CountryCode string          `json:"country_code"`
-	ID          string          `json:"id"`
+	Name        string `json:"name"`
+	Latitude    string `json:"latitude"`
+	Longitude   string `json:"longitude"`
+	Category    string `json:"category"`
+	Address     string `json:"address"`
+	CountryCode string `json:"country_code"`
+	ID          string `json:"id"`
 }
 
 func (q *Queries) UpdateSpot(ctx context.Context, arg UpdateSpotParams) error {
 	_, err := q.db.ExecContext(ctx, updateSpot,
 		arg.Name,
-		arg.NameI18n,
 		arg.Latitude,
 		arg.Longitude,
 		arg.Category,
 		arg.Address,
-		arg.AddressI18n,
 		arg.CountryCode,
 		arg.ID,
 	)
@@ -316,10 +388,6 @@ type UpdateSpotRatingParams struct {
 }
 
 func (q *Queries) UpdateSpotRating(ctx context.Context, arg UpdateSpotRatingParams) error {
-	_, err := q.db.ExecContext(ctx, updateSpotRating,
-		arg.AverageRating,
-		arg.ReviewCount,
-		arg.ID,
-	)
+	_, err := q.db.ExecContext(ctx, updateSpotRating, arg.AverageRating, arg.ReviewCount, arg.ID)
 	return err
 }

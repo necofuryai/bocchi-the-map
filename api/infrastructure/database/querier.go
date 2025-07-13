@@ -17,13 +17,18 @@ type Querier interface {
 	CleanupExpiredTokens(ctx context.Context) error
 	CountReviewsBySpot(ctx context.Context, spotID string) (int64, error)
 	CountReviewsByUser(ctx context.Context, userID sql.NullString) (int64, error)
-	CountTopRatedSpots(ctx context.Context, id string) (int64, error)
+	CountSpots(ctx context.Context, arg CountSpotsParams) (int64, error)
+	CountSpotsByCategory(ctx context.Context, category string) (int64, error)
+	CountSpotsByCountry(ctx context.Context, countryCode string) (int64, error)
 	CreateReview(ctx context.Context, arg CreateReviewParams) error
+	CreateSpot(ctx context.Context, arg CreateSpotParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	DeleteReview(ctx context.Context, id string) error
+	DeleteSpot(ctx context.Context, id string) error
 	DeleteUser(ctx context.Context, id string) error
 	GetReviewByID(ctx context.Context, id string) (Review, error)
 	GetReviewByUserAndSpot(ctx context.Context, arg GetReviewByUserAndSpotParams) (Review, error)
+	GetSpotByID(ctx context.Context, id string) (GetSpotByIDRow, error)
 	GetSpotRatingStats(ctx context.Context, spotID string) (GetSpotRatingStatsRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	// User management queries for Bocchi The Map API
@@ -33,8 +38,12 @@ type Querier interface {
 	IsTokenBlacklisted(ctx context.Context, jti string) (bool, error)
 	ListReviewsBySpot(ctx context.Context, arg ListReviewsBySpotParams) ([]ListReviewsBySpotRow, error)
 	ListReviewsByUser(ctx context.Context, arg ListReviewsByUserParams) ([]ListReviewsByUserRow, error)
-	ListTopRatedSpots(ctx context.Context, arg ListTopRatedSpotsParams) ([]ListTopRatedSpotsRow, error)
+	ListSpots(ctx context.Context, arg ListSpotsParams) ([]ListSpotsRow, error)
+	ListSpotsByCategory(ctx context.Context, arg ListSpotsByCategoryParams) ([]ListSpotsByCategoryRow, error)
+	ListSpotsByCountry(ctx context.Context, arg ListSpotsByCountryParams) ([]ListSpotsByCountryRow, error)
 	UpdateReview(ctx context.Context, arg UpdateReviewParams) error
+	UpdateSpot(ctx context.Context, arg UpdateSpotParams) error
+	UpdateSpotRating(ctx context.Context, arg UpdateSpotRatingParams) error
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) error
 	UpsertUser(ctx context.Context, arg UpsertUserParams) error

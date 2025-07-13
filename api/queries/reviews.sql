@@ -1,8 +1,8 @@
 -- name: CreateReview :exec
 INSERT INTO reviews (
-    id, spot_id, user_id, rating, comment, rating_aspects
+    id, spot_id, user_id, rating, comment
 ) VALUES (
-    ?, ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?
 );
 
 -- name: GetReviewByID :one
@@ -15,7 +15,7 @@ WHERE user_id = ? AND spot_id = ?;
 
 -- name: UpdateReview :exec
 UPDATE reviews 
-SET rating = ?, comment = ?, rating_aspects = ?, updated_at = CURRENT_TIMESTAMP
+SET rating = ?, comment = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
 
 -- name: DeleteReview :exec
@@ -29,7 +29,6 @@ SELECT
   r.user_id,
   r.rating,
   r.comment,
-  r.rating_aspects,
   r.created_at,
   r.updated_at,
   u.name          AS user_name,
@@ -59,46 +58,7 @@ WHERE user_id = ?;
 -- name: GetSpotRatingStats :one
 SELECT 
     AVG(rating) as average_rating,
-    COUNT(*) as review_count,
-    SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as five_star_count,
-    SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as four_star_count,
-    SUM(CASE WHEN rating = 3 THEN 1 ELSE 0 END) as three_star_count,
-    SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as two_star_count,
-    SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one_star_count
+    COUNT(*) as review_count
 FROM reviews 
 WHERE spot_id = ?;
 
--- name: ListTopRatedSpots :many
-SELECT
-  s.id,
-  s.name,
-  s.category,
-  s.address,
-  s.latitude,
-  s.longitude,
-  s.country_code,
-  s.created_at,
-  s.updated_at,
-  ra.avg_rating,
-  ra.total_reviews
-FROM spots s
-INNER JOIN (
-  SELECT
-    r.spot_id,
-    AVG(r.rating) AS avg_rating,
-    COUNT(r.id) AS total_reviews
-  FROM reviews r
-  WHERE r.rating >= ?
-  GROUP BY r.spot_id
-  HAVING COUNT(r.id) >= ?
-) ra ON s.id = ra.spot_id
-ORDER BY ra.avg_rating DESC, ra.total_reviews DESC
-LIMIT ? OFFSET ?;
-
--- name: CountTopRatedSpots :one
-SELECT COUNT(*) FROM (
-  SELECT s.id FROM spots s
-  LEFT JOIN reviews r ON s.id = r.spot_id
-  GROUP BY s.id
-  HAVING COUNT(r.id) >= ?
-) AS filtered_spots;

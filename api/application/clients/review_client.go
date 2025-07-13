@@ -50,7 +50,3 @@ func (c *ReviewClient) GetSpotReviews(ctx context.Context, req *reviewv1.GetSpot
 	return c.service.GetSpotReviews(ctx, req)
 }
 
-// GetUserReviews retrieves reviews by user via gRPC
-func (c *ReviewClient) GetUserReviews(ctx context.Context, req *reviewv1.GetUserReviewsRequest) (*reviewv1.GetUserReviewsResponse, error) {
-	return c.service.GetUserReviews(ctx, req)
-}

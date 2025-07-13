@@ -54,12 +54,4 @@ func (c *UserClient) CreateUser(ctx context.Context, req *grpcSvc.CreateUserRequ
 	return c.service.CreateUser(ctx, req)
 }
 
-// UpdateUser updates a user via gRPC
-func (c *UserClient) UpdateUser(ctx context.Context, req *grpcSvc.UpdateUserRequest) (*grpcSvc.UpdateUserResponse, error) {
-	return c.service.UpdateUser(ctx, req)
-}
 
-// DeleteUser deletes a user via gRPC
-func (c *UserClient) DeleteUser(ctx context.Context, req *grpcSvc.DeleteUserRequest) (*grpcSvc.DeleteUserResponse, error) {
-	return c.service.DeleteUser(ctx, req)
-}

@@ -12,7 +12,6 @@ import (
 
 	"bocchi/api/gen/user/v1"
 	"bocchi/api/infrastructure/database"
-	"bocchi/api/pkg/errors"
 	"bocchi/api/pkg/logger"
 )
 
@@ -37,10 +36,6 @@ type (
 	GetUserByEmailResponse = userv1.GetUserByEmailResponse
 	CreateUserRequest      = userv1.CreateUserRequest
 	CreateUserResponse     = userv1.CreateUserResponse
-	UpdateUserRequest      = userv1.UpdateUserRequest
-	UpdateUserResponse     = userv1.UpdateUserResponse
-	DeleteUserRequest      = userv1.DeleteUserRequest
-	DeleteUserResponse     = userv1.DeleteUserResponse
 )
 
 // GetUser retrieves a user by ID
@@ -174,111 +169,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 	return &CreateUserResponse{User: user}, nil
 }
 
-// UpdateUser updates an existing user
-func (s *UserService) UpdateUser(ctx context.Context, req *UpdateUserRequest) (*UpdateUserResponse, error) {
-	if req.GetId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "user ID is required")
-	}
 
-	// Get current user to verify it exists
-	_, err := s.queries.GetUserByID(ctx, req.GetId())
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
-		logger.ErrorWithContext(ctx, "Failed to get user for update", err)
-		return nil, status.Error(codes.Internal, "failed to get user")
-	}
-
-	// Update avatar if provided
-	if req.GetAvatarUrl() != "" {
-		var avatarUrl sql.NullString
-		if req.GetAvatarUrl() != "" {
-			avatarUrl = sql.NullString{String: req.GetAvatarUrl(), Valid: true}
-		}
-		
-		err = s.queries.UpdateUserAvatar(ctx, database.UpdateUserAvatarParams{
-			ID:      req.GetId(),
-			Picture: avatarUrl,
-		})
-		if err != nil {
-			logger.ErrorWithContext(ctx, "Failed to update user avatar", err)
-			return nil, status.Error(codes.Internal, "failed to update user avatar")
-		}
-	}
-
-	// Update preferences if provided
-	if req.GetPreferences() != "" {
-		// Validate that it's valid JSON
-		var temp interface{}
-		if err := json.Unmarshal([]byte(req.GetPreferences()), &temp); err != nil {
-			return nil, status.Error(codes.InvalidArgument, "preferences must be valid JSON")
-		}
-
-		err = s.queries.UpdateUserPreferences(ctx, database.UpdateUserPreferencesParams{
-			ID:          req.GetId(),
-			Preferences: []byte(req.GetPreferences()),
-		})
-		if err != nil {
-			logger.ErrorWithContext(ctx, "Failed to update user preferences", err)
-			return nil, status.Error(codes.Internal, "failed to update user preferences")
-		}
-	}
-
-	// Retrieve the updated user
-	dbUser, err := s.queries.GetUserByID(ctx, req.GetId())
-	if err != nil {
-		logger.ErrorWithContext(ctx, "Failed to retrieve updated user", err)
-		return nil, status.Error(codes.Internal, "failed to retrieve updated user")
-	}
-
-	// Convert database user to gRPC response
-	user := s.convertDatabaseUserToGRPC(dbUser)
-	return &UpdateUserResponse{User: user}, nil
-}
-
-// DeleteUser deletes a user (hard deletion)
-func (s *UserService) DeleteUser(ctx context.Context, req *DeleteUserRequest) (*DeleteUserResponse, error) {
-	if req.GetId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "user ID is required")
-	}
-
-	// Extract authenticated user ID from context
-	authUserID := errors.GetUserID(ctx)
-	if authUserID == "" {
-		return nil, status.Error(codes.Unauthenticated, "user not authenticated")
-	}
-
-	// Check if user is trying to delete themselves or has admin permissions
-	if authUserID != req.GetId() {
-		// TODO: Add admin permission check here
-		return nil, status.Error(codes.PermissionDenied, "insufficient permissions to delete user")
-	}
-
-	// Check if user exists
-	_, err := s.queries.GetUserByID(ctx, req.GetId())
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, status.Error(codes.NotFound, "user not found")
-		}
-		logger.ErrorWithContext(ctx, "Failed to get user for deletion", err)
-		return nil, status.Error(codes.Internal, "failed to get user")
-	}
-
-	// Delete user (CASCADE will handle related reviews)
-	err = s.queries.DeleteUser(ctx, req.GetId())
-	if err != nil {
-		logger.ErrorWithContext(ctx, "Failed to delete user", err)
-		return nil, status.Error(codes.Internal, "failed to delete user")
-	}
-
-	logger.InfoWithFields("User deleted successfully", map[string]interface{}{
-		"user_id":      req.GetId(),
-		"auth_user_id": authUserID,
-	})
-
-	return &DeleteUserResponse{Success: true}, nil
-}
 
 // convertDatabaseUserToGRPC converts database user model to gRPC user struct
 func (s *UserService) convertDatabaseUserToGRPC(dbUser database.User) *User {

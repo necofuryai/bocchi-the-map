@@ -39,22 +39,10 @@ func (c *SpotClient) Close() error {
 	return nil
 }
 
-// CreateSpot creates a new spot via gRPC
-func (c *SpotClient) CreateSpot(ctx context.Context, req *grpcSvc.CreateSpotRequest) (*grpcSvc.CreateSpotResponse, error) {
-	return c.service.CreateSpot(ctx, req)
-}
 
 // GetSpot retrieves a spot by ID via gRPC
 func (c *SpotClient) GetSpot(ctx context.Context, req *grpcSvc.GetSpotRequest) (*grpcSvc.GetSpotResponse, error) {
 	return c.service.GetSpot(ctx, req)
 }
 
-// ListSpots lists spots with filters via gRPC
-func (c *SpotClient) ListSpots(ctx context.Context, req *grpcSvc.ListSpotsRequest) (*grpcSvc.ListSpotsResponse, error) {
-	return c.service.ListSpots(ctx, req)
-}
 
-// SearchSpots searches spots via gRPC
-func (c *SpotClient) SearchSpots(ctx context.Context, req *grpcSvc.SearchSpotsRequest) (*grpcSvc.SearchSpotsResponse, error) {
-	return c.service.SearchSpots(ctx, req)
-}
