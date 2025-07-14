@@ -59,7 +59,6 @@ export interface Auth0User {
   nickname?: string
   given_name?: string
   family_name?: string
-  locale?: string
   updated_at?: string
 }
 

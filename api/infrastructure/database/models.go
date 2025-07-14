@@ -69,12 +69,10 @@ type Review struct {
 type Spot struct {
 	ID            string          `json:"id"`
 	Name          string          `json:"name"`
-	NameI18n      json.RawMessage `json:"name_i18n"`
 	Latitude      string          `json:"latitude"`
 	Longitude     string          `json:"longitude"`
 	Category      string          `json:"category"`
 	Address       string          `json:"address"`
-	AddressI18n   json.RawMessage `json:"address_i18n"`
 	CountryCode   string          `json:"country_code"`
 	AverageRating string          `json:"average_rating"`
 	ReviewCount   int32           `json:"review_count"`

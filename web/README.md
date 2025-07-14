@@ -440,31 +440,6 @@ NEXT_PUBLIC_GA_ID=your-google-analytics-id
 }
 ```
 
-## 🌐 Internationalization
-
-### Multi-language Support
-
-```tsx
-// Using next-intl for i18n
-import { useTranslations } from 'next-intl'
-
-function SpotCard({ spot }: { spot: Spot }) {
-  const t = useTranslations('spots')
-  
-  return (
-    <div>
-      <h3>{spot.name}</h3>
-      <p>{t('rating')}: {spot.rating}</p>
-    </div>
-  )
-}
-```
-
-### Supported Locales
-
-- 🇯🇵 **Japanese** - Primary market
-- 🇺🇸 **English** - International users
-- 🔄 **Future**: Korean, Chinese (Traditional/Simplified)
 
 ## 📊 Analytics & Monitoring
 

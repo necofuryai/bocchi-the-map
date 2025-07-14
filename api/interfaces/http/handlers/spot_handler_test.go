@@ -75,12 +75,10 @@ var _ = Describe("SpotHandler BDD Tests", func() {
 					By("Preparing a valid spot creation request")
 					requestBody := map[string]interface{}{
 						"name":         "Test Solo Cafe",
-						"name_i18n":    map[string]string{"ja": "テストソロカフェ"},
 						"latitude":     35.6762,
 						"longitude":    139.6503,
 						"category":     "cafe",
 						"address":      "1-1-1 Test District, Tokyo",
-						"address_i18n": map[string]string{"ja": "東京都テスト区1-1-1"},
 						"country_code": "JP",
 					}
 					

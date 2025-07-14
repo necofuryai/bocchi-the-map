@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"strconv"
 
 	"google.golang.org/grpc/codes"
@@ -81,36 +80,12 @@ func (s *SpotService) convertDatabaseSpotToGRPC(dbSpot database.Spot) *Spot {
 		averageRating = 0.0 // Use default value for invalid rating
 	}
 
-	// Parse i18n JSON fields with error handling
-	var nameI18n map[string]string
-	if len(dbSpot.NameI18n) > 0 {
-		if err := json.Unmarshal(dbSpot.NameI18n, &nameI18n); err != nil {
-			logger.ErrorWithFields("Failed to parse name i18n JSON", err, map[string]interface{}{
-				"spot_id": dbSpot.ID,
-				"name_i18n_value": string(dbSpot.NameI18n),
-			})
-			nameI18n = nil // Use nil for invalid JSON data
-		}
-	}
-
-	var addressI18n map[string]string
-	if len(dbSpot.AddressI18n) > 0 {
-		if err := json.Unmarshal(dbSpot.AddressI18n, &addressI18n); err != nil {
-			logger.ErrorWithFields("Failed to parse address i18n JSON", err, map[string]interface{}{
-				"spot_id": dbSpot.ID,
-				"address_i18n_value": string(dbSpot.AddressI18n),
-			})
-			addressI18n = nil // Use nil for invalid JSON data
-		}
-	}
 
 	return &Spot{
 		Id:   dbSpot.ID,
 		Name: dbSpot.Name,
-		NameI18N: nameI18n,
 		Category:      dbSpot.Category,
 		Address:       dbSpot.Address,
-		AddressI18N:   addressI18n,
 		CountryCode:   dbSpot.CountryCode,
 		AverageRating: averageRating,
 		ReviewCount:   dbSpot.ReviewCount,
