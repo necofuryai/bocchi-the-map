@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/client'
-import type { DomainUser, Review } from '@/types'
+import type { DomainUser, Review, Spot } from '@/types'
 
 // API base URL configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
@@ -170,6 +170,25 @@ export const api = {
   // User operations
   users: {
     getCurrent: () => apiClient.get<DomainUser>('/api/v1/users/me'),
+  },
+
+  // Spot operations
+  spots: {
+    list: (params?: { category?: string; country_code?: string; limit?: number }) => {
+      const searchParams = new URLSearchParams()
+      if (params?.category) searchParams.set('category', params.category)
+      if (params?.country_code) searchParams.set('country_code', params.country_code)
+      if (params?.limit) searchParams.set('limit', params.limit.toString())
+      
+      const query = searchParams.toString()
+      return apiClient.get<Spot[]>(`/api/v1/spots${query ? `?${query}` : ''}`)
+    },
+    create: (spot: Omit<Spot, 'id' | 'createdAt' | 'updatedAt'>) => 
+      apiClient.post<Spot>('/api/v1/spots', spot),
+    getById: (id: string) => apiClient.get<Spot>(`/api/v1/spots/${id}`),
+    update: (id: string, spot: Partial<Omit<Spot, 'id' | 'createdAt' | 'updatedAt'>>) => 
+      apiClient.put<Spot>(`/api/v1/spots/${id}`, spot),
+    delete: (id: string) => apiClient.delete<Record<string, never>>(`/api/v1/spots/${id}`),
   },
 
   // Review operations

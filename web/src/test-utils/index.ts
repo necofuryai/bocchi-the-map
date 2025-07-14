@@ -30,47 +30,49 @@ export { server } from '@/mocks/server'
 export { http, HttpResponse } from 'msw'
 
 // Import domain types for proper typing
-import type { Review, DomainUser } from '@/types'
+import type { Review, DomainUser, Spot } from '@/types'
 
 /**
  * Common test data factories
  */
 export const TestDataFactory = {
   /**
-   * Create a mock user for testing
+   * Create a mock user for testing (MVP simplified)
    */
   createMockUser: (overrides: Partial<DomainUser> = {}) => ({
     id: 'test-user-1',
     email: 'test@example.com',
     name: 'Test User',
-    avatar: '/images/test-avatar.jpg',
-    preferences: {
-      theme: 'light',
-      notifications: true,
-      language: 'ja',
-    },
     createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
     ...overrides,
   }),
 
   /**
-   * Create a mock review for testing
+   * Create a mock review for testing (MVP simplified)
    */
   createMockReview: (overrides: Partial<Review> = {}) => ({
     id: 'test-review-1',
     spotId: 'test-spot-1',
     userId: 'test-user-1',
-    userName: 'Test User',
-    userAvatar: '/images/test-avatar.jpg',
-    rating: 5,
-    soloFriendlyRating: 5,
+    rating: 5, // 1-5 stars only
     comment: 'Great spot for solo work!',
-    tags: ['quiet', 'wifi', 'solo-friendly'],
-    photos: [],
-    helpful: 5,
-    notHelpful: 0,
     createdAt: '2024-06-01T10:00:00Z',
     updatedAt: '2024-06-01T10:00:00Z',
+    ...overrides,
+  }),
+
+  /**
+   * Create a mock spot for testing (MVP)
+   */
+  createMockSpot: (overrides: Partial<Spot> = {}) => ({
+    id: 'test-spot-1',
+    name: 'Test Cafe',
+    category: 'cafe',
+    address: '123 Test Street, Test City',
+    countryCode: 'JP',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
     ...overrides,
   }),
 

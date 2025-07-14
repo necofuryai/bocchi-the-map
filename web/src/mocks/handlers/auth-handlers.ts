@@ -10,49 +10,32 @@ interface RegisterRequest {
   email: string
   password: string
   name: string
-  avatar?: string
 }
 
 interface UpdateUserRequest {
   name?: string
   email?: string
-  avatar?: string
-  preferences?: {
-    theme?: string
-    notifications?: boolean
-    language?: string
-  }
 }
 
 interface PasswordResetRequest {
   email: string
 }
 
-// Mock user data
+// Mock user data (MVP simplified)
 const mockUsers = [
   {
     id: 'user-1',
     email: 'test@example.com',
     name: 'Test User',
-    avatar: '/images/avatar1.jpg',
-    preferences: {
-      theme: 'light',
-      notifications: true,
-      language: 'ja',
-    },
     createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
   },
   {
     id: 'user-2',
     email: 'solo@traveler.com',
     name: 'Solo Traveler',
-    avatar: '/images/avatar2.jpg',
-    preferences: {
-      theme: 'dark',
-      notifications: false,
-      language: 'en',
-    },
     createdAt: '2024-02-01T00:00:00Z',
+    updatedAt: '2024-02-01T00:00:00Z',
   },
 ]
 
@@ -92,7 +75,6 @@ export const authHandlers = [
         id: user.id,
         email: user.email,
         name: user.name,
-        avatar: user.avatar,
       },
       expires: expires.toISOString(),
     })
@@ -145,9 +127,8 @@ export const authHandlers = [
         id: user.id,
         email: user.email,
         name: user.name,
-        avatar: user.avatar,
-        preferences: user.preferences,
         createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
     })
   }),
@@ -187,9 +168,7 @@ export const authHandlers = [
     const updatedUser = { 
       ...currentUser, 
       ...body,
-      preferences: body.preferences 
-        ? { ...currentUser.preferences, ...body.preferences }
-        : currentUser.preferences
+      updatedAt: new Date().toISOString(),
     }
     
     mockUsers[userIndex] = updatedUser
@@ -199,9 +178,8 @@ export const authHandlers = [
         id: updatedUser.id,
         email: updatedUser.email,
         name: updatedUser.name,
-        avatar: updatedUser.avatar,
-        preferences: updatedUser.preferences,
         createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
       },
     })
   }),
@@ -226,18 +204,13 @@ export const authHandlers = [
       )
     }
 
-    // Create new user
+    // Create new user (MVP simplified)
     const newUser = {
       id: `user-${mockUsers.length + 1}`,
       email: body.email,
       name: body.name,
-      avatar: body.avatar || '/images/default-avatar.jpg',
-      preferences: {
-        theme: 'light',
-        notifications: true,
-        language: 'ja',
-      },
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
 
     mockUsers.push(newUser)
@@ -255,7 +228,6 @@ export const authHandlers = [
           id: newUser.id,
           email: newUser.email,
           name: newUser.name,
-          avatar: newUser.avatar,
         },
         expires: expires.toISOString(),
       },
@@ -321,7 +293,6 @@ export const authHandlers = [
         id: user.id,
         email: user.email,
         name: user.name,
-        avatar: user.avatar,
       } : null,
       expires: expires.toISOString(),
     })

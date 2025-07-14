@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import { createMapStyle } from "@/components/mapStyle";
-import { setupPOIFeatures } from "@/components/map/poi-features";
+// POI features removed for MVP simplification
 import type { MapError } from "@/components/map/types";
 import { useMapStore } from '@/stores/use-map-store';
 
@@ -74,7 +74,6 @@ export const useMaplibre = ({
         setError(null);
         
         if (mapRef.current) {
-          setupPOIFeatures(mapRef.current);
           onLoad?.(mapRef.current);
         }
       });
