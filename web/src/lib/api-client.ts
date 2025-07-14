@@ -1,4 +1,3 @@
-import { createClient } from '@/utils/supabase/client'
 import type { DomainUser, Review, Spot } from '@/types'
 
 // API base URL configuration
@@ -26,18 +25,6 @@ const createInitialState = (baseURL?: string): APIClientState => ({
   baseURL: baseURL || API_BASE_URL,
 })
 
-// Get Supabase access token
-const getAccessToken = async (): Promise<string | null> => {
-  const supabase = createClient()
-  
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return session?.access_token ?? null
-  } catch (error) {
-    console.warn('Failed to get access token:', error)
-    return null
-  }
-}
 
 // Make authenticated request with automatic token refresh
 const request = async <T = Record<string, never>>(
@@ -49,11 +36,8 @@ const request = async <T = Record<string, never>>(
   const headers = new Headers(options.headers)
   headers.set('Content-Type', 'application/json')
 
-  // Try to get Supabase access token
-  const accessToken = await getAccessToken()
-  if (accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`)
-  }
+  // Clerk handles authentication through cookies
+  // No need to manually set Authorization header
 
   // Make the request
   let response: Response
@@ -213,13 +197,10 @@ export const api = {
 
 // Helper function to check if user is authenticated
 export async function isAuthenticated(): Promise<boolean> {
-  const supabase = createClient()
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    return !!session?.user
-  } catch {
-    return false
-  }
+  // With Clerk, authentication state is managed by the middleware
+  // We'll need to check the auth state differently
+  // For now, return false as we can't directly check from client
+  return false
 }
 
 // Helper function to handle API errors consistently

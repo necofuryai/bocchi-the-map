@@ -14,12 +14,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { useAuth } from "@/components/providers/user-provider"
-import { UserProfile } from "@/components/auth/user-profile"
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { user, loading } = useAuth()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -71,17 +69,14 @@ export function Header() {
           </Popover>
           
           {/* Authentication UI */}
-          {loading ? (
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-          ) : user ? (
-            <UserProfile />
-          ) : (
-            <div className="flex items-center">
-              <Link href="/auth/login">
-                <Button variant="default" size="sm">ログイン / 新規登録</Button>
-              </Link>
-            </div>
-          )}
+          <SignedOut>
+            <Link href="/sign-in">
+              <Button variant="default" size="sm">ログイン / 新規登録</Button>
+            </Link>
+          </SignedOut>
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
         </div>
       </div>
     </header>
