@@ -18,12 +18,6 @@ message PaginationResponse {
   int32 total_pages = 4;
 }
 
-// Geographic coordinates
-message Coordinates {
-  double latitude = 1;
-  double longitude = 2;
-}
-
 // Language enum
 enum Language {
   LANGUAGE_UNSPECIFIED = 0;

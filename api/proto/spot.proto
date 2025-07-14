@@ -5,20 +5,18 @@ package bocchi.spot.v1;
 option go_package = "bocchi/api/gen/spot/v1;spotv1";
 
 import "google/protobuf/timestamp.proto";
-import "common.proto";
 
 // Spot represents a reviewable location
 message Spot {
   string id = 1;
   string name = 2;
-  bocchi.common.v1.Coordinates coordinates = 3;
-  string category = 4;
-  string address = 5;
-  string country_code = 6;
-  double average_rating = 7;
-  int32 review_count = 8;
-  google.protobuf.Timestamp created_at = 9;
-  google.protobuf.Timestamp updated_at = 10;
+  string category = 3;
+  string address = 4;
+  string country_code = 5;
+  double average_rating = 6;
+  int32 review_count = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
 }
 
 // Request to get a spot by ID

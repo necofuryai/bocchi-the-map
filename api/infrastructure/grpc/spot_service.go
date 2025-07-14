@@ -30,7 +30,6 @@ func NewSpotService(db *sql.DB) *SpotService {
 
 // Use Protocol Buffers generated types
 type (
-	Coordinates     = commonv1.Coordinates
 	Spot            = spotv1.Spot
 	GetSpotRequest  = spotv1.GetSpotRequest
 	GetSpotResponse = spotv1.GetSpotResponse
@@ -57,8 +56,6 @@ func (s *SpotService) GetSpot(ctx context.Context, req *GetSpotRequest) (*GetSpo
 	spotData := database.Spot{
 		ID:            dbSpot.ID,
 		Name:          dbSpot.Name,
-		Latitude:      dbSpot.Latitude,
-		Longitude:     dbSpot.Longitude,
 		Category:      dbSpot.Category,
 		Address:       dbSpot.Address,
 		CountryCode:   dbSpot.CountryCode,
@@ -75,25 +72,6 @@ func (s *SpotService) GetSpot(ctx context.Context, req *GetSpotRequest) (*GetSpo
 
 // convertDatabaseSpotToGRPC converts database spot model to gRPC spot struct
 func (s *SpotService) convertDatabaseSpotToGRPC(dbSpot database.Spot) *Spot {
-	// Parse coordinates from strings with error handling
-	latitude, err := strconv.ParseFloat(dbSpot.Latitude, 64)
-	if err != nil {
-		logger.ErrorWithFields("Failed to parse latitude", err, map[string]interface{}{
-			"spot_id": dbSpot.ID,
-			"latitude_value": dbSpot.Latitude,
-		})
-		latitude = 0.0 // Use default value for invalid latitude
-	}
-	
-	longitude, err := strconv.ParseFloat(dbSpot.Longitude, 64)
-	if err != nil {
-		logger.ErrorWithFields("Failed to parse longitude", err, map[string]interface{}{
-			"spot_id": dbSpot.ID,
-			"longitude_value": dbSpot.Longitude,
-		})
-		longitude = 0.0 // Use default value for invalid longitude
-	}
-	
 	averageRating, err := strconv.ParseFloat(dbSpot.AverageRating, 64)
 	if err != nil {
 		logger.ErrorWithFields("Failed to parse average rating", err, map[string]interface{}{
@@ -130,10 +108,6 @@ func (s *SpotService) convertDatabaseSpotToGRPC(dbSpot database.Spot) *Spot {
 		Id:   dbSpot.ID,
 		Name: dbSpot.Name,
 		NameI18N: nameI18n,
-		Coordinates: &Coordinates{
-			Latitude:  latitude,
-			Longitude: longitude,
-		},
 		Category:      dbSpot.Category,
 		Address:       dbSpot.Address,
 		AddressI18N:   addressI18n,

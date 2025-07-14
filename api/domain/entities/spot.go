@@ -9,8 +9,6 @@ type Spot struct {
 	ID           string            `json:"id"`
 	Name         string            `json:"name"`
 	NameI18n     map[string]string `json:"name_i18n"`
-	Latitude     float64           `json:"latitude"`
-	Longitude    float64           `json:"longitude"`
 	Category     string            `json:"category"`
 	Address      string            `json:"address"`
 	AddressI18n  map[string]string `json:"address_i18n"`
@@ -22,13 +20,11 @@ type Spot struct {
 }
 
 // NewSpot creates a new Spot instance
-func NewSpot(name string, lat, lng float64, category, address, countryCode string) *Spot {
+func NewSpot(name, category, address, countryCode string) *Spot {
 	now := time.Now()
 	return &Spot{
 		Name:         name,
 		NameI18n:     make(map[string]string),
-		Latitude:     lat,
-		Longitude:    lng,
 		Category:     category,
 		Address:      address,
 		AddressI18n:  make(map[string]string),

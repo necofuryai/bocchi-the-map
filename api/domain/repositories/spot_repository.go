@@ -14,9 +14,6 @@ type SpotRepository interface {
 	// GetByID retrieves a spot by its ID
 	GetByID(ctx context.Context, id string) (*entities.Spot, error)
 
-	// GetByCoordinates retrieves spots within a radius from coordinates
-	GetByCoordinates(ctx context.Context, lat, lng, radiusKm float64) ([]*entities.Spot, error)
-
 	// List retrieves spots with pagination
 	List(ctx context.Context, offset, limit int) ([]*entities.Spot, int, error)
 
