@@ -1,22 +1,30 @@
--- Initial schema for bocchi-the-map
+-- MVP schema for bocchi-the-map
+-- Simple, focused schema for minimum viable product
+
+-- Users table (basic user info, or can be replaced with Supabase Auth entirely)
+CREATE TABLE `users` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `email` VARCHAR(255) NOT NULL UNIQUE,
+    `name` VARCHAR(255),
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Spots table (simplified for MVP - no location, no aggregated ratings)
 CREATE TABLE `spots` (
     `id` VARCHAR(36) PRIMARY KEY,
     `name` VARCHAR(255) NOT NULL,
-    `latitude` DECIMAL(10, 8) NOT NULL,
-    `longitude` DECIMAL(11, 8) NOT NULL,
     `category` VARCHAR(100) NOT NULL,
     `address` TEXT NOT NULL,
     `country_code` CHAR(2) NOT NULL,
-    `average_rating` DECIMAL(3, 1) NOT NULL DEFAULT 0.0,
-    `review_count` INT NOT NULL DEFAULT 0,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
-    INDEX `idx_location` (`latitude`, `longitude`),
     INDEX `idx_category` (`category`),
     INDEX `idx_country` (`country_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Reviews table (simplified for MVP - basic rating and comment only)
 CREATE TABLE `reviews` (
     `id` VARCHAR(36) PRIMARY KEY,
     `spot_id` VARCHAR(36) NOT NULL,

@@ -31,8 +31,7 @@ SELECT
   r.comment,
   r.created_at,
   r.updated_at,
-  u.name          AS user_name,
-  u.picture       AS user_avatar
+  u.name          AS user_name
 FROM reviews r
 JOIN users u ON r.user_id = u.id
 WHERE r.spot_id = ?

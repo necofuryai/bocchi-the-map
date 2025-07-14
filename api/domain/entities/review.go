@@ -7,16 +7,15 @@ import (
 	"time"
 )
 
-// Review represents a user's rating of a spot
+// Review represents a user's rating of a spot (MVP version)
 type Review struct {
-	ID            string         `json:"id"`
-	SpotID        string         `json:"spot_id"`
-	UserID        string         `json:"user_id"`
-	Rating        int            `json:"rating"`  // 1-5 stars
-	Comment       string         `json:"comment,omitempty"`
-	RatingAspects map[string]int `json:"rating_aspects,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID        string    `json:"id"`
+	SpotID    string    `json:"spot_id"`
+	UserID    string    `json:"user_id"`
+	Rating    int       `json:"rating"`  // 1-5 stars
+	Comment   string    `json:"comment,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // NewReview creates a new Review instance
@@ -33,13 +32,12 @@ func NewReview(spotID, userID string, rating int) (*Review, error) {
 
 	now := time.Now()
 	return &Review{
-		ID:            id,
-		SpotID:        spotID,
-		UserID:        userID,
-		Rating:        rating,
-		RatingAspects: make(map[string]int),
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		ID:        id,
+		SpotID:    spotID,
+		UserID:    userID,
+		Rating:    rating,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}, nil
 }
 

@@ -6,7 +6,7 @@ INSERT INTO spots (
 );
 
 -- name: GetSpotByID :one
-SELECT id, name, category, address, country_code, average_rating, review_count, created_at, updated_at FROM spots 
+SELECT id, name, category, address, country_code, created_at, updated_at FROM spots 
 WHERE id = ?;
 
 -- name: UpdateSpot :exec
@@ -15,13 +15,9 @@ SET name = ?, category = ?,
     address = ?, country_code = ?, updated_at = CURRENT_TIMESTAMP
 WHERE id = ?;
 
--- name: UpdateSpotRating :exec
-UPDATE spots 
-SET average_rating = ?, review_count = ?, updated_at = CURRENT_TIMESTAMP
-WHERE id = ?;
 
 -- name: ListSpotsByCategory :many
-SELECT id, name, category, address, country_code, average_rating, review_count, created_at, updated_at FROM spots 
+SELECT id, name, category, address, country_code, created_at, updated_at FROM spots 
 WHERE category = ?
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?;
@@ -31,7 +27,7 @@ SELECT COUNT(*) FROM spots
 WHERE category = ?;
 
 -- name: ListSpotsByCountry :many
-SELECT id, name, category, address, country_code, average_rating, review_count, created_at, updated_at FROM spots 
+SELECT id, name, category, address, country_code, created_at, updated_at FROM spots 
 WHERE country_code = ?
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?;
@@ -41,11 +37,11 @@ SELECT COUNT(*) FROM spots
 WHERE country_code = ?;
 
 -- name: ListSpots :many
-SELECT id, name, category, address, country_code, average_rating, review_count, created_at, updated_at FROM spots 
+SELECT id, name, category, address, country_code, created_at, updated_at FROM spots 
 WHERE (? = '' OR name LIKE ?)
   AND (? = '' OR category = ?)
   AND (? = '' OR country_code = ?)
-ORDER BY average_rating DESC, review_count DESC, created_at DESC
+ORDER BY created_at DESC
 LIMIT ? OFFSET ?;
 
 -- name: CountSpots :one
