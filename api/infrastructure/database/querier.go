@@ -6,47 +6,42 @@ package database
 
 import (
 	"context"
-	"database/sql"
 )
 
 type Querier interface {
-	// Token blacklist queries for logout and security
-	AddToBlacklist(ctx context.Context, arg AddToBlacklistParams) error
-	BlacklistAccessToken(ctx context.Context, arg BlacklistAccessTokenParams) error
-	BlacklistRefreshToken(ctx context.Context, arg BlacklistRefreshTokenParams) error
-	CleanupExpiredTokens(ctx context.Context) error
-	CountReviewsBySpot(ctx context.Context, spotID string) (int64, error)
-	CountReviewsByUser(ctx context.Context, userID sql.NullString) (int64, error)
+	// User queries
+	CountUsers(ctx context.Context) (int64, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) error
+	DeleteUser(ctx context.Context, id string) error
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByID(ctx context.Context, id string) (User, error)
+	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
+	UpdateUser(ctx context.Context, arg UpdateUserParams) error
+	UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) error
+	
+	// Spot queries
 	CountSpots(ctx context.Context, arg CountSpotsParams) (int64, error)
 	CountSpotsByCategory(ctx context.Context, category string) (int64, error)
 	CountSpotsByCountry(ctx context.Context, countryCode string) (int64, error)
-	CreateReview(ctx context.Context, arg CreateReviewParams) error
 	CreateSpot(ctx context.Context, arg CreateSpotParams) error
-	CreateUser(ctx context.Context, arg CreateUserParams) error
-	DeleteReview(ctx context.Context, id string) error
 	DeleteSpot(ctx context.Context, id string) error
-	DeleteUser(ctx context.Context, id string) error
-	GetReviewByID(ctx context.Context, id string) (Review, error)
-	GetReviewByUserAndSpot(ctx context.Context, arg GetReviewByUserAndSpotParams) (Review, error)
 	GetSpotByID(ctx context.Context, id string) (GetSpotByIDRow, error)
-	GetSpotRatingStats(ctx context.Context, spotID string) (GetSpotRatingStatsRow, error)
-	GetUserByEmail(ctx context.Context, email string) (User, error)
-	// User management queries for Bocchi The Map API
-	// These queries support Auth0 integration and user profile management
-	GetUserByID(ctx context.Context, id string) (User, error)
-	GetUserByProviderID(ctx context.Context, arg GetUserByProviderIDParams) (User, error)
-	IsTokenBlacklisted(ctx context.Context, jti string) (bool, error)
-	ListReviewsBySpot(ctx context.Context, arg ListReviewsBySpotParams) ([]ListReviewsBySpotRow, error)
-	ListReviewsByUser(ctx context.Context, arg ListReviewsByUserParams) ([]ListReviewsByUserRow, error)
 	ListSpots(ctx context.Context, arg ListSpotsParams) ([]ListSpotsRow, error)
 	ListSpotsByCategory(ctx context.Context, arg ListSpotsByCategoryParams) ([]ListSpotsByCategoryRow, error)
 	ListSpotsByCountry(ctx context.Context, arg ListSpotsByCountryParams) ([]ListSpotsByCountryRow, error)
-	UpdateReview(ctx context.Context, arg UpdateReviewParams) error
 	UpdateSpot(ctx context.Context, arg UpdateSpotParams) error
-	UpdateSpotRating(ctx context.Context, arg UpdateSpotRatingParams) error
-	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
-	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) error
-	UpsertUser(ctx context.Context, arg UpsertUserParams) error
+	
+	// Review queries
+	CountReviewsBySpot(ctx context.Context, spotID string) (int64, error)
+	CountReviewsByUser(ctx context.Context, userID string) (int64, error)
+	CreateReview(ctx context.Context, arg CreateReviewParams) error
+	DeleteReview(ctx context.Context, id string) error
+	GetReviewByID(ctx context.Context, id string) (Review, error)
+	GetReviewByUserAndSpot(ctx context.Context, arg GetReviewByUserAndSpotParams) (Review, error)
+	GetSpotRatingStats(ctx context.Context, spotID string) (GetSpotRatingStatsRow, error)
+	ListReviewsBySpot(ctx context.Context, arg ListReviewsBySpotParams) ([]ListReviewsBySpotRow, error)
+	ListReviewsByUser(ctx context.Context, arg ListReviewsByUserParams) ([]ListReviewsByUserRow, error)
+	UpdateReview(ctx context.Context, arg UpdateReviewParams) error
 }
 
 var _ Querier = (*Queries)(nil)

@@ -7,17 +7,13 @@ option go_package = "bocchi/api/gen/user/v1;userv1";
 import "google/protobuf/timestamp.proto";
 import "common.proto";
 
-// User represents a user account
+// User represents a user account (MVP version)
 message User {
   string id = 1;
   string email = 2;
-  string display_name = 3;
-  string avatar_url = 4;
-  string auth_provider = 5;
-  string auth_provider_id = 6;
-  string preferences = 7; // JSON string containing user preferences
-  google.protobuf.Timestamp created_at = 8;
-  google.protobuf.Timestamp updated_at = 9;
+  string name = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
 }
 
 // Request to get a user by ID
@@ -40,14 +36,10 @@ message GetUserByEmailResponse {
   User user = 1;
 }
 
-// Request to create a new user
+// Request to create a new user (MVP version)
 message CreateUserRequest {
   string email = 1;
-  string display_name = 2;
-  string avatar_url = 3;
-  string auth_provider = 4;
-  string auth_provider_id = 5;
-  string preferences = 6; // JSON string containing user preferences
+  string name = 2;
 }
 
 // Response for user creation

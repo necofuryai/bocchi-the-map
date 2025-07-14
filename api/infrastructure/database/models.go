@@ -5,99 +5,33 @@
 package database
 
 import (
-	"database/sql"
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
 	"time"
 )
 
-type TokenBlacklistTokenType string
-
-const (
-	TokenBlacklistTokenTypeAccess  TokenBlacklistTokenType = "access"
-	TokenBlacklistTokenTypeRefresh TokenBlacklistTokenType = "refresh"
-)
-
-func (e *TokenBlacklistTokenType) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = TokenBlacklistTokenType(s)
-	case string:
-		*e = TokenBlacklistTokenType(s)
-	default:
-		return fmt.Errorf("unsupported scan type for TokenBlacklistTokenType: %T", src)
-	}
-	return nil
-}
-
-type NullTokenBlacklistTokenType struct {
-	TokenBlacklistTokenType TokenBlacklistTokenType `json:"token_blacklist_token_type"`
-	Valid                   bool                    `json:"valid"` // Valid is true if TokenBlacklistTokenType is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullTokenBlacklistTokenType) Scan(value interface{}) error {
-	if value == nil {
-		ns.TokenBlacklistTokenType, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.TokenBlacklistTokenType.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullTokenBlacklistTokenType) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.TokenBlacklistTokenType), nil
-}
-
 type Review struct {
-	ID            string          `json:"id"`
-	SpotID        string          `json:"spot_id"`
-	ReviewerName  string          `json:"reviewer_name"`
-	Rating        int32           `json:"rating"`
-	Comment       sql.NullString  `json:"comment"`
-	RatingAspects json.RawMessage `json:"rating_aspects"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
-	UserID        sql.NullString  `json:"user_id"`
+	ID        string    `json:"id"`
+	SpotID    string    `json:"spot_id"`
+	UserID    string    `json:"user_id"`
+	Rating    int32     `json:"rating"`
+	Comment   string    `json:"comment"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type Spot struct {
-	ID            string          `json:"id"`
-	Name          string          `json:"name"`
-	Latitude      string          `json:"latitude"`
-	Longitude     string          `json:"longitude"`
-	Category      string          `json:"category"`
-	Address       string          `json:"address"`
-	CountryCode   string          `json:"country_code"`
-	AverageRating string          `json:"average_rating"`
-	ReviewCount   int32           `json:"review_count"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
-}
-
-type TokenBlacklist struct {
-	ID        int64                   `json:"id"`
-	Jti       string                  `json:"jti"`
-	TokenType TokenBlacklistTokenType `json:"token_type"`
-	ExpiresAt time.Time               `json:"expires_at"`
-	CreatedAt time.Time               `json:"created_at"`
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Category    string    `json:"category"`
+	Address     string    `json:"address"`
+	CountryCode string    `json:"country_code"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type User struct {
-	ID            string          `json:"id"`
-	Email         string          `json:"email"`
-	Name          sql.NullString  `json:"name"`
-	Nickname      sql.NullString  `json:"nickname"`
-	Picture       sql.NullString  `json:"picture"`
-	Provider      string          `json:"provider"`
-	ProviderID    string          `json:"provider_id"`
-	EmailVerified bool            `json:"email_verified"`
-	Preferences   json.RawMessage `json:"preferences"`
-	CreatedAt     time.Time       `json:"created_at"`
-	UpdatedAt     time.Time       `json:"updated_at"`
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

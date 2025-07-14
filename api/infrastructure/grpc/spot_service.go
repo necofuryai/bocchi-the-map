@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"database/sql"
-	"strconv"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -69,27 +68,15 @@ func (s *SpotService) GetSpot(ctx context.Context, req *GetSpotRequest) (*GetSpo
 
 
 
-// convertDatabaseSpotToGRPC converts database spot model to gRPC spot struct
+// convertDatabaseSpotToGRPC converts database spot model to gRPC spot struct (MVP version)
 func (s *SpotService) convertDatabaseSpotToGRPC(dbSpot database.Spot) *Spot {
-	averageRating, err := strconv.ParseFloat(dbSpot.AverageRating, 64)
-	if err != nil {
-		logger.ErrorWithFields("Failed to parse average rating", err, map[string]interface{}{
-			"spot_id": dbSpot.ID,
-			"rating_value": dbSpot.AverageRating,
-		})
-		averageRating = 0.0 // Use default value for invalid rating
-	}
-
-
 	return &Spot{
-		Id:   dbSpot.ID,
-		Name: dbSpot.Name,
-		Category:      dbSpot.Category,
-		Address:       dbSpot.Address,
-		CountryCode:   dbSpot.CountryCode,
-		AverageRating: averageRating,
-		ReviewCount:   dbSpot.ReviewCount,
-		CreatedAt:     timestamppb.New(dbSpot.CreatedAt),
-		UpdatedAt:     timestamppb.New(dbSpot.UpdatedAt),
+		Id:          dbSpot.ID,
+		Name:        dbSpot.Name,
+		Category:    dbSpot.Category,
+		Address:     dbSpot.Address,
+		CountryCode: dbSpot.CountryCode,
+		CreatedAt:   timestamppb.New(dbSpot.CreatedAt),
+		UpdatedAt:   timestamppb.New(dbSpot.UpdatedAt),
 	}
 }

@@ -53,7 +53,7 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *reviewv1.CreateRe
 
 	// Check if user already reviewed this spot
 	_, err := s.queries.GetReviewByUserAndSpot(ctx, database.GetReviewByUserAndSpotParams{
-		UserID: sql.NullString{String: userID, Valid: true},
+		UserID: userID,
 		SpotID: req.GetSpotId(),
 	})
 	if err == nil {
@@ -67,19 +67,13 @@ func (s *ReviewService) CreateReview(ctx context.Context, req *reviewv1.CreateRe
 	reviewID := uuid.New().String()
 
 
-	// Convert comment to nullable string
-	var comment sql.NullString
-	if req.GetComment() != "" {
-		comment = sql.NullString{String: req.GetComment(), Valid: true}
-	}
-
 	// Create review in database
 	err = s.queries.CreateReview(ctx, database.CreateReviewParams{
 		ID:      reviewID,
 		SpotID:  req.GetSpotId(),
-		UserID:  sql.NullString{String: userID, Valid: true},
+		UserID:  userID,
 		Rating:  req.GetRating(),
-		Comment: comment,
+		Comment: req.GetComment(),
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to create review")
