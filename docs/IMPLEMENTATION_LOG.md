@@ -319,9 +319,6 @@ Feature: Account Deletion
 
 #### Migration修正
 - **🔧 Index Conflict Resolution**: reviews tableのidx_location競合を解決
-- **📋 Migration Files**: 000003_add_search_indexes.sql と 000004_add_reviews_indexes.sql の最適化
-- **🏭 Production Sync**: production/000003_add_reviews_indexes.up.sql との整合性確保
-- **📊 Performance Analysis**: api/migrations/explain_index_performance.sql による詳細分析
 
 #### GitHub Actions BDD Test改善
 - **🔐 Security Enhancement**: DATABASE_URL一貫性とセキュリティ強化
