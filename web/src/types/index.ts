@@ -41,16 +41,18 @@ export interface PaginationResponse<T = unknown> {
 // Note: Map-related types removed for MVP simplification
 // Geographic search and POI features have been removed
 
-// Supabase Auth related types
-export interface SupabaseUser {
+// Clerk Auth related types
+export interface ClerkUser {
   id: string
-  email?: string
-  user_metadata?: {
-    name?: string
-    [key: string]: unknown
-  }
-  created_at?: string
-  updated_at?: string
+  emailAddresses: Array<{
+    emailAddress: string
+    id: string
+  }>
+  firstName?: string
+  lastName?: string
+  imageUrl?: string
+  createdAt?: number
+  updatedAt?: number
 }
 
 export interface AuthUser {

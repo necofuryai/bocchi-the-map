@@ -23,7 +23,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 - 🎯 **Solo-optimized discovery** - Purpose-built for individual experiences
 - 🌏 **Global scalability** - Multi-country support
 - ⚡ **Real-time performance** - Sub-200ms API responses with edge caching
-- 🔐 **Privacy-first** - Secure user authentication with Supabase Auth
+- 🔐 **Privacy-first** - Secure user authentication with Clerk
 - 📱 **Progressive Web App** - Native-like experience across all devices
 - 🌙 **Accessible design** - Dark mode, screen reader support, WCAG compliance
 
@@ -45,6 +45,7 @@ In our hyper-connected world, quality alone time is increasingly valuable. This 
 |-------|------------|-----|
 | **Frontend** | Next.js 15 + TypeScript | App Router, Turbopack, React Server Components |
 | **Backend** | Go + Huma + Protocol Buffers | Type-safe APIs, auto-generated OpenAPI docs, protobuf-driven contracts |
+| **Authentication** | Clerk | Modern authentication with email/password and social login |
 | **Database** | TiDB Serverless | MySQL-compatible, auto-scaling, built for cloud |
 | **Maps** | MapLibre GL JS | Open-source, vector tiles, highly customizable |
 | **Storage** | Cloudflare R2 | PMTiles format for efficient map delivery |
@@ -312,20 +313,21 @@ gh pr create --title "feat: your amazing feature"
 - [ ] **Mobile App** - React Native with shared business logic
 - [ ] **API v2** - GraphQL federation for microservices
 
-## 🔐 Latest Updates (2025-07-13)
+## 🔐 Latest Updates (2025-07)
 
-**✅ Supabase Auth Migration Completed** 🎉
-- **Complete Modernization**: Migrated from Auth0 to Supabase Auth for simplified authentication
+**✅ Clerk Authentication Integration** 🎉
+- **Modern Authentication**: Migrated from Supabase Auth to Clerk for enhanced authentication features
 - **Full Implementation**: SSR-compatible authentication with Next.js App Router
 - **Zero Downtime**: Seamless migration preserving all existing user functionality
-- **Modern Stack**: Cookie-based sessions with automatic token refresh
-- **Developer Experience**: Simplified configuration and better TypeScript integration
+- **Enhanced Features**: Built-in user management, social logins, and multi-factor authentication
+- **Developer Experience**: Simplified configuration and excellent TypeScript integration
 
-**Enhanced Authentication Features:**
+**Current Authentication Features:**
 - ✅ Server-side rendering compatible authentication
-- ✅ Automatic session management with middleware
-- ✅ Type-safe authentication context and components
-- ✅ Email/password authentication with email verification
+- ✅ Automatic session management with Clerk middleware
+- ✅ Type-safe authentication components
+- ✅ Email/password authentication with built-in email verification
+- ✅ Social login support (Google, GitHub, etc.)
 - ✅ Protected routes and authentication guards
 - ✅ Comprehensive error handling and user feedback
 

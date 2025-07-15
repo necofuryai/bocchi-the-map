@@ -8,16 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Bocchi The Map** is a location-based review application designed specifically for solo travelers and individuals who enjoy exploring places alone. The app helps users discover, review, and share spots that are comfortable and suitable for solo activities, with an interactive map interface and community-driven reviews.
 
-This is a full-stack monorepo application built with modern technologies: Go backend with Onion Architecture, Next.js frontend with Supabase Auth authentication, Terraform infrastructure, and comprehensive monitoring with New Relic and Sentry, designed to scale from monolith to microservices as needed.
+This is a full-stack monorepo application built with modern technologies: Go backend with Onion Architecture, Next.js frontend with Clerk authentication, Terraform infrastructure, and comprehensive monitoring with New Relic and Sentry, designed to scale from monolith to microservices as needed.
 
-### Current Project Status (2025-07-13)
+### Current Project Status (2025-07)
 
 **Authentication Integration:** ✅ **Production-Ready (100% Complete)**
-- Supabase Auth integration fully implemented with SSR compatibility
-- Modern authentication flows with email/password and email verification
-- Complete migration from Auth0 to Supabase Auth completed
-- Type-safe authentication context and middleware implementation
-- Ready for production deployment with simplified configuration
+- Clerk authentication integration fully implemented with SSR compatibility
+- Modern authentication flows with email/password, social logins, and multi-factor authentication
+- Complete migration from Supabase Auth to Clerk completed
+- Type-safe authentication components and middleware implementation
+- Ready for production deployment with enhanced user management features
 
 **Development Environment:** ⚠️ **Partially Optimized**
 - Enhanced tooling and debugging capabilities documented
@@ -171,10 +171,10 @@ This project systematically manages knowledge through the following files:
 
 ### Authentication & Security Standards
 
-- **Supabase Auth Integration**: Production-ready authentication with cookie-based sessions
+- **Clerk Authentication Integration**: Production-ready authentication with built-in user management
 - **SSR-Compatible Authentication**: Full Next.js App Router compatibility with server-side rendering
-- **Type-Safe Authentication**: Complete TypeScript integration for auth flows and context
-- **Modern Authentication Flows**: Email/password authentication with email verification
+- **Type-Safe Authentication**: Complete TypeScript integration with Clerk SDK
+- **Modern Authentication Flows**: Email/password, social logins, and multi-factor authentication
 
 ### Development Environment Standards
 

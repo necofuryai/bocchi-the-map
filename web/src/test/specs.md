@@ -2,12 +2,12 @@
 
 ## Feature: User Authentication
 
-### Scenario: User can sign in with Supabase Auth
+### Scenario: User can sign in with Clerk
 
 **Given** the user is on the login page  
 **When** the user enters valid email and password credentials  
 **And** the user clicks the "Sign in" button  
-**Then** the user should be authenticated with Supabase Auth  
+**Then** the user should be authenticated with Clerk  
 **And** the user should be redirected back to the app  
 **And** the user should be logged in with a valid session  
 
@@ -15,7 +15,7 @@
 
 **Given** the user is logged in  
 **When** the user clicks the sign-out button  
-**Then** the user should be logged out from Supabase Auth  
+**Then** the user should be logged out from Clerk  
 **And** the user session should be cleared  
 **And** the user should be redirected to the login page  
 

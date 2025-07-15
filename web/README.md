@@ -27,45 +27,45 @@ pnpm dev                        # Start with Turbopack 🚀
 
 ## 🔐 Authentication Status
 
-### ✅ PRODUCTION READY - SUPABASE AUTH MIGRATION COMPLETE (2025-07-13)
+### ✅ PRODUCTION READY - CLERK AUTHENTICATION COMPLETE (2025-07)
 
-- ✅ **Supabase Auth**: Modern email/password authentication with email verification
-- ✅ **Authentication UI**: Complete login/signup pages with modern UX
-- ✅ **Session Management**: Cookie-based sessions with automatic token refresh
+- ✅ **Clerk Auth**: Modern authentication with email/password and social logins
+- ✅ **Authentication UI**: Built-in login/signup components with excellent UX
+- ✅ **Session Management**: Automatic session handling with Clerk middleware
 - ✅ **SSR Support**: Full Next.js App Router compatibility
-- ✅ **Protected Routes**: Authentication guards and middleware integration
-- ✅ **User Profile**: Header with profile dropdown and logout
-- ✅ **Backend Integration**: API authentication with Supabase tokens
-- ✅ **Type Safety**: Complete TypeScript integration for auth flows
+- ✅ **Protected Routes**: Authentication guards with Clerk components
+- ✅ **User Profile**: UserButton component with profile management
+- ✅ **Backend Integration**: API authentication with Clerk tokens
+- ✅ **Type Safety**: Complete TypeScript integration with Clerk SDK
 
-### 🎯 RECENT MAJOR MIGRATION (2025-07-13)
+### 🎯 RECENT MAJOR MIGRATION (2025-07)
 
-- **Complete Migration**: Migrated from Auth0 to Supabase Auth
-- **Modernization**: SSR-compatible authentication with Next.js App Router
-- **Simplified Setup**: Reduced configuration complexity and improved DX
-- **Enhanced Security**: Cookie-based sessions with automatic token management
+- **Complete Migration**: Migrated from Supabase Auth to Clerk
+- **Enhanced Features**: Built-in user management UI and social logins
+- **Simplified Setup**: Pre-built components reduce development time
+- **Better UX**: Professional authentication flow out of the box
 
 ### ✅ READY FOR PRODUCTION
 
-- Complete authentication flow with email/password and email verification
-- All user management features functional with modern architecture
+- Complete authentication flow with multiple sign-in methods
+- Built-in user management and profile features
 - SSR-compatible authentication for optimal performance
-- Type-safe authentication context and components
+- Type-safe components and hooks from Clerk SDK
 
-### Supabase Auth Setup Required
+### Clerk Setup Required
 
-**Supabase Project Setup:**
-1. Go to [Supabase Dashboard](https://supabase.com/dashboard)
-2. Create a new project
-3. Navigate to Authentication > Settings
-4. Enable Email provider and configure settings
+**Clerk Dashboard Setup:**
+1. Go to [Clerk Dashboard](https://dashboard.clerk.dev/)
+2. Create a new application
+3. Configure authentication methods (email/password, social logins)
+4. Copy API keys from dashboard
 
 **Environment Configuration:**
 
 Add credentials to `web/.env.local`:
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+CLERK_SECRET_KEY=your_clerk_secret_key
 ```
 
 ## 🚀 Modern React Patterns
@@ -163,7 +163,7 @@ web/
 │   ├── useDebounce.ts           # Input debouncing
 │   └── useMapControls.ts        # Map interaction logic
 ├── 🔧 src/lib/                  # 🛠️ UTILITIES & CONFIG
-│   ├── auth.ts                  # Supabase Auth configuration
+│   ├── auth.ts                  # Clerk Auth configuration
 │   ├── utils.ts                 # Shared utility functions
 │   └── validations.ts           # Zod schemas
 ├── 🎨 src/styles/               # 💄 GLOBAL STYLES
@@ -290,37 +290,41 @@ function MapView() {
 
 ## 🔐 Authentication & Security
 
-### Supabase Auth
+### Clerk Authentication
 
 ```tsx
-// Supabase Auth with SSR support
-import { createClient } from '@/utils/supabase/client'
+// Clerk authentication components
+import { SignIn, SignUp, UserButton } from '@clerk/nextjs'
+import { useUser, useAuth } from '@clerk/nextjs'
 
-// Email/password authentication
-export const signInWithPassword = async (email: string, password: string) => {
-  const supabase = createClient()
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-  return { data, error }
+// Using Clerk hooks
+export function UserProfile() {
+  const { user, isLoaded } = useUser()
+  const { signOut } = useAuth()
+  
+  if (!isLoaded) return <div>Loading...</div>
+  
+  if (!user) return <SignIn />
+  
+  return (
+    <div>
+      <p>Welcome, {user.firstName}!</p>
+      <UserButton afterSignOutUrl="/" />
+    </div>
+  )
 }
 
-export const signUpWithPassword = async (email: string, password: string) => {
-  const supabase = createClient()
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
-    },
-  })
-  return { data, error }
-}
+// Protected routes with Clerk
+import { auth } from '@clerk/nextjs/server'
 
-export const signOut = async () => {
-  const supabase = createClient()
-  await supabase.auth.signOut()
+export default async function ProtectedPage() {
+  const { userId } = await auth()
+  
+  if (!userId) {
+    redirect('/sign-in')
+  }
+  
+  return <div>Protected content</div>
 }
 ```
 
@@ -401,10 +405,9 @@ pnpm format                 # Prettier formatting
 NEXT_PUBLIC_API_URL=http://localhost:8080
 NEXT_PUBLIC_MAP_STYLE_URL=/api/maps/style.json
 
-# Supabase Authentication
-NEXT_PUBLIC_SUPABASE_URL=your-supabase-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
+CLERK_SECRET_KEY=your-clerk-secret-key
 
 # Analytics (optional)
 NEXT_PUBLIC_GA_ID=your-google-analytics-id
@@ -482,7 +485,7 @@ pnpm export
 
 # Environment variables
 NEXT_PUBLIC_API_URL=https://api.bocchi-map.com
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_your-clerk-key
 ```
 
 ### Performance Optimization
