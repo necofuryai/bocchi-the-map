@@ -1,11 +1,11 @@
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
+import { ThemeProvider as NextThemesProvider } from 'next-themes'
 
 // Mock next-themes
-const mockThemeProvider = vi.fn(({ children }) => children)
 vi.mock('next-themes', () => ({
-  ThemeProvider: mockThemeProvider,
+  ThemeProvider: vi.fn(({ children }) => children),
 }))
 
 import { ThemeProvider } from '../theme-provider'
@@ -26,12 +26,14 @@ describe('ThemeProvider Component', () => {
       )
       
       expect(getByTestId('test-child')).toBeInTheDocument()
+      const mockThemeProvider = vi.mocked(NextThemesProvider)
       expect(mockThemeProvider).toHaveBeenCalledWith(
         expect.objectContaining({
           attribute: 'class',
           defaultTheme: 'system',
           enableSystem: true,
-        })
+        }),
+        expect.any(Object)
       )
     })
 
@@ -50,13 +52,15 @@ describe('ThemeProvider Component', () => {
       )
       
       expect(getByText('Test Content')).toBeInTheDocument()
+      const mockThemeProvider = vi.mocked(NextThemesProvider)
       expect(mockThemeProvider).toHaveBeenCalledWith(
         expect.objectContaining({
           attribute: 'data-theme',
           defaultTheme: 'dark',
           enableSystem: false,
           disableTransitionOnChange: true,
-        })
+        }),
+        expect.any(Object)
       )
     })
 
@@ -72,6 +76,7 @@ describe('ThemeProvider Component', () => {
       )
       
       expect(getByTestId('themed-component')).toBeInTheDocument()
+      const mockThemeProvider = vi.mocked(NextThemesProvider)
       expect(mockThemeProvider).toHaveBeenCalled()
     })
   })
