@@ -5,6 +5,7 @@ go 1.24
 toolchain go1.24.4
 
 require (
+	github.com/clerk/clerk-sdk-go/v2 v2.3.1
 	github.com/danielgtaylor/huma/v2 v2.19.0
 	github.com/getsentry/sentry-go v0.28.1
 	github.com/go-chi/chi/v5 v5.0.12
@@ -19,6 +20,7 @@ require (
 )
 
 require (
+	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
