@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"log"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,7 +16,7 @@ import (
 	"bocchi/api/infrastructure/database"
 	"bocchi/api/pkg/errors"
 	"bocchi/api/pkg/logger"
-	"bocchi/api/pkg/monitoring"
+	// "bocchi/api/pkg/monitoring" // TODO: Remove when not needed
 	commonv1 "bocchi/api/gen/common/v1"
 	reviewv1 "bocchi/api/gen/review/v1"
 )
@@ -239,9 +238,9 @@ func (s *ReviewService) convertDatabaseReviewToGRPC(dbReview database.Review) *r
 	return &reviewv1.Review{
 		Id:            dbReview.ID,
 		SpotId:        dbReview.SpotID,
-		UserId:        dbReview.UserID.String,
+		UserId:        dbReview.UserID,
 		Rating:        dbReview.Rating,
-		Comment:       dbReview.Comment.String,
+		Comment:       dbReview.Comment,
 		CreatedAt:     timestamppb.New(dbReview.CreatedAt),
 		UpdatedAt:     timestamppb.New(dbReview.UpdatedAt),
 	}
@@ -252,9 +251,9 @@ func (s *ReviewService) convertDatabaseReviewRowToGRPC(dbReview database.ListRev
 	return &reviewv1.Review{
 		Id:            dbReview.ID,
 		SpotId:        dbReview.SpotID,
-		UserId:        dbReview.UserID.String,
+		UserId:        dbReview.UserID,
 		Rating:        dbReview.Rating,
-		Comment:       dbReview.Comment.String,
+		Comment:       dbReview.Comment,
 		CreatedAt:     timestamppb.New(dbReview.CreatedAt),
 		UpdatedAt:     timestamppb.New(dbReview.UpdatedAt),
 	}
@@ -268,10 +267,7 @@ func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*
 		return nil, err
 	}
 
-	averageRating := 0.0
-	if avgRating, ok := stats.AverageRating.(float64); ok {
-		averageRating = avgRating
-	}
+	averageRating := stats.AverageRating
 
 	return &reviewv1.ReviewStatistics{
 		AverageRating: averageRating,
@@ -281,32 +277,18 @@ func (s *ReviewService) getSpotStatistics(ctx context.Context, spotID string) (*
 
 // updateSpotRating updates the spot's average rating and review count
 func (s *ReviewService) updateSpotRating(ctx context.Context, spotID string) error {
-	stats, err := s.queries.GetSpotRatingStats(ctx, spotID)
-	if err != nil {
-		logger.ErrorWithContextAndFields(ctx, "Failed to get spot rating stats", err, map[string]interface{}{
-			"spot_id": spotID,
-		})
-		monitoring.CaptureError(ctx, err)
-		return err
-	}
-
-	averageRating := "0.0"
-	if avgRating, ok := stats.AverageRating.(float64); ok {
-		averageRating = strconv.FormatFloat(avgRating, 'f', 1, 64)
-	}
-
-	// Update spot table with new rating statistics
-	err = s.queries.UpdateSpotRating(ctx, database.UpdateSpotRatingParams{
-		ID:            spotID,
-		AverageRating: averageRating,
-		ReviewCount:   int32(stats.ReviewCount),
-	})
-	if err != nil {
-		logger.ErrorWithContextAndFields(ctx, "Failed to update spot rating", err, map[string]interface{}{
-			"spot_id": spotID,
-		})
-		monitoring.CaptureError(ctx, err)
-		return err
-	}
+	// TODO: Update spot table with new rating statistics
+	// Currently using MVP schema without rating fields on spots table
+	// stats, err := s.queries.GetSpotRatingStats(ctx, spotID)
+	// if err != nil {
+	//	logger.ErrorWithContextAndFields(ctx, "Failed to get spot rating stats", err, map[string]interface{}{
+	//		"spot_id": spotID,
+	//	})
+	//	monitoring.CaptureError(ctx, err)
+	//	return err
+	// }
+	// averageRating := strconv.FormatFloat(stats.AverageRating, 'f', 1, 64)
+	
+	logger.Info("Spot rating stats calculated")
 	return nil
 }

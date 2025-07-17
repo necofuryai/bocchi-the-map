@@ -8,10 +8,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	commonv1 "bocchi/api/gen/common/v1"
+	// commonv1 "bocchi/api/gen/common/v1" // TODO: Remove when not needed
 	spotv1 "bocchi/api/gen/spot/v1"
 	"bocchi/api/infrastructure/database"
-	"bocchi/api/pkg/logger"
+	// "bocchi/api/pkg/logger" // TODO: Remove when not needed
 )
 
 // SpotService implements the gRPC SpotService
@@ -57,8 +57,6 @@ func (s *SpotService) GetSpot(ctx context.Context, req *GetSpotRequest) (*GetSpo
 		Category:      dbSpot.Category,
 		Address:       dbSpot.Address,
 		CountryCode:   dbSpot.CountryCode,
-		AverageRating: dbSpot.AverageRating,
-		ReviewCount:   dbSpot.ReviewCount,
 		CreatedAt:     dbSpot.CreatedAt,
 		UpdatedAt:     dbSpot.UpdatedAt,
 	}

@@ -48,11 +48,14 @@ type AppConfig struct {
 
 // AuthConfig holds authentication-related configuration
 type AuthConfig struct {
-	JWTSecret       string
-	Auth0Domain     string
-	Auth0Audience   string
-	Auth0ClientID   string
-	Auth0ClientSecret string
+	JWTSecret         string
+	ClerkSecretKey    string
+	ClerkPublishableKey string
+	ClerkJWTIssuer    string
+	ClerkJWKSURL      string
+	RateLimitEnabled  bool
+	RateLimitRequests int
+	RateLimitWindow   int
 }
 
 // Load loads configuration from environment variables
@@ -79,11 +82,14 @@ func Load() (*Config, error) {
 			Version:     getEnvWithDefault("APP_VERSION", "1.0.0"),
 		},
 		Auth: AuthConfig{
-			JWTSecret:       os.Getenv("JWT_SECRET"),
-			Auth0Domain:     os.Getenv("AUTH0_DOMAIN"),
-			Auth0Audience:   os.Getenv("AUTH0_AUDIENCE"),
-			Auth0ClientID:   os.Getenv("AUTH0_CLIENT_ID"),
-			Auth0ClientSecret: os.Getenv("AUTH0_CLIENT_SECRET"),
+			JWTSecret:         os.Getenv("JWT_SECRET"),
+			ClerkSecretKey:    os.Getenv("CLERK_SECRET_KEY"),
+			ClerkPublishableKey: os.Getenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY"),
+			ClerkJWTIssuer:    getEnvWithDefault("CLERK_JWT_ISSUER", "https://clerk.dev"),
+			ClerkJWKSURL:      getEnvWithDefault("CLERK_JWKS_URL", "https://api.clerk.dev/v1/jwks"),
+			RateLimitEnabled:  getBoolEnvWithDefault("RATE_LIMIT_ENABLED", true),
+			RateLimitRequests: getIntEnvWithDefault("RATE_LIMIT_REQUESTS", 100),
+			RateLimitWindow:   getIntEnvWithDefault("RATE_LIMIT_WINDOW", 3600),
 		},
 	}
 
@@ -103,8 +109,11 @@ func (c *Config) Validate() error {
 	if err := c.validateJWTSecret(); err != nil {
 		return err
 	}
-	if err := c.validateAuth0Config(); err != nil {
-		return err
+	// Skip Clerk validation in development environment
+	if c.App.Environment != "development" {
+		if err := c.validateClerkConfig(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -155,51 +164,62 @@ func (c *Config) validateJWTSecret() error {
 	return nil
 }
 
-// validateAuth0Config validates the Auth0 configuration
-func (c *Config) validateAuth0Config() error {
+// validateClerkConfig validates the Clerk configuration
+func (c *Config) validateClerkConfig() error {
 	auth := c.Auth
 	
-	// Auth0 Domain validation
-	if auth.Auth0Domain == "" {
-		return errors.New("AUTH0_DOMAIN is required")
+	// Clerk Secret Key validation
+	if auth.ClerkSecretKey == "" {
+		return errors.New("CLERK_SECRET_KEY is required")
 	}
 	
-	// Basic domain format validation (should not include protocol)
-	if match, _ := regexp.MatchString(`^https?://`, auth.Auth0Domain); match {
-		return errors.New("AUTH0_DOMAIN should not include protocol (http:// or https://)")
+	// Clerk Publishable Key validation
+	if auth.ClerkPublishableKey == "" {
+		return errors.New("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required")
 	}
 	
-	// Auth0 Audience validation
-	if auth.Auth0Audience == "" {
-		return errors.New("AUTH0_AUDIENCE is required")
+	// Validate key prefixes
+	if match, _ := regexp.MatchString(`^sk_`, auth.ClerkSecretKey); !match {
+		return errors.New("CLERK_SECRET_KEY should start with 'sk_'")
 	}
 	
-	// Auth0 Client ID validation
-	if auth.Auth0ClientID == "" {
-		return errors.New("AUTH0_CLIENT_ID is required")
+	if match, _ := regexp.MatchString(`^pk_`, auth.ClerkPublishableKey); !match {
+		return errors.New("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY should start with 'pk_'")
 	}
 	
-	// Auth0 Client Secret validation - only required in production
-	if auth.Auth0ClientSecret == "" && (c.App.Environment == "production" || c.App.Environment == "prod") {
-		return errors.New("AUTH0_CLIENT_SECRET is required in production environment")
+	// Validate JWKS URL format
+	if auth.ClerkJWKSURL != "" {
+		if _, err := url.Parse(auth.ClerkJWKSURL); err != nil {
+			return fmt.Errorf("invalid CLERK_JWKS_URL format: %w", err)
+		}
+	}
+	
+	// Validate rate limiting configuration
+	if auth.RateLimitEnabled {
+		if auth.RateLimitRequests <= 0 {
+			return errors.New("RATE_LIMIT_REQUESTS must be greater than 0 when rate limiting is enabled")
+		}
+		if auth.RateLimitWindow <= 0 {
+			return errors.New("RATE_LIMIT_WINDOW must be greater than 0 when rate limiting is enabled")
+		}
 	}
 	
 	return nil
 }
 
-// GetAuth0Issuer returns the Auth0 issuer URL
-func (c *AuthConfig) GetAuth0Issuer() string {
-	return fmt.Sprintf("https://%s/", c.Auth0Domain)
+// GetClerkIssuer returns the Clerk issuer URL
+func (c *AuthConfig) GetClerkIssuer() string {
+	return c.ClerkJWTIssuer
 }
 
-// GetAuth0JWKSURL returns the Auth0 JWKS URL for token validation
-func (c *AuthConfig) GetAuth0JWKSURL() string {
-	return fmt.Sprintf("https://%s/.well-known/jwks.json", c.Auth0Domain)
+// GetClerkJWKSURL returns the Clerk JWKS URL for token validation
+func (c *AuthConfig) GetClerkJWKSURL() string {
+	return c.ClerkJWKSURL
 }
 
-// IsAuth0Configured returns true if Auth0 configuration is present
-func (c *AuthConfig) IsAuth0Configured() bool {
-	return c.Auth0Domain != "" && c.Auth0ClientID != "" && c.Auth0Audience != ""
+// IsClerkConfigured returns true if Clerk configuration is present
+func (c *AuthConfig) IsClerkConfigured() bool {
+	return c.ClerkSecretKey != "" && c.ClerkPublishableKey != ""
 }
 
 // GetDSN returns the database connection string
@@ -224,6 +244,19 @@ func getIntEnvWithDefault(key string, defaultValue int) int {
 		} else {
 			// Log warning about invalid integer value
 			fmt.Fprintf(os.Stderr, "Warning: Invalid integer value for %s: %s, using default %d\n", key, value, defaultValue)
+		}
+	}
+	return defaultValue
+}
+
+// getBoolEnvWithDefault gets a boolean environment variable with a default value
+func getBoolEnvWithDefault(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		} else {
+			// Log warning about invalid boolean value
+			fmt.Fprintf(os.Stderr, "Warning: Invalid boolean value for %s: %s, using default %t\n", key, value, defaultValue)
 		}
 	}
 	return defaultValue

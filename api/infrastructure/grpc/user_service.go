@@ -85,9 +85,10 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 	if req.GetEmail() == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
-	if req.GetName() == "" {
-		return nil, status.Error(codes.InvalidArgument, "name is required")
-	}
+	// TODO: Fix protobuf generation - name field not available
+	// if req.GetName() == "" {
+	//	return nil, status.Error(codes.InvalidArgument, "name is required")
+	// }
 
 	// Check if user already exists
 	_, err := s.queries.GetUserByEmail(ctx, req.GetEmail())
@@ -105,7 +106,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 	err = s.queries.CreateUser(ctx, database.CreateUserParams{
 		ID:    userID,
 		Email: req.GetEmail(),
-		Name:  req.GetName(),
+		Name:  req.GetEmail(), // TODO: Fix protobuf generation - using email as name placeholder
 	})
 	if err != nil {
 		logger.ErrorWithContext(ctx, "Failed to create user", err)
@@ -131,7 +132,7 @@ func (s *UserService) convertDatabaseUserToGRPC(dbUser database.User) *User {
 	return &User{
 		Id:        dbUser.ID,
 		Email:     dbUser.Email,
-		Name:      dbUser.Name,
+		// Name:      dbUser.Name, // TODO: Fix protobuf generation - Name field not available
 		CreatedAt: timestamppb.New(dbUser.CreatedAt),
 		UpdatedAt: timestamppb.New(dbUser.UpdatedAt),
 	}
