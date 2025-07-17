@@ -119,3 +119,57 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* POI Popup Styles */
+.poi-popup .maplibregl-popup-content {
+  padding: 0 !important;
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--color-border) !important;
+  background-color: var(--color-popover) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.poi-popup .maplibregl-popup-tip {
+  border-top-color: var(--color-popover) !important;
+}
+
+.poi-popup-container {
+  max-width: 100%;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for popup content */
+.poi-popup-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.poi-popup-container::-webkit-scrollbar-track {
+  background: var(--color-muted);
+  border-radius: 3px;
+}
+
+.poi-popup-container::-webkit-scrollbar-thumb {
+  background: var(--color-muted-foreground);
+  border-radius: 3px;
+}
+
+.poi-popup-container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-foreground);
+}
+
+/* Animation for popup appearance */
+.poi-popup {
+  animation: poi-popup-appear 0.2s ease-out;
+}
+
+@keyframes poi-popup-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

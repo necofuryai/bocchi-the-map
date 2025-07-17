@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ReviewForm, ReviewStats, type ReviewFormData } from "@/components/reviews"
 import { useMapStore } from "@/stores/use-map-store"
-import { api, handleAPIError } from "@/lib/api-client"
+import { handleAPIError } from "@/lib/api-client"
+import { useApi } from "@/hooks/use-api"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
-// import type { Spot } from "@/types"
+import type { Review } from "@/types"
 
 interface POIPopupProps {
   className?: string
@@ -33,12 +34,14 @@ export const POIPopup: React.FC<POIPopupProps> = ({ className }) => {
     setPopupReviewsError(null)
     
     try {
-      const response = await api.reviews.list({ spot_id: spotId })
-      if (response.error) {
-        setPopupReviewsError(handleAPIError(response.error))
-      } else {
-        setPopupReviews(response.data || [])
+      const response = await fetch(`/api/v1/spots/${spotId}/reviews`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch reviews')
       }
+      
+      const data = await response.json()
+      setPopupReviews(data.reviews || [])
     } catch {
       setPopupReviewsError("Failed to load reviews")
     }
@@ -51,6 +54,8 @@ export const POIPopup: React.FC<POIPopupProps> = ({ className }) => {
     }
   }, [popup.isOpen, popup.spot, fetchReviews])
 
+  const { getAuthenticatedClient } = useApi()
+  
   const handleSubmitReview = async (reviewData: ReviewFormData) => {
     if (!popup.spot) return
 
@@ -62,23 +67,16 @@ export const POIPopup: React.FC<POIPopupProps> = ({ className }) => {
         return
       }
 
-      const currentUserId = user.id
-      const currentUserName = user.fullName || user.primaryEmailAddress?.emailAddress.split('@')[0] || "Anonymous User"
+      // Get authenticated API client
+      const authClient = await getAuthenticatedClient()
 
       const reviewPayload = {
-        spotId: reviewData.spotId,
-        userId: currentUserId,
-        userName: currentUserName,
+        spot_id: reviewData.spotId,
         rating: reviewData.rating,
-        soloFriendlyRating: reviewData.soloFriendlyRating,
         comment: reviewData.comment,
-        tags: reviewData.tags,
-        photos: [], // TODO: Handle photo uploads
-        helpful: 0,
-        notHelpful: 0,
       }
 
-      const response = await api.reviews.create(reviewPayload)
+      const response = await authClient.post<Review>('/api/v1/reviews', reviewPayload)
       if (response.error) {
         setPopupReviewsError(handleAPIError(response.error))
       } else {
