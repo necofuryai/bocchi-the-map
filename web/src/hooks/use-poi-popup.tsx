@@ -86,7 +86,7 @@ export const usePOIPopup = ({ map }: UsePOIPopupOptions) => {
 
     // Query for POI features at click point
     const features = map.queryRenderedFeatures(event.point, {
-      layers: ["poi-icons-priority", "poi-icons"], // Handle both priority and regular POI layers
+      layers: ["poi-icons-priority", "poi-icons-shop", "poi-icons-tourism", "poi-icons-leisure", "poi-icons-natural", "poi-icons-historic", "poi-icons-transport"], // Handle all POI layers
     })
 
     if (features.length > 0) {
@@ -122,7 +122,7 @@ export const usePOIPopup = ({ map }: UsePOIPopupOptions) => {
 
     // Check if click is on a POI
     const features = map.queryRenderedFeatures(event.point, {
-      layers: ["poi-icons-priority", "poi-icons"],
+      layers: ["poi-icons-priority", "poi-icons-shop", "poi-icons-tourism", "poi-icons-leisure", "poi-icons-natural", "poi-icons-historic", "poi-icons-transport"],
     })
 
     if (features.length === 0 && popup.isOpen) {
@@ -150,17 +150,20 @@ export const usePOIPopup = ({ map }: UsePOIPopupOptions) => {
       map.getCanvas().style.cursor = ""
     }
 
-    map.on("mouseenter", "poi-icons", setCursorPointer)
-    map.on("mouseleave", "poi-icons", setCursorDefault)
-    map.on("mouseenter", "poi-icons-priority", setCursorPointer)
-    map.on("mouseleave", "poi-icons-priority", setCursorDefault)
+    // Add cursor styling for all POI layers
+    const poiLayers = ["poi-icons-priority", "poi-icons-shop", "poi-icons-tourism", "poi-icons-leisure", "poi-icons-natural", "poi-icons-historic", "poi-icons-transport"]
+    poiLayers.forEach(layer => {
+      map.on("mouseenter", layer, setCursorPointer)
+      map.on("mouseleave", layer, setCursorDefault)
+    })
 
     return () => {
       map.off("click", handleMapClick)
-      map.off("mouseenter", "poi-icons", setCursorPointer)
-      map.off("mouseleave", "poi-icons", setCursorDefault)
-      map.off("mouseenter", "poi-icons-priority", setCursorPointer)
-      map.off("mouseleave", "poi-icons-priority", setCursorDefault)
+      // Remove cursor styling for all POI layers
+      poiLayers.forEach(layer => {
+        map.off("mouseenter", layer, setCursorPointer)
+        map.off("mouseleave", layer, setCursorDefault)
+      })
     }
   }, [map, handleMapClick])
 

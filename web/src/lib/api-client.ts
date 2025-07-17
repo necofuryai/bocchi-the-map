@@ -26,7 +26,7 @@ const createInitialState = (baseURL?: string): APIClientState => ({
 })
 
 
-// Make authenticated request with automatic token refresh
+// Make authenticated request with Clerk token
 const request = async <T = Record<string, never>>(
   state: APIClientState,
   endpoint: string,
@@ -36,8 +36,8 @@ const request = async <T = Record<string, never>>(
   const headers = new Headers(options.headers)
   headers.set('Content-Type', 'application/json')
 
-  // Clerk handles authentication through cookies
-  // No need to manually set Authorization header
+  // Note: For authenticated requests, the token should be passed in options.headers
+  // This allows for proper token handling from React components using useAuth hook
 
   // Make the request
   let response: Response
@@ -120,29 +120,43 @@ const request = async <T = Record<string, never>>(
 }
 
 // API client factory function
-export const createAPIClient = (baseURL?: string) => {
+export const createAPIClient = (baseURL?: string, token?: string) => {
   const state = createInitialState(baseURL)
 
+  const createHeaders = (additionalHeaders?: HeadersInit) => {
+    const headers = new Headers(additionalHeaders)
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+    return headers
+  }
+
   return {
-    get: <T = Record<string, never>>(endpoint: string): Promise<APIResponse<T>> => 
-      request<T>(state, endpoint, { method: 'GET' }),
-    post: <T = Record<string, never>>(endpoint: string, body?: object): Promise<APIResponse<T>> => 
+    get: <T = Record<string, never>>(endpoint: string, options?: RequestInit): Promise<APIResponse<T>> => 
+      request<T>(state, endpoint, { method: 'GET', ...options, headers: createHeaders(options?.headers) }),
+    post: <T = Record<string, never>>(endpoint: string, body?: object, options?: RequestInit): Promise<APIResponse<T>> => 
       request<T>(state, endpoint, {
         method: 'POST',
         body: body ? JSON.stringify(body) : undefined,
+        ...options,
+        headers: createHeaders(options?.headers),
       }),
-    put: <T = Record<string, never>>(endpoint: string, body?: object): Promise<APIResponse<T>> => 
+    put: <T = Record<string, never>>(endpoint: string, body?: object, options?: RequestInit): Promise<APIResponse<T>> => 
       request<T>(state, endpoint, {
         method: 'PUT',
         body: body ? JSON.stringify(body) : undefined,
+        ...options,
+        headers: createHeaders(options?.headers),
       }),
-    patch: <T = Record<string, never>>(endpoint: string, body?: object): Promise<APIResponse<T>> => 
+    patch: <T = Record<string, never>>(endpoint: string, body?: object, options?: RequestInit): Promise<APIResponse<T>> => 
       request<T>(state, endpoint, {
         method: 'PATCH',
         body: body ? JSON.stringify(body) : undefined,
+        ...options,
+        headers: createHeaders(options?.headers),
       }),
-    delete: <T = Record<string, never>>(endpoint: string): Promise<APIResponse<T>> => 
-      request<T>(state, endpoint, { method: 'DELETE' }),
+    delete: <T = Record<string, never>>(endpoint: string, options?: RequestInit): Promise<APIResponse<T>> => 
+      request<T>(state, endpoint, { method: 'DELETE', ...options, headers: createHeaders(options?.headers) }),
   }
 }
 
@@ -177,16 +191,27 @@ export const api = {
 
   // Review operations
   reviews: {
-    list: (params?: { spot_id?: string; user_id?: string; limit?: number }) => {
+    list: (params: { spot_id: string; page?: number; limit?: number }) => {
       const searchParams = new URLSearchParams()
-      if (params?.spot_id) searchParams.set('spot_id', params.spot_id)
-      if (params?.user_id) searchParams.set('user_id', params.user_id)
-      if (params?.limit) searchParams.set('limit', params.limit.toString())
+      if (params.page) searchParams.set('page', params.page.toString())
+      if (params.limit) searchParams.set('limit', params.limit.toString())
       
       const query = searchParams.toString()
-      return apiClient.get<Review[]>(`/api/v1/reviews${query ? `?${query}` : ''}`)
+      return apiClient.get<{
+        reviews: Review[]
+        pagination: {
+          page: number
+          pageSize: number
+          totalCount: number
+          totalPages: number
+        }
+        statistics: {
+          averageRating: number
+          totalReviews: number
+        }
+      }>(`/api/v1/spots/${params.spot_id}/reviews${query ? `?${query}` : ''}`)
     },
-    create: (review: Omit<Review, 'id' | 'createdAt' | 'updatedAt'>) => 
+    create: (review: { spot_id: string; rating: number; comment?: string }) => 
       apiClient.post<Review>('/api/v1/reviews', review),
     getById: (id: string) => apiClient.get<Review>(`/api/v1/reviews/${id}`),
     update: (id: string, review: Partial<Omit<Review, 'id' | 'createdAt' | 'updatedAt'>>) => 
