@@ -1,9 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import { createMapStyle } from "@/components/mapStyle";
-// POI features removed for MVP simplification
-import type { MapError } from "@/components/map/types";
 import { useMapStore } from '@/stores/use-map-store';
+import type { MapError } from "@/components/map/types";
 
 // Map default configuration
 const MAP_DEFAULTS = {
@@ -32,9 +31,6 @@ export const useMaplibre = ({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { mapState, error, setMapState, setError } = useMapStore();
-  // Optimization pattern to manage onClick callback with ref to avoid useEffect re-execution
-  // To prevent main useEffect from re-executing every time onClick changes,
-  // store the latest callback in ref and access it within the effect
   const currentOnClickRef = useRef<((event: maplibregl.MapMouseEvent) => void) | undefined>(onClick);
 
 
@@ -59,8 +55,10 @@ export const useMaplibre = ({
     };
     
     try {
+      console.log("Creating map style with URL:", process.env.NEXT_PUBLIC_MAP_STYLE_URL);
       const style = createMapStyle(process.env.NEXT_PUBLIC_MAP_STYLE_URL);
 
+      console.log("Initializing MapLibre GL map...");
       mapRef.current = new maplibregl.Map({
         container: containerRef.current,
         style,
@@ -68,12 +66,14 @@ export const useMaplibre = ({
         zoom: defaultZoom
       });
 
+      console.log("Map instance created successfully");
+
       // On map load completion
       mapRef.current.on('load', () => {
-        setMapState('loaded');
-        setError(null);
-        
         if (mapRef.current) {
+          console.log("Map loaded successfully");
+          setMapState('loaded');
+          setError(null);
           onLoad?.(mapRef.current);
         }
       });
@@ -81,6 +81,21 @@ export const useMaplibre = ({
       // Error handling
       mapRef.current.on('error', (e: maplibregl.ErrorEvent) => {
         console.error("Map error:", e);
+        
+        // Check if this is a vector tile parsing error
+        if (e.error && e.error.message) {
+          console.error("Error details:", {
+            message: e.error.message,
+            error: e.error
+          });
+          
+          // Check for specific vector tile ("vt") errors
+          if (e.error.message.includes('vt') || e.error.message.includes('vector tile')) {
+            console.error("Vector tile parsing error detected");
+            console.error("This might be a PMTiles compatibility issue with MapLibre GL");
+          }
+        }
+        
         const loadError: MapError = {
           type: 'loading',
           message: 'Failed to load map',
@@ -90,6 +105,7 @@ export const useMaplibre = ({
         setMapState('error');
         onError?.(loadError);
       });
+      
 
       // Click event
       if (onClick) {
@@ -111,9 +127,6 @@ export const useMaplibre = ({
     return () => {
       if (mapRef.current) {
         if (onClick) {
-          // Remove event listener during cleanup
-          // Since handleClick function accesses the latest onClick callback through ref,
-          // event listener re-registration is unnecessary even when onClick changes
           mapRef.current.off('click', handleClick);
         }
         mapRef.current.remove();
@@ -123,7 +136,6 @@ export const useMaplibre = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onLoad, onError, onClick, defaultCenter, defaultZoom]);
 
-  // Update ref when onClick handler changes
   useEffect(() => {
     currentOnClickRef.current = onClick;
   }, [onClick]);

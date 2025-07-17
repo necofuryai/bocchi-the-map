@@ -1,7 +1,9 @@
 "use client";
 
+import React from "react";
 import { usePmtiles } from "../hooks/usePmtiles";
 import { useMaplibre } from "../hooks/useMaplibre";
+import { usePOIPopup } from "../hooks/use-poi-popup";
 import { MapErrorDisplay, MapLoadingDisplay } from "./map/map-status";
 import type { MapComponentProps } from "./map/types";
 
@@ -19,11 +21,14 @@ export default function MapComponent({
   usePmtiles();
 
   // Initialize map and manage state
-  const { containerRef, mapState, error } = useMaplibre({ 
+  const { containerRef, mapState, error, map } = useMaplibre({ 
     onClick, 
     onLoad, 
     onError
   });
+
+  // Initialize POI popup functionality
+  usePOIPopup({ map });
 
   // Display error state
   if (mapState === 'error' && error) {

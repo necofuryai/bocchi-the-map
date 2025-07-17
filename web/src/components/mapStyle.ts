@@ -1,28 +1,18 @@
 import * as maplibregl from "maplibre-gl";
 import { layers, namedFlavor } from "@protomaps/basemaps";
 
-// Map style configuration constants
-const MAP_STYLE_CONFIG = {
-  glyphsUrl: process.env.NEXT_PUBLIC_MAP_GLYPHS_URL || "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-  spriteUrl: process.env.NEXT_PUBLIC_MAP_SPRITE_URL || "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
-  textFont: ["Noto Sans Regular"] as string[],
-  textSize: 11,
-  textColor: "#333",
-  textHaloColor: "#fff",
-  textHaloWidth: 1,
-  textOffset: [0, 0.7] as [number, number]
-};
-
 /**
- * Function to generate style configuration for MapLibre GL
- * @param mapStyleUrl Map style URL for PMTiles
- * @returns MapLibre GL StyleSpecification
+ * Creates a simple map style configuration using Protomaps basemaps.
+ * This is the simplified version that was working during the NextAuth era.
+ * 
+ * @param mapStyleUrl - The URL to the PMTiles file
+ * @returns MapLibre GL style specification
  */
 export function createMapStyle(mapStyleUrl: string): maplibregl.StyleSpecification {
   return {
     version: 8,
-    glyphs: MAP_STYLE_CONFIG.glyphsUrl,
-    sprite: MAP_STYLE_CONFIG.spriteUrl,
+    glyphs: process.env.NEXT_PUBLIC_MAP_GLYPHS_URL || "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+    sprite: process.env.NEXT_PUBLIC_MAP_SPRITE_URL || "https://protomaps.github.io/basemaps-assets/sprites/v4/light",
     sources: {
       protomaps: {
         type: "vector" as const,
@@ -32,6 +22,7 @@ export function createMapStyle(mapStyleUrl: string): maplibregl.StyleSpecificati
     },
     layers: [
       ...layers("protomaps", namedFlavor("light")),
+      // Simple POI layer for basic point of interest display
       {
         id: "poi-cafe-atm",
         type: "symbol",
@@ -39,16 +30,16 @@ export function createMapStyle(mapStyleUrl: string): maplibregl.StyleSpecificati
         "source-layer": "pois",
         layout: {
           "text-field": ["get", "name"],
-          "text-font": MAP_STYLE_CONFIG.textFont,
-          "text-size": MAP_STYLE_CONFIG.textSize,
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 11,
           "text-anchor": "top",
-          "text-offset": MAP_STYLE_CONFIG.textOffset,
+          "text-offset": [0, 0.7],
           "icon-allow-overlap": true
         },
         paint: {
-          "text-color": MAP_STYLE_CONFIG.textColor,
-          "text-halo-color": MAP_STYLE_CONFIG.textHaloColor,
-          "text-halo-width": MAP_STYLE_CONFIG.textHaloWidth
+          "text-color": "#333",
+          "text-halo-color": "#fff",
+          "text-halo-width": 1
         }
       }
     ]
